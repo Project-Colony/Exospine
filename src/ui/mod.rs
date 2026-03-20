@@ -1,7 +1,12 @@
+pub mod account_dialog;
+pub mod attachment_list;
 pub mod compose;
+pub mod confirm_dialog;
 pub mod mail_list;
 pub mod mail_view;
+pub mod progress;
 pub mod settings;
 pub mod sidebar;
 pub mod theme;
+pub mod toast;
 pub mod widgets;

@@ -51,15 +51,20 @@ pub fn parse_email(raw: &[u8], account_id: &str, folder: &str) -> Result<MailEnt
 
     let body_html = message.body_html(0).map(|h| h.to_string());
 
-    // Generate preview: use plain text, or convert HTML
-    let preview_source = if !body_text.is_empty() {
-        body_text.clone()
-    } else if let Some(ref html) = body_html {
-        html_to_text(html)
+    // Convert HTML to text once if needed (avoid double parsing)
+    let html_as_text = if body_text.is_empty() {
+        body_html.as_ref().map(|h| html_to_text(h))
     } else {
-        String::new()
+        None
     };
-    let preview: String = preview_source.chars().take(120).collect();
+
+    let effective_text = if body_text.is_empty() {
+        html_as_text.clone().unwrap_or_default()
+    } else {
+        body_text
+    };
+
+    let preview: String = effective_text.chars().take(120).collect();
 
     let has_attachments = message.attachment_count() > 0;
 
@@ -70,14 +75,7 @@ pub fn parse_email(raw: &[u8], account_id: &str, folder: &str) -> Result<MailEnt
         subject,
         date,
         preview,
-        body_text: if body_text.is_empty() {
-            body_html
-                .as_ref()
-                .map(|h| html_to_text(h))
-                .unwrap_or_default()
-        } else {
-            body_text
-        },
+        body_text: effective_text,
         body_html,
         is_read: false,
         is_starred: false,

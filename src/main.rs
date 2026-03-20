@@ -1,12 +1,17 @@
+mod accounts;
 mod config;
 mod mail;
 mod message;
+mod search;
+mod shortcuts;
 mod state;
 mod storage;
+mod threading;
 mod ui;
 mod update;
 
-use iced::{Element, Size, Task, Theme};
+use iced::{keyboard, Element, Size, Subscription, Task, Theme};
+use iced::event;
 use message::Message;
 use state::App;
 
@@ -23,6 +28,7 @@ fn main() -> iced::Result {
     iced::application(App::new, App::update, App::view)
         .title("Exospine")
         .theme(App::theme)
+        .subscription(App::subscription)
         .window_size(Size::new(1200.0, 800.0))
         .run()
 }
@@ -37,23 +43,23 @@ impl App {
         update::update(self, message)
     }
 
-    fn view(&self) -> Element<Message> {
-        use iced::widget::{column, container, row, text};
+    fn view(&self) -> Element<'_, Message> {
+        use iced::widget::{column, container, row, Stack};
         use iced::Length;
 
-        match self.view {
+        // Base layout
+        let base: Element<Message> = match self.view {
             state::View::Mail => {
                 let sidebar = ui::sidebar::view(self);
                 let mail_list = ui::mail_list::view(self);
                 let mail_view = ui::mail_view::view(self);
 
                 let content = row![sidebar, mail_list, mail_view];
-
                 let mut layout = column![content.height(Length::Fill)];
 
                 if let Some(ref status) = self.status_message {
                     layout = layout.push(
-                        container(text(status.as_str()).size(12))
+                        container(iced::widget::text(status.as_str()).size(12))
                             .padding(4)
                             .width(Length::Fill),
                     );
@@ -67,9 +73,7 @@ impl App {
             state::View::Compose => {
                 let sidebar = ui::sidebar::view(self);
                 let compose = ui::compose::view(self);
-
                 let content = row![sidebar, compose];
-
                 container(content)
                     .width(Length::Fill)
                     .height(Length::Fill)
@@ -78,18 +82,47 @@ impl App {
             state::View::Settings => {
                 let sidebar = ui::sidebar::view(self);
                 let settings = ui::settings::view(self);
-
                 let content = row![sidebar, settings];
-
                 container(content)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .into()
             }
+        };
+
+        // Layer overlays: account dialog, confirm dialog, toasts
+        let mut layers: Vec<Element<Message>> = vec![base];
+
+        if let Some(ref dialog) = self.account_dialog {
+            layers.push(ui::account_dialog::view(dialog));
         }
+
+        if let Some(ref dialog) = self.confirm_dialog {
+            layers.push(ui::confirm_dialog::view(dialog));
+        }
+
+        if !self.toasts.is_empty() {
+            layers.push(ui::toast::view(&self.toasts));
+        }
+
+        Stack::with_children(layers)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
     fn theme(&self) -> Theme {
         Theme::Dark
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        event::listen_with(|event, _status, _id| {
+            match event {
+                iced::Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. }) => {
+                    shortcuts::handle_key_event(key, modifiers)
+                }
+                _ => None,
+            }
+        })
     }
 }

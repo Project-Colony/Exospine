@@ -4,14 +4,17 @@
 //! the application state, including accounts, mail entries, folders,
 //! compose drafts, and settings.
 
+use std::time::Instant;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::mail::attachments::AttachmentMeta;
+use crate::search::QuickFilter;
+use crate::ui::confirm_dialog::ConfirmDialog;
+use crate::ui::toast::Toast;
+
 /// The main Iced application state.
-///
-/// Holds everything needed to render the UI and manage user interactions,
-/// including loaded accounts, the current selection state, mail entries
-/// in the active folder, and application-wide settings.
 #[derive(Debug, Clone)]
 pub struct App {
     /// Configured email accounts.
@@ -26,6 +29,10 @@ pub struct App {
     pub mail_entries: Vec<MailEntry>,
     /// Current search/filter query.
     pub search_query: String,
+    /// Active quick filter.
+    pub quick_filter: QuickFilter,
+    /// Filtered indices into mail_entries (updated on search/filter change).
+    pub filtered_indices: Vec<usize>,
     /// Active compose draft, if the user is writing a message.
     pub composing: Option<ComposeDraft>,
     /// Which top-level view is active.
@@ -36,6 +43,16 @@ pub struct App {
     pub loading: bool,
     /// Persisted application settings.
     pub settings: AppSettings,
+    /// Account setup dialog state (None = closed).
+    pub account_dialog: Option<AccountDialogState>,
+    /// Confirmation dialog (None = closed).
+    pub confirm_dialog: Option<ConfirmDialog>,
+    /// Toast notification stack.
+    pub toasts: Vec<Toast>,
+    /// Counter for unique toast IDs.
+    pub next_toast_id: u64,
+    /// Attachment metadata for the currently selected mail.
+    pub current_attachments: Vec<AttachmentMeta>,
 }
 
 impl Default for App {
@@ -47,12 +64,122 @@ impl Default for App {
             selected_mail: None,
             mail_entries: Vec::new(),
             search_query: String::new(),
+            quick_filter: QuickFilter::All,
+            filtered_indices: Vec::new(),
             composing: None,
             view: View::Mail,
             status_message: None,
             loading: false,
             settings: AppSettings::default(),
+            account_dialog: None,
+            confirm_dialog: None,
+            toasts: Vec::new(),
+            next_toast_id: 0,
+            current_attachments: Vec::new(),
         }
+    }
+}
+
+impl App {
+    /// Add a toast notification.
+    pub fn push_toast(&mut self, message: impl Into<String>, level: crate::ui::toast::ToastLevel) {
+        let toast = Toast {
+            id: self.next_toast_id,
+            message: message.into(),
+            level,
+            created_at: Instant::now(),
+            duration_secs: 4,
+        };
+        self.next_toast_id += 1;
+        self.toasts.push(toast);
+    }
+
+    /// Remove expired toasts.
+    pub fn prune_toasts(&mut self) {
+        self.toasts.retain(|t| !t.is_expired());
+    }
+}
+
+/// State for the "Add Account" dialog.
+#[derive(Debug, Clone)]
+pub struct AccountDialogState {
+    pub email: String,
+    pub display_name: String,
+    pub password: String,
+    pub imap_host: String,
+    pub imap_port: String,
+    pub smtp_host: String,
+    pub smtp_port: String,
+    pub provider_name: String,
+    pub provider: crate::accounts::provider::ProviderConfig,
+    pub testing: bool,
+    pub test_result: Option<Result<(), String>>,
+    pub show_advanced: bool,
+}
+
+impl Default for AccountDialogState {
+    fn default() -> Self {
+        let cfg = crate::accounts::provider::detect_provider("");
+        Self {
+            email: String::new(),
+            display_name: String::new(),
+            password: String::new(),
+            imap_host: cfg.imap_host.to_owned(),
+            imap_port: cfg.imap_port.to_string(),
+            smtp_host: cfg.smtp_host.to_owned(),
+            smtp_port: cfg.smtp_port.to_string(),
+            provider_name: cfg.provider.label().to_owned(),
+            provider: cfg,
+            testing: false,
+            test_result: None,
+            show_advanced: false,
+        }
+    }
+}
+
+impl AccountDialogState {
+    /// Re-detect the provider from the current email and update
+    /// server fields. Called when the email input changes.
+    pub fn update_provider(&mut self) {
+        let cfg = crate::accounts::provider::detect_provider(&self.email);
+        // Only overwrite host/port when the provider is not Custom,
+        // so manually-entered values are preserved for unknown domains.
+        if cfg.provider != crate::accounts::provider::Provider::Custom {
+            self.imap_host = cfg.imap_host.to_owned();
+            self.imap_port = cfg.imap_port.to_string();
+            self.smtp_host = cfg.smtp_host.to_owned();
+            self.smtp_port = cfg.smtp_port.to_string();
+        }
+        self.provider_name = cfg.provider.label().to_owned();
+        self.provider = cfg;
+        // Invalidate any previous test when settings change.
+        self.test_result = None;
+    }
+
+    /// Parse the IMAP port string to `u16`, defaulting to 993.
+    pub fn imap_port_u16(&self) -> u16 {
+        self.imap_port.parse().unwrap_or(993)
+    }
+
+    /// Parse the SMTP port string to `u16`, defaulting to 587.
+    pub fn smtp_port_u16(&self) -> u16 {
+        self.smtp_port.parse().unwrap_or(587)
+    }
+
+    /// Whether the form has enough data to attempt a connection test.
+    pub fn can_test(&self) -> bool {
+        !self.email.is_empty()
+            && !self.password.is_empty()
+            && !self.imap_host.is_empty()
+            && !self.smtp_host.is_empty()
+            && !self.testing
+    }
+
+    /// Whether the form is ready to submit (test passed and name filled).
+    pub fn can_submit(&self) -> bool {
+        self.test_result.as_ref().is_some_and(|r| r.is_ok())
+            && !self.display_name.is_empty()
+            && !self.email.is_empty()
     }
 }
 

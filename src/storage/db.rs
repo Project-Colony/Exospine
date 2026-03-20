@@ -57,7 +57,10 @@ impl Database {
             );
 
             CREATE INDEX IF NOT EXISTS idx_messages_account_folder
-                ON messages(account_id, folder);",
+                ON messages(account_id, folder);
+
+            CREATE INDEX IF NOT EXISTS idx_messages_account_folder_date
+                ON messages(account_id, folder, date DESC);",
         )?;
         Ok(())
     }

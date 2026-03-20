@@ -155,6 +155,55 @@ pub async fn delete_message(session: &mut ImapSession, uid: &str) -> Result<()> 
     Ok(())
 }
 
+/// Mark a message as unread (remove \Seen flag).
+pub async fn mark_as_unread(session: &mut ImapSession, uid: &str) -> Result<()> {
+    session
+        .uid_store(uid, "-FLAGS (\\Seen)")
+        .await
+        .context("Failed to mark as unread")?
+        .try_collect::<Vec<_>>()
+        .await
+        .context("Failed to collect store response")?;
+    Ok(())
+}
+
+/// Add the \Flagged flag (star) to a message.
+pub async fn set_flagged(session: &mut ImapSession, uid: &str) -> Result<()> {
+    session
+        .uid_store(uid, "+FLAGS (\\Flagged)")
+        .await
+        .context("Failed to set flagged")?
+        .try_collect::<Vec<_>>()
+        .await
+        .context("Failed to collect store response")?;
+    Ok(())
+}
+
+/// Remove the \Flagged flag (un-star) from a message.
+pub async fn remove_flagged(session: &mut ImapSession, uid: &str) -> Result<()> {
+    session
+        .uid_store(uid, "-FLAGS (\\Flagged)")
+        .await
+        .context("Failed to remove flagged")?
+        .try_collect::<Vec<_>>()
+        .await
+        .context("Failed to collect store response")?;
+    Ok(())
+}
+
+/// Append a raw RFC-822 message to a folder (used for saving drafts).
+pub async fn append_message(
+    session: &mut ImapSession,
+    folder: &str,
+    message: &[u8],
+) -> Result<()> {
+    session
+        .append(folder, None, None, message)
+        .await
+        .context("Failed to append message")?;
+    Ok(())
+}
+
 /// Move a message to a different folder by copying then deleting.
 pub async fn move_message(session: &mut ImapSession, uid: &str, target: &str) -> Result<()> {
     session
