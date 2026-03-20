@@ -1105,7 +1105,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     app.composing = None;
                     app.view = View::Mail;
                 }
-                View::Settings => {
+                View::Settings | View::Calendar | View::Contacts => {
                     app.view = View::Mail;
                 }
                 View::Mail => {
@@ -1528,6 +1528,68 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::FontLoaded(_) => Task::none(),
+
+        // ── Import / Export ────────────────────────────────────────────
+        Message::ImportMail => {
+            app.push_toast("Select an .eml or .mbox file to import", ToastLevel::Info);
+            // In a full implementation this would open a file dialog.
+            // For now, this is scaffolding that signals readiness for the feature.
+            Task::none()
+        }
+        Message::ExportMail(idx) => {
+            if let Some(entry) = app.mail_entries.get(idx) {
+                let eml = crate::import_export::export_eml(entry);
+                let filename = format!("{}.eml", entry.subject.replace('/', "_"));
+                let export_dir = dirs::download_dir()
+                    .or_else(dirs::home_dir)
+                    .unwrap_or_else(|| std::path::PathBuf::from("."));
+                let path = export_dir.join(&filename);
+                match std::fs::write(&path, &eml) {
+                    Ok(()) => {
+                        app.push_toast(
+                            format!("Exported to {}", path.display()),
+                            ToastLevel::Success,
+                        );
+                        return Task::perform(
+                            async move { Ok(path) },
+                            Message::ExportCompleted,
+                        );
+                    }
+                    Err(e) => {
+                        app.push_toast(format!("Export failed: {e}"), ToastLevel::Error);
+                    }
+                }
+            }
+            Task::none()
+        }
+        Message::ImportCompleted(result) => {
+            match result {
+                Ok(mut entries) => {
+                    let count = entries.len();
+                    app.mail_entries.append(&mut entries);
+                    refilter(app);
+                    app.push_toast(
+                        format!("Imported {} message(s)", count),
+                        ToastLevel::Success,
+                    );
+                }
+                Err(e) => {
+                    app.push_toast(format!("Import failed: {e}"), ToastLevel::Error);
+                }
+            }
+            Task::none()
+        }
+        Message::ExportCompleted(result) => {
+            match result {
+                Ok(path) => {
+                    tracing::info!("Export completed: {}", path.display());
+                }
+                Err(e) => {
+                    app.push_toast(format!("Export error: {e}"), ToastLevel::Error);
+                }
+            }
+            Task::none()
+        }
 
         // Catch-all for newly added message variants that do not yet have
         // a dedicated handler. Logs a debug trace so they are easy to find

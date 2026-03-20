@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use uuid::Uuid;
 
 use crate::state::MailEntry;

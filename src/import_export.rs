@@ -4,8 +4,6 @@
 //! - mbox: Unix mbox format containing multiple messages separated by "From " lines.
 
 use anyhow::{Context, Result};
-use chrono::Utc;
-
 use crate::state::MailEntry;
 
 /// Export a single `MailEntry` as an RFC 5322 EML string.
