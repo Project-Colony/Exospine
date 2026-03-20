@@ -7,11 +7,9 @@
 //! - `In-Reply-To` and `References` headers for threading
 //! - `X-Priority` header
 
-use std::path::Path;
-
 use anyhow::{Context, Result};
 use lettre::message::header::ContentType;
-use lettre::message::{Attachment, Body, Mailbox, MessageBuilder, MultiPart, SinglePart};
+use lettre::message::{Attachment, Mailbox, MessageBuilder, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 

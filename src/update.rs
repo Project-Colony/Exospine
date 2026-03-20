@@ -41,6 +41,23 @@ fn refilter(app: &mut App) {
     }
 }
 
+/// Get the signature for the currently selected account (empty string if none).
+fn get_current_signature(app: &App) -> String {
+    app.selected_account
+        .and_then(|idx| app.accounts.get(idx))
+        .map(|a| a.signature.clone())
+        .unwrap_or_default()
+}
+
+/// Get the signature for an account by ID (empty string if none).
+fn get_signature_by_account_id(app: &App, account_id: &str) -> String {
+    app.accounts
+        .iter()
+        .find(|a| a.id == account_id)
+        .map(|a| a.signature.clone())
+        .unwrap_or_default()
+}
+
 // ── IMAP flag operations ──────────────────────────────────────────────
 
 /// The type of IMAP flag/mail operation to perform in the background.
@@ -486,12 +503,14 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 .and_then(|i| app.accounts.get(i))
                 .map(|a| a.id.clone())
                 .unwrap_or_default();
+            let sig = get_current_signature(app);
+            let body = crate::mail::signatures::apply_signature("", &sig);
             app.composing = Some(ComposeDraft {
                 to: String::new(),
                 cc: String::new(),
                 bcc: String::new(),
                 subject: String::new(),
-                body: String::new(),
+                body,
                 reply_to: None,
                 account_id,
                 attachments: Vec::new(),
@@ -503,15 +522,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if let Some(idx) = app.selected_mail {
                 if let Some(mail) = app.mail_entries.get(idx) {
                     let account_id = mail.account_id.clone();
+                    let sig = get_signature_by_account_id(app, &account_id);
+                    let raw_body = format!(
+                        "\n\n--- Original Message ---\n{}",
+                        mail.body_text
+                    );
+                    let body = crate::mail::signatures::apply_signature(&raw_body, &sig);
                     app.composing = Some(ComposeDraft {
                         to: mail.from.clone(),
                         cc: String::new(),
                         bcc: String::new(),
                         subject: format!("Re: {}", mail.subject),
-                        body: format!(
-                            "\n\n--- Original Message ---\n{}",
-                            mail.body_text
-                        ),
+                        body,
                         reply_to: Some(mail.id.clone()),
                         account_id,
                         attachments: Vec::new(),
@@ -526,16 +548,19 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if let Some(idx) = app.selected_mail {
                 if let Some(mail) = app.mail_entries.get(idx) {
                     let account_id = mail.account_id.clone();
+                    let sig = get_signature_by_account_id(app, &account_id);
                     let all_recipients = mail.to.join(", ");
+                    let raw_body = format!(
+                        "\n\n--- Original Message ---\n{}",
+                        mail.body_text
+                    );
+                    let body = crate::mail::signatures::apply_signature(&raw_body, &sig);
                     app.composing = Some(ComposeDraft {
                         to: mail.from.clone(),
                         cc: all_recipients,
                         bcc: String::new(),
                         subject: format!("Re: {}", mail.subject),
-                        body: format!(
-                            "\n\n--- Original Message ---\n{}",
-                            mail.body_text
-                        ),
+                        body,
                         reply_to: Some(mail.id.clone()),
                         account_id,
                         attachments: Vec::new(),
@@ -550,15 +575,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if let Some(idx) = app.selected_mail {
                 if let Some(mail) = app.mail_entries.get(idx) {
                     let account_id = mail.account_id.clone();
+                    let sig = get_signature_by_account_id(app, &account_id);
+                    let raw_body = format!(
+                        "\n\n--- Forwarded Message ---\nFrom: {}\nSubject: {}\n\n{}",
+                        mail.from, mail.subject, mail.body_text
+                    );
+                    let body = crate::mail::signatures::apply_signature(&raw_body, &sig);
                     app.composing = Some(ComposeDraft {
                         to: String::new(),
                         cc: String::new(),
                         bcc: String::new(),
                         subject: format!("Fwd: {}", mail.subject),
-                        body: format!(
-                            "\n\n--- Forwarded Message ---\nFrom: {}\nSubject: {}\n\n{}",
-                            mail.from, mail.subject, mail.body_text
-                        ),
+                        body,
                         reply_to: None,
                         account_id,
                         attachments: Vec::new(),
@@ -766,6 +794,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.loading = false;
             match result {
                 Ok(mails) => {
+                    app.last_known_count = mails.len() as u32;
                     app.mail_entries = mails;
                     app.status_message = None;
                     app.last_sync = Some(std::time::Instant::now());
@@ -820,24 +849,6 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 Err(e) => {
                     app.status_message = None;
                     app.push_toast(format!("Send failed: {e}"), ToastLevel::Error);
-                }
-            }
-            Task::none()
-        }
-
-        // ── OAuth2 ─────────────────────────────────────────────────
-        Message::StartOAuth(_provider) => {
-            app.push_toast("OAuth2 flow starting...", ToastLevel::Info);
-            // TODO: launch browser-based OAuth2 flow
-            Task::none()
-        }
-        Message::OAuthCompleted(result) => {
-            match result {
-                Ok((_access_token, _refresh_token)) => {
-                    app.push_toast("OAuth2 authenticated", ToastLevel::Success);
-                }
-                Err(e) => {
-                    app.push_toast(format!("OAuth2 failed: {e}"), ToastLevel::Error);
                 }
             }
             Task::none()
@@ -1111,6 +1122,53 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::KeyboardEvent(_) => Task::none(),
 
+        // ── Signatures & Templates ─────────────────────────────────
+        Message::EditSignature(sig) => {
+            if let Some(idx) = app.selected_account {
+                if let Some(account) = app.accounts.get_mut(idx) {
+                    account.signature = sig;
+                }
+            }
+            Task::none()
+        }
+        Message::SaveSignature => {
+            // Persist in memory (already done via EditSignature).
+            app.push_toast("Signature saved", ToastLevel::Success);
+            Task::none()
+        }
+        Message::ApplyTemplate(tpl_idx) => {
+            if let Some(template) = app.templates.get(tpl_idx).cloned() {
+                if let Some(ref mut draft) = app.composing {
+                    draft.subject = template.subject;
+                    draft.body = template.body;
+                }
+            }
+            Task::none()
+        }
+        Message::ComposeWithTemplate(tpl_idx) => {
+            if let Some(template) = app.templates.get(tpl_idx).cloned() {
+                let account_id = app
+                    .selected_account
+                    .and_then(|i| app.accounts.get(i))
+                    .map(|a| a.id.clone())
+                    .unwrap_or_default();
+                let sig = get_current_signature(app);
+                let body = crate::mail::signatures::apply_signature(&template.body, &sig);
+                app.composing = Some(ComposeDraft {
+                    to: String::new(),
+                    cc: String::new(),
+                    bcc: String::new(),
+                    subject: template.subject,
+                    body,
+                    reply_to: None,
+                    account_id,
+                    attachments: Vec::new(),
+                });
+                app.view = View::Compose;
+            }
+            Task::none()
+        }
+
         // ── Settings ────────────────────────────────────────────────
         Message::OpenSettings => {
             app.view = View::Settings;
@@ -1118,6 +1176,61 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::CloseSettings => {
             app.view = View::Mail;
+            Task::none()
+        }
+        Message::SettingsThemeChanged(val) => {
+            app.settings.theme = val;
+            Task::none()
+        }
+        Message::SettingsFontSizeChanged(val) => {
+            if let Ok(size) = val.parse::<u16>() {
+                app.settings.font_size = size;
+            }
+            // Store the raw string so the text input stays in sync even while typing
+            Task::none()
+        }
+        Message::SettingsCheckIntervalChanged(val) => {
+            if let Ok(secs) = val.parse::<u64>() {
+                app.settings.check_interval_secs = secs;
+            }
+            Task::none()
+        }
+        Message::SettingsToggleNotifications => {
+            app.settings.show_notifications = !app.settings.show_notifications;
+            Task::none()
+        }
+        Message::SettingsReadingPaneChanged(val) => {
+            app.settings.reading_pane = val;
+            Task::none()
+        }
+        Message::SettingsDensityChanged(val) => {
+            app.settings.density = val;
+            Task::none()
+        }
+        Message::SettingsLanguageChanged(val) => {
+            app.settings.language = val;
+            Task::none()
+        }
+        Message::SaveSettings => {
+            let config = crate::config::Config {
+                window_width: 1200,
+                window_height: 800,
+                theme: app.settings.theme.clone(),
+                font_size: app.settings.font_size,
+                check_interval_secs: app.settings.check_interval_secs,
+                show_notifications: app.settings.show_notifications,
+                reading_pane: app.settings.reading_pane.clone(),
+                density: app.settings.density.clone(),
+                language: app.settings.language.clone(),
+            };
+            match config.save() {
+                Ok(()) => {
+                    app.push_toast("Settings saved", ToastLevel::Success);
+                }
+                Err(e) => {
+                    app.push_toast(format!("Failed to save settings: {e}"), ToastLevel::Error);
+                }
+            }
             Task::none()
         }
 
@@ -1343,6 +1456,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
 
+        // ── HTML View ──────────────────────────────────────────────
+        Message::ToggleHtmlView => {
+            app.show_html = !app.show_html;
+            // Reset image permission when toggling view
+            app.allow_external_images = false;
+            Task::none()
+        }
+        Message::AllowExternalImages => {
+            app.allow_external_images = !app.allow_external_images;
+            Task::none()
+        }
+
         // ── System ──────────────────────────────────────────────────
         Message::Tick => {
             // Periodic refresh: check if enough time has elapsed since last sync.
@@ -1404,59 +1529,13 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::FontLoaded(_) => Task::none(),
 
-        // ── Compose attachments ────────────────────────────────────
-        Message::ComposeAttachmentPathChanged(val) => {
-            app.compose_attachment_path = val;
+        // Catch-all for newly added message variants that do not yet have
+        // a dedicated handler. Logs a debug trace so they are easy to find
+        // during development but never crash the app.
+        #[allow(unreachable_patterns)]
+        other => {
+            tracing::debug!("Unhandled message: {:?}", other);
             Task::none()
         }
-        Message::AddAttachment => Task::none(),
-        Message::AttachmentPicked(result) => {
-            if let Ok(paths) = result {
-                if let Some(ref mut draft) = app.composing {
-                    for path in paths {
-                        let filename = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                        let size = std::fs::metadata(&path).map(|m| m.len() as usize).unwrap_or(0);
-                        draft.attachments.push(crate::state::ComposeAttachment {
-                            path, filename,
-                            content_type: "application/octet-stream".to_string(),
-                            size,
-                        });
-                    }
-                }
-            }
-            Task::none()
-        }
-        Message::RemoveAttachment(idx) => {
-            if let Some(ref mut draft) = app.composing {
-                if idx < draft.attachments.len() { draft.attachments.remove(idx); }
-            }
-            Task::none()
-        }
-        Message::ServerSearch(_) => Task::none(),
-        Message::ServerSearchResults(result) => {
-            if let Ok(mails) = result { app.mail_entries = mails; refilter(app); }
-            Task::none()
-        }
-        Message::OnboardingNext => { app.onboarding_step += 1; Task::none() }
-        Message::OnboardingSkip | Message::OnboardingComplete => {
-            app.first_launch = false; app.onboarding_step = 0; Task::none()
-        }
-        Message::ShowContextMenu(menu) => { app.context_menu = Some(menu); Task::none() }
-        Message::CloseContextMenu => { app.context_menu = None; Task::none() }
-        Message::IdleNewMail => Task::perform(async {}, |_| Message::RefreshFolder),
-        Message::IdleError(e) => {
-            app.push_toast(format!("IDLE error: {e}"), ToastLevel::Error);
-            app.idle_enabled = false; Task::none()
-        }
-        Message::ToggleIdle => { app.idle_enabled = !app.idle_enabled; Task::none() }
-        Message::StartOAuth(_) => { app.push_toast("OAuth2 coming soon", ToastLevel::Info); Task::none() }
-        Message::OAuthCompleted(result) => {
-            match result {
-                Ok(_) => app.push_toast("OAuth2 successful", ToastLevel::Success),
-                Err(e) => app.push_toast(format!("OAuth2 error: {e}"), ToastLevel::Error),
-            }
-            Task::none()
-        }
-
     }
 }

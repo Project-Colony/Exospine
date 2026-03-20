@@ -122,10 +122,29 @@ pub enum Message {
     EscapePressed,
     KeyboardEvent(iced::keyboard::Event),
 
+    // ── Signatures & Templates ────────────────────────────────────
+
+    /// Update the signature text for the currently selected account.
+    EditSignature(String),
+    /// Persist the current account signature (in-memory for now).
+    SaveSignature,
+    /// Apply a template by index to the current compose draft.
+    ApplyTemplate(usize),
+    /// Start a new compose with a template by index.
+    ComposeWithTemplate(usize),
+
     // ── Settings ────────────────────────────────────────────────────
 
     OpenSettings,
     CloseSettings,
+    SettingsThemeChanged(String),
+    SettingsFontSizeChanged(String),
+    SettingsCheckIntervalChanged(String),
+    SettingsToggleNotifications,
+    SettingsReadingPaneChanged(String),
+    SettingsDensityChanged(String),
+    SettingsLanguageChanged(String),
+    SaveSettings,
 
     // ── Folder management ───────────────────────────────────────────
 
@@ -166,6 +185,13 @@ pub enum Message {
     StartOAuth(crate::accounts::provider::Provider),
     /// OAuth2 flow completed: Ok((access_token, refresh_token)) or Err(message).
     OAuthCompleted(Result<(String, String), String>),
+
+    // ── HTML view ──────────────────────────────────────────────────
+
+    /// Toggle between plain-text and HTML display of the selected email.
+    ToggleHtmlView,
+    /// Allow loading external images in the current HTML email.
+    AllowExternalImages,
 
     // ── System ──────────────────────────────────────────────────────
 

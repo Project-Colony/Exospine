@@ -107,6 +107,8 @@ impl Database {
                     use_tls: row.get::<_, i32>(8)? != 0,
                     auth_method: crate::state::AuthMethod::Basic,
                     folders: Vec::new(),
+                    signature: String::new(),
+                    signature_html: None,
                 })
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;

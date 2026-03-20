@@ -134,6 +134,8 @@ pub async fn create_account(
         use_tls: true,
         auth_method: crate::state::AuthMethod::Basic,
         folders: Vec::new(),
+        signature: String::new(),
+        signature_html: None,
     };
 
     tracing::info!("Account created: {} <{}>", account.name, account.email);

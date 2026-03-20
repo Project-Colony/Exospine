@@ -93,6 +93,12 @@ pub struct App {
     pub idle_enabled: bool,
     /// Last known message count in the selected folder (for polling fallback).
     pub last_known_count: u32,
+    /// Reusable mail templates (initialized with built-in defaults).
+    pub templates: Vec<MailTemplate>,
+    /// Whether to show the HTML version of the email body (true) or plain text (false).
+    pub show_html: bool,
+    /// Whether to allow loading external images in HTML emails.
+    pub allow_external_images: bool,
 }
 
 impl Default for App {
@@ -126,6 +132,9 @@ impl Default for App {
             context_menu: None,
             idle_enabled: true,
             last_known_count: 0,
+            templates: crate::mail::signatures::default_templates(),
+            show_html: false,
+            allow_external_images: false,
         }
     }
 }
@@ -277,6 +286,12 @@ pub struct Account {
     /// Authentication method (Basic password or OAuth2).
     #[serde(default)]
     pub auth_method: AuthMethod,
+    /// Plain-text email signature appended to outgoing mail.
+    #[serde(default)]
+    pub signature: String,
+    /// Optional HTML version of the email signature.
+    #[serde(default)]
+    pub signature_html: Option<String>,
 }
 
 impl Default for Account {
@@ -293,6 +308,8 @@ impl Default for Account {
             use_tls: true,
             folders: Vec::new(),
             auth_method: AuthMethod::Basic,
+            signature: String::new(),
+            signature_html: None,
         }
     }
 }
@@ -367,6 +384,8 @@ pub struct MailEntry {
     pub folder: String,
     /// ID of the account this message belongs to.
     pub account_id: String,
+    /// Categories/labels applied to this message.
+    pub categories: Vec<String>,
 }
 
 impl Default for MailEntry {
@@ -385,6 +404,7 @@ impl Default for MailEntry {
             has_attachments: false,
             folder: String::new(),
             account_id: String::new(),
+            categories: Vec::new(),
         }
     }
 }
@@ -455,6 +475,17 @@ impl Default for View {
     }
 }
 
+/// A reusable mail template with pre-filled subject and body.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MailTemplate {
+    /// Human-readable template name (e.g. "Meeting request").
+    pub name: String,
+    /// Pre-filled subject line.
+    pub subject: String,
+    /// Pre-filled body text.
+    pub body: String,
+}
+
 /// Persisted application settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -466,6 +497,25 @@ pub struct AppSettings {
     pub check_interval_secs: u64,
     /// Whether to show desktop notifications for new mail.
     pub show_notifications: bool,
+    /// Reading pane position: "right", "bottom", or "off".
+    #[serde(default = "default_reading_pane")]
+    pub reading_pane: String,
+    /// Display density: "compact" or "normal".
+    #[serde(default = "default_density")]
+    pub density: String,
+    /// UI language: "en" or "fr".
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_reading_pane() -> String {
+    "right".to_string()
+}
+fn default_density() -> String {
+    "normal".to_string()
+}
+fn default_language() -> String {
+    "en".to_string()
 }
 
 impl Default for AppSettings {
@@ -475,6 +525,9 @@ impl Default for AppSettings {
             font_size: 14,
             check_interval_secs: 300,
             show_notifications: true,
+            reading_pane: "right".to_string(),
+            density: "normal".to_string(),
+            language: "en".to_string(),
         }
     }
 }

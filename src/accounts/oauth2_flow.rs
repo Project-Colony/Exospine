@@ -8,7 +8,7 @@ use anyhow::{bail, Context, Result};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
-use crate::accounts::oauth2::{self, OAuth2Config, TokenResponse};
+use crate::accounts::oauth2::{self, TokenResponse};
 use crate::accounts::provider::Provider;
 
 /// Run the full OAuth2 authorization-code flow for the given provider.

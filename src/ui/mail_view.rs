@@ -3,6 +3,7 @@
 use iced::widget::{button, column, container, row, scrollable, text, Space};
 use iced::{Element, Length};
 
+use crate::mail::html_render;
 use crate::message::Message;
 use crate::state::App;
 use crate::ui::theme;
@@ -37,7 +38,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
             let header = column![subject_text, from_row, to_row, date_text].spacing(4);
 
             // ── Action buttons ──────────────────────────────────
-            let actions = row![
+            let has_html = entry.body_html.is_some();
+            let html_toggle_label = if app.show_html { "Show Text" } else { "Show HTML" };
+
+            let mut actions = row![
                 button(text("Reply").size(13))
                     .on_press(Message::Reply)
                     .padding([6, 14])
@@ -50,21 +54,73 @@ pub fn view(app: &App) -> Element<'_, Message> {
                     .on_press(Message::Forward)
                     .padding([6, 14])
                     .style(theme::toolbar_button_style),
-                Space::new().width(Length::Fill),
-                button(text("Archive").size(13))
-                    .on_press(Message::ArchiveMail(idx))
-                    .padding([6, 14])
-                    .style(theme::toolbar_button_style),
-                button(text("Delete").size(13))
-                    .on_press(Message::DeleteMail(idx))
-                    .padding([6, 14])
-                    .style(theme::danger_button_style),
             ]
             .spacing(6)
             .align_y(iced::Alignment::Center);
 
+            // Only show the HTML toggle if the mail has an HTML body
+            if has_html {
+                actions = actions.push(
+                    button(text(html_toggle_label).size(13))
+                        .on_press(Message::ToggleHtmlView)
+                        .padding([6, 14])
+                        .style(theme::toolbar_button_style),
+                );
+            }
+
+            actions = actions.push(Space::new().width(Length::Fill));
+
+            // Show "Allow Images" button when viewing HTML with images blocked
+            if app.show_html && has_html && !app.allow_external_images {
+                // Check if there are any blocked images in the sanitized content
+                let sanitized = html_render::sanitize_html(
+                    entry.body_html.as_deref().unwrap_or(""),
+                );
+                if sanitized.contains("[Image blocked:") {
+                    actions = actions.push(
+                        button(text("Allow Images").size(13))
+                            .on_press(Message::AllowExternalImages)
+                            .padding([6, 14])
+                            .style(theme::toolbar_button_style),
+                    );
+                }
+            }
+
+            actions = actions
+                .push(
+                    button(text("Archive").size(13))
+                        .on_press(Message::ArchiveMail(idx))
+                        .padding([6, 14])
+                        .style(theme::toolbar_button_style),
+                )
+                .push(
+                    button(text("Delete").size(13))
+                        .on_press(Message::DeleteMail(idx))
+                        .padding([6, 14])
+                        .style(theme::danger_button_style),
+                );
+
             // ── Body ────────────────────────────────────────────
-            let body = text(&entry.body_text)
+            let body_content = if app.show_html {
+                if let Some(ref html) = entry.body_html {
+                    let sanitized = html_render::sanitize_html(html);
+                    let display_html = if app.allow_external_images {
+                        html_render::allow_images(&sanitized)
+                    } else {
+                        sanitized
+                    };
+                    // Convert sanitized HTML to readable text via html2text
+                    let rendered = html2text::from_read(display_html.as_bytes(), 80)
+                        .unwrap_or_else(|_| display_html);
+                    rendered
+                } else {
+                    entry.body_text.clone()
+                }
+            } else {
+                entry.body_text.clone()
+            };
+
+            let body = text(body_content)
                 .size(14)
                 .color(theme::TEXT_DARK);
 

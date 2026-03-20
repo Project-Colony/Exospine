@@ -9,6 +9,22 @@ pub struct Config {
     pub font_size: u16,
     pub check_interval_secs: u64,
     pub show_notifications: bool,
+    #[serde(default = "default_reading_pane")]
+    pub reading_pane: String,
+    #[serde(default = "default_density")]
+    pub density: String,
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_reading_pane() -> String {
+    "right".to_string()
+}
+fn default_density() -> String {
+    "normal".to_string()
+}
+fn default_language() -> String {
+    "en".to_string()
 }
 
 impl Default for Config {
@@ -20,6 +36,9 @@ impl Default for Config {
             font_size: 14,
             check_interval_secs: 300,
             show_notifications: true,
+            reading_pane: "right".to_string(),
+            density: "normal".to_string(),
+            language: "en".to_string(),
         }
     }
 }
