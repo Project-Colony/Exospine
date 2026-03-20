@@ -145,6 +145,25 @@ pub fn view(app: &App) -> Element<'_, Message> {
             list = list.push(entry_btn);
         }
 
+        // ── Load more button ────────────────────────────────────────
+        if app.has_more_mails {
+            let load_more_content: Element<'_, Message> = if app.loading {
+                text("Loading...").size(13).color(theme::TEXT_SECONDARY).into()
+            } else {
+                button(text("Load more").size(13))
+                    .on_press(Message::LoadMoreMails)
+                    .padding([6, 16])
+                    .style(theme::ghost_button_style)
+                    .into()
+            };
+            list = list.push(
+                container(load_more_content)
+                    .width(Length::Fill)
+                    .center_x(Length::Fill)
+                    .padding([8, 0]),
+            );
+        }
+
         content = content.push(scrollable(list).height(Length::Fill));
     }
 

@@ -132,6 +132,7 @@ pub async fn create_account(
         smtp_port,
         username: email.to_owned(),
         use_tls: true,
+        auth_method: crate::state::AuthMethod::Basic,
         folders: Vec::new(),
     };
 

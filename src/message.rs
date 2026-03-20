@@ -35,6 +35,7 @@ pub enum Message {
     ArchiveMail(usize),
     MoveMail(usize, String),
     RefreshFolder,
+    LoadMoreMails,
     FlagSynced(Result<(), String>),
 
     // ── Compose ─────────────────────────────────────────────────────
@@ -52,9 +53,28 @@ pub enum Message {
     SaveDraft,
     DiscardDraft,
 
+    // ── Compose attachments ──────────────────────────────────────────
+
+    /// Text input for the attachment file path changed.
+    ComposeAttachmentPathChanged(String),
+    /// User clicked "Add" to attach the file at the typed path.
+    AddAttachment,
+    /// Result of reading the file metadata after adding an attachment.
+    AttachmentPicked(Result<Vec<std::path::PathBuf>, String>),
+    /// Remove a compose attachment by index.
+    RemoveAttachment(usize),
+
+    // ── Server-side search ────────────────────────────────────────────
+
+    /// Trigger a server-side IMAP SEARCH with the given query.
+    ServerSearch(String),
+    /// Results from a server-side IMAP SEARCH.
+    ServerSearchResults(Result<Vec<MailEntry>, String>),
+
     // ── IMAP / SMTP async results ───────────────────────────────────
 
     MailsFetched(Result<Vec<MailEntry>, String>),
+    MoreMailsFetched(Result<Vec<MailEntry>, String>),
     FoldersFetched(Result<Vec<Folder>, String>),
     MailSent(Result<(), String>),
 
@@ -114,6 +134,38 @@ pub enum Message {
     DeleteFolder(String),
     EmptyTrash,
     FolderOpCompleted(Result<(), String>),
+
+    // ── Onboarding ─────────────────────────────────────────────────
+
+    /// Advance to the next onboarding step.
+    OnboardingNext,
+    /// Skip onboarding entirely.
+    OnboardingSkip,
+    /// Finish onboarding (set first_launch = false).
+    OnboardingComplete,
+
+    // ── Context menu ───────────────────────────────────────────────
+
+    /// Show a context menu at a given position for a target.
+    ShowContextMenu(crate::state::ContextMenu),
+    /// Dismiss the context menu.
+    CloseContextMenu,
+
+    // ── IMAP IDLE ────────────────────────────────────────────────────
+
+    /// Emitted when IDLE or polling detects new mail in the active folder.
+    IdleNewMail,
+    /// Emitted when IDLE encounters an error (will fall back to polling).
+    IdleError(String),
+    /// Toggle IDLE push notifications on or off.
+    ToggleIdle,
+
+    // ── OAuth2 ──────────────────────────────────────────────────────
+
+    /// Start the OAuth2 browser flow for the given provider.
+    StartOAuth(crate::accounts::provider::Provider),
+    /// OAuth2 flow completed: Ok((access_token, refresh_token)) or Err(message).
+    OAuthCompleted(Result<(String, String), String>),
 
     // ── System ──────────────────────────────────────────────────────
 

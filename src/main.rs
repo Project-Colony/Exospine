@@ -47,6 +47,11 @@ impl App {
         use iced::widget::{column, container, row, Stack};
         use iced::Length;
 
+        // Show onboarding overlay if this is the first launch.
+        if self.first_launch {
+            return ui::onboarding::view(self);
+        }
+
         // Base layout
         let base: Element<Message> = match self.view {
             state::View::Mail => {
@@ -101,6 +106,10 @@ impl App {
             layers.push(ui::confirm_dialog::view(dialog));
         }
 
+        if let Some(ref menu) = self.context_menu {
+            layers.push(ui::context_menu::view(menu, self));
+        }
+
         if !self.toasts.is_empty() {
             layers.push(ui::toast::view(&self.toasts));
         }
@@ -116,13 +125,16 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        event::listen_with(|event, _status, _id| {
-            match event {
-                iced::Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. }) => {
-                    shortcuts::handle_key_event(key, modifiers)
-                }
-                _ => None,
+        let keyboard_sub = event::listen_with(|event, _status, _id| match event {
+            iced::Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. }) => {
+                shortcuts::handle_key_event(key, modifiers)
             }
-        })
+            _ => None,
+        });
+
+        let tick_sub = iced::time::every(std::time::Duration::from_secs(30))
+            .map(|_| Message::Tick);
+
+        Subscription::batch(vec![keyboard_sub, tick_sub])
     }
 }

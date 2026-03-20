@@ -14,6 +14,26 @@ use crate::search::QuickFilter;
 use crate::ui::confirm_dialog::ConfirmDialog;
 use crate::ui::toast::Toast;
 
+// ── Context menu types ──────────────────────────────────────────────────
+
+/// Target of a right-click context menu action.
+#[derive(Debug, Clone)]
+pub enum ContextTarget {
+    /// A mail entry by its index in `mail_entries`.
+    Mail(usize),
+    /// A folder by its name.
+    Folder(String),
+}
+
+/// State for a visible context menu overlay.
+#[derive(Debug, Clone)]
+pub struct ContextMenu {
+    /// Screen position (x, y) where the menu should appear.
+    pub position: (f32, f32),
+    /// What was right-clicked.
+    pub target: ContextTarget,
+}
+
 /// The main Iced application state.
 #[derive(Debug, Clone)]
 pub struct App {
@@ -53,6 +73,26 @@ pub struct App {
     pub next_toast_id: u64,
     /// Attachment metadata for the currently selected mail.
     pub current_attachments: Vec<AttachmentMeta>,
+    /// Timestamp of the last successful mail sync (for periodic refresh).
+    pub last_sync: Option<Instant>,
+    /// Current pagination page (starts at 0).
+    pub mail_page: u32,
+    /// Number of messages to fetch per page.
+    pub mails_per_page: u32,
+    /// Whether more messages exist on the server beyond what has been loaded.
+    pub has_more_mails: bool,
+    /// Text input for composing attachment file path.
+    pub compose_attachment_path: String,
+    /// Whether this is the first launch (no accounts configured).
+    pub first_launch: bool,
+    /// Current onboarding step: 0 = welcome, 1 = add account, 2 = done.
+    pub onboarding_step: u8,
+    /// Active context menu overlay (None = hidden).
+    pub context_menu: Option<ContextMenu>,
+    /// Whether IMAP IDLE (push notifications) is enabled.
+    pub idle_enabled: bool,
+    /// Last known message count in the selected folder (for polling fallback).
+    pub last_known_count: u32,
 }
 
 impl Default for App {
@@ -76,6 +116,16 @@ impl Default for App {
             toasts: Vec::new(),
             next_toast_id: 0,
             current_attachments: Vec::new(),
+            last_sync: None,
+            mail_page: 0,
+            mails_per_page: 50,
+            has_more_mails: true,
+            compose_attachment_path: String::new(),
+            first_launch: true, // Will be set based on whether accounts exist
+            onboarding_step: 0,
+            context_menu: None,
+            idle_enabled: true,
+            last_known_count: 0,
         }
     }
 }
@@ -183,6 +233,24 @@ impl AccountDialogState {
     }
 }
 
+/// Authentication method for an account.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum AuthMethod {
+    /// Standard username + password (or app-specific password).
+    Basic,
+    /// OAuth2 with a stored refresh token.
+    OAuth2 {
+        /// The OAuth2 refresh token used to obtain new access tokens.
+        refresh_token: String,
+    },
+}
+
+impl Default for AuthMethod {
+    fn default() -> Self {
+        Self::Basic
+    }
+}
+
 /// An email account with IMAP/SMTP connection details.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Account {
@@ -206,6 +274,9 @@ pub struct Account {
     pub use_tls: bool,
     /// Mailbox folders discovered on the server.
     pub folders: Vec<Folder>,
+    /// Authentication method (Basic password or OAuth2).
+    #[serde(default)]
+    pub auth_method: AuthMethod,
 }
 
 impl Default for Account {
@@ -221,6 +292,7 @@ impl Default for Account {
             username: String::new(),
             use_tls: true,
             folders: Vec::new(),
+            auth_method: AuthMethod::Basic,
         }
     }
 }
@@ -317,6 +389,19 @@ impl Default for MailEntry {
     }
 }
 
+/// A file attached to a compose draft.
+#[derive(Debug, Clone)]
+pub struct ComposeAttachment {
+    /// Full path to the file on disk.
+    pub path: std::path::PathBuf,
+    /// Display filename (basename).
+    pub filename: String,
+    /// MIME content type (e.g. "application/pdf").
+    pub content_type: String,
+    /// File size in bytes.
+    pub size: usize,
+}
+
 /// A message being composed (new, reply, or forward).
 #[derive(Debug, Clone)]
 pub struct ComposeDraft {
@@ -334,6 +419,8 @@ pub struct ComposeDraft {
     pub reply_to: Option<String>,
     /// Account to send from.
     pub account_id: String,
+    /// File attachments to include with the message.
+    pub attachments: Vec<ComposeAttachment>,
 }
 
 impl Default for ComposeDraft {
@@ -346,6 +433,7 @@ impl Default for ComposeDraft {
             body: String::new(),
             reply_to: None,
             account_id: String::new(),
+            attachments: Vec::new(),
         }
     }
 }

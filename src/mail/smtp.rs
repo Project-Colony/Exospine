@@ -7,9 +7,11 @@
 //! - `In-Reply-To` and `References` headers for threading
 //! - `X-Priority` header
 
+use std::path::Path;
+
 use anyhow::{Context, Result};
 use lettre::message::header::ContentType;
-use lettre::message::{Mailbox, MessageBuilder};
+use lettre::message::{Attachment, Body, Mailbox, MessageBuilder, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 
@@ -100,10 +102,36 @@ pub async fn send_mail_with_priority(
     builder = add_priority_header(builder, priority);
 
     // ── Build and send ─────────────────────────────────────────────
-    let email = builder
-        .header(ContentType::TEXT_PLAIN)
-        .body(draft.body.clone())
-        .context("Failed to build email message")?;
+    let email = if draft.attachments.is_empty() {
+        // Plain text message (no attachments).
+        builder
+            .header(ContentType::TEXT_PLAIN)
+            .body(draft.body.clone())
+            .context("Failed to build email message")?
+    } else {
+        // Multipart/mixed message with attachments.
+        let text_part = SinglePart::builder()
+            .header(ContentType::TEXT_PLAIN)
+            .body(draft.body.clone());
+
+        let mut multipart = MultiPart::mixed().singlepart(text_part);
+
+        for att in &draft.attachments {
+            let file_bytes = std::fs::read(&att.path)
+                .with_context(|| format!("Failed to read attachment: {}", att.path.display()))?;
+            let content_type: ContentType = att
+                .content_type
+                .parse()
+                .unwrap_or(ContentType::parse("application/octet-stream").unwrap());
+            let attachment = Attachment::new(att.filename.clone())
+                .body(file_bytes, content_type);
+            multipart = multipart.singlepart(attachment);
+        }
+
+        builder
+            .multipart(multipart)
+            .context("Failed to build multipart email message")?
+    };
 
     let creds = Credentials::new(account.username.clone(), password.to_string());
 
@@ -122,6 +150,7 @@ pub async fn send_mail_with_priority(
         to = %draft.to,
         cc = %draft.cc,
         bcc = %draft.bcc,
+        attachments = draft.attachments.len(),
         "Email sent successfully",
     );
     Ok(())
@@ -221,5 +250,39 @@ impl lettre::message::header::Header for XPriority {
 
     fn display(&self) -> lettre::message::header::HeaderValue {
         lettre::message::header::HeaderValue::new(Self::name(), self.0.to_owned())
+    }
+}
+
+/// Guess the MIME content type for a file based on its extension.
+/// Returns a reasonable default of `application/octet-stream` for unknown types.
+pub fn guess_content_type(path: &std::path::Path) -> &'static str {
+    match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
+        "pdf" => "application/pdf",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "txt" => "text/plain",
+        "html" | "htm" => "text/html",
+        "css" => "text/css",
+        "js" => "application/javascript",
+        "json" => "application/json",
+        "xml" => "application/xml",
+        "zip" => "application/zip",
+        "gz" | "gzip" => "application/gzip",
+        "tar" => "application/x-tar",
+        "doc" => "application/msword",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xls" => "application/vnd.ms-excel",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "ppt" => "application/vnd.ms-powerpoint",
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "csv" => "text/csv",
+        "mp3" => "audio/mpeg",
+        "mp4" => "video/mp4",
+        "wav" => "audio/wav",
+        "webp" => "image/webp",
+        "eml" => "message/rfc822",
+        _ => "application/octet-stream",
     }
 }

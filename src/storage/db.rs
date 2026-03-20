@@ -105,6 +105,7 @@ impl Database {
                     smtp_port: row.get::<_, u32>(6)? as u16,
                     username: row.get(7)?,
                     use_tls: row.get::<_, i32>(8)? != 0,
+                    auth_method: crate::state::AuthMethod::Basic,
                     folders: Vec::new(),
                 })
             })?
