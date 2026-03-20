@@ -190,6 +190,7 @@ impl Database {
                     is_read: row.get::<_, i32>(10)? != 0,
                     is_starred: row.get::<_, i32>(11)? != 0,
                     has_attachments: row.get::<_, i32>(12)? != 0,
+                    categories: Vec::new(),
                 })
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -253,6 +254,7 @@ impl Database {
                     is_read: row.get::<_, i32>(10)? != 0,
                     is_starred: row.get::<_, i32>(11)? != 0,
                     has_attachments: row.get::<_, i32>(12)? != 0,
+                    categories: Vec::new(),
                 })
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;

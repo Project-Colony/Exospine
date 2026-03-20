@@ -99,6 +99,10 @@ pub struct App {
     pub show_html: bool,
     /// Whether to allow loading external images in HTML emails.
     pub allow_external_images: bool,
+    /// Calendar events (P4 scaffolding).
+    pub calendar_events: Vec<crate::calendar::CalendarEvent>,
+    /// Contacts extracted from mail or imported (P4 scaffolding).
+    pub contacts: Vec<crate::contacts::Contact>,
 }
 
 impl Default for App {
@@ -135,6 +139,8 @@ impl Default for App {
             templates: crate::mail::signatures::default_templates(),
             show_html: false,
             allow_external_images: false,
+            calendar_events: Vec::new(),
+            contacts: Vec::new(),
         }
     }
 }
@@ -467,6 +473,10 @@ pub enum View {
     Compose,
     /// The settings panel.
     Settings,
+    /// Calendar view (event list and scheduling).
+    Calendar,
+    /// Contacts view (address book).
+    Contacts,
 }
 
 impl Default for View {

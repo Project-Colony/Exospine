@@ -1,5 +1,9 @@
 mod accounts;
+mod calendar;
+mod categories;
 mod config;
+mod contacts;
+mod import_export;
 mod mail;
 mod message;
 mod search;
@@ -88,6 +92,34 @@ impl App {
                 let sidebar = ui::sidebar::view(self);
                 let settings = ui::settings::view(self);
                 let content = row![sidebar, settings];
+                container(content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into()
+            }
+            state::View::Calendar => {
+                let sidebar = ui::sidebar::view(self);
+                let placeholder = container(
+                    iced::widget::text("Calendar").size(20),
+                )
+                .padding(20)
+                .width(Length::Fill)
+                .height(Length::Fill);
+                let content = row![sidebar, placeholder];
+                container(content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into()
+            }
+            state::View::Contacts => {
+                let sidebar = ui::sidebar::view(self);
+                let placeholder = container(
+                    iced::widget::text("Contacts").size(20),
+                )
+                .padding(20)
+                .width(Length::Fill)
+                .height(Length::Fill);
+                let content = row![sidebar, placeholder];
                 container(content)
                     .width(Length::Fill)
                     .height(Length::Fill)

@@ -82,6 +82,7 @@ pub fn parse_email(raw: &[u8], account_id: &str, folder: &str) -> Result<MailEnt
         has_attachments,
         folder: folder.to_string(),
         account_id: account_id.to_string(),
+        categories: Vec::new(),
     })
 }
 

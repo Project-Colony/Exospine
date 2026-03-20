@@ -193,6 +193,17 @@ pub enum Message {
     /// Allow loading external images in the current HTML email.
     AllowExternalImages,
 
+    // ── Import / Export ────────────────────────────────────────────
+
+    /// Trigger file selection for importing mail (EML or mbox).
+    ImportMail,
+    /// Export a specific mail entry by index.
+    ExportMail(usize),
+    /// Import operation completed with parsed mail entries (or error).
+    ImportCompleted(Result<Vec<MailEntry>, String>),
+    /// Export operation completed with the output file path (or error).
+    ExportCompleted(Result<std::path::PathBuf, String>),
+
     // ── System ──────────────────────────────────────────────────────
 
     Tick,
