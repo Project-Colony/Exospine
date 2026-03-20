@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: exospine-linux
+            binary: exospine
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact: exospine-windows.exe
+            binary: exospine.exe
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact: exospine-macos-arm
+            binary: exospine
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact: exospine-macos-intel
+            binary: exospine
+
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.artifact }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libssl-dev pkg-config
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Rename binary
+        shell: bash
+        run: |
+          cp target/${{ matrix.target }}/release/${{ matrix.binary }} ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Create GitHub Release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/exospine-linux
+            artifacts/exospine-windows.exe
+            artifacts/exospine-macos-arm
+            artifacts/exospine-macos-intel
