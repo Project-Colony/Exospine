@@ -244,6 +244,22 @@ export async function openSettings(state, actions) {
         </div>
 
         <div class="settings-section">
+          <div class="settings-section-title">Security</div>
+          <div class="settings-row">
+            <label>App PIN Lock</label>
+            <button class="btn btn-ghost btn-sm" id="s-set-pin">${localStorage.getItem('exospine_pin_hash') ? 'Change PIN' : 'Set PIN'}</button>
+            ${localStorage.getItem('exospine_pin_hash') ? '<button class="btn btn-ghost btn-sm" id="s-remove-pin" style="margin-left:6px;color:var(--danger);">Remove PIN</button>' : ''}
+          </div>
+          <div class="settings-row" style="margin-top:8px;">
+            <label>Secure Wipe</label>
+            <button class="btn btn-sm" id="s-secure-wipe" style="background:var(--danger);color:#fff;border:none;font-weight:600;">Wipe All Data</button>
+          </div>
+          <div style="font-size:11px;color:var(--pane-text-dim);margin-top:4px;">
+            Permanently deletes all messages, accounts, and credentials. This cannot be undone.
+          </div>
+        </div>
+
+        <div class="settings-section">
           <div class="settings-section-title">${t('accounts')}</div>
           <div class="settings-account-list" id="s-accounts">
             ${state.accounts.map((acc, i) => `
@@ -254,6 +270,12 @@ export async function openSettings(state, actions) {
             `).join('')}
             ${state.accounts.length === 0 ? '<div style="color:var(--pane-text-dim);font-size:13px;">No accounts configured.</div>' : ''}
           </div>
+        </div>
+        <div class="settings-section" style="text-align:center;padding-top:16px;border-top:1px solid var(--pane-border);">
+          <div style="font-size:18px;font-weight:700;margin-bottom:4px;">Exospine v0.2.0</div>
+          <div style="font-size:13px;color:var(--pane-text-dim);margin-bottom:6px;">Built with Rust + Tauri</div>
+          <div style="margin-bottom:6px;"><a href="https://github.com/MotherSphere/Exospine-Private" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;">GitHub Repository</a></div>
+          <div style="font-size:12px;color:var(--pane-text-dim);">&copy; 2026 MotherSphere</div>
         </div>
       </div>
       <div class="settings-footer">
@@ -310,6 +332,66 @@ export async function openSettings(state, actions) {
     } catch (err) {
       list.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:8px 0;">Failed to load log: ${esc(String(err))}</div>`;
       container.hidden = false;
+    }
+  });
+
+  // ── Set PIN ──────────────────────────────────────────────────────
+  overlay.querySelector('#s-set-pin')?.addEventListener('click', async () => {
+    const pin = prompt('Enter a 4-6 digit PIN:');
+    if (!pin || !/^\d{4,6}$/.test(pin)) {
+      showToast('PIN must be 4-6 digits.', 'error');
+      return;
+    }
+    const confirm = prompt('Confirm PIN:');
+    if (pin !== confirm) {
+      showToast('PINs do not match.', 'error');
+      return;
+    }
+    // Hash the PIN using a simple SHA-256 via SubtleCrypto
+    const hash = await hashPin(pin);
+    localStorage.setItem('exospine_pin_hash', hash);
+    localStorage.removeItem('exospine_pin_attempts');
+    showToast('PIN set successfully. You will be asked for it on next startup.', 'success');
+  });
+
+  overlay.querySelector('#s-remove-pin')?.addEventListener('click', () => {
+    localStorage.removeItem('exospine_pin_hash');
+    localStorage.removeItem('exospine_pin_attempts');
+    showToast('PIN removed.', 'info');
+  });
+
+  // ── Secure Wipe ─────────────────────────────────────────────────
+  overlay.querySelector('#s-secure-wipe')?.addEventListener('click', async () => {
+    const confirmed = await showDialog({
+      title: 'SECURE WIPE',
+      message: 'This will PERMANENTLY DELETE all your emails, accounts, credentials, and settings. This action CANNOT be undone.\n\nAre you absolutely sure?',
+      confirmLabel: 'WIPE EVERYTHING',
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    // Double confirmation
+    const doubleConfirm = await showDialog({
+      title: 'Final Confirmation',
+      message: 'Last chance. All data will be destroyed.',
+      confirmLabel: 'Yes, wipe all data',
+      danger: true,
+    });
+    if (!doubleConfirm) return;
+
+    try {
+      await api.secureWipe();
+      // Clear all localStorage
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('exospine_')) keysToRemove.push(key);
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      showToast('All data wiped. Restarting...', 'success');
+      setTimeout(() => location.reload(), 2000);
+    } catch (err) {
+      showToast(`Wipe failed: ${err}`, 'error');
     }
   });
 
@@ -810,6 +892,19 @@ function saveCustomKeybindings(bindings) {
 export function getMergedShortcuts() {
   const custom = loadCustomKeybindings();
   return { ...DEFAULT_SHORTCUTS, ...custom };
+}
+
+/**
+ * Hash a PIN using SHA-256 via Web Crypto API.
+ * @param {string} pin
+ * @returns {Promise<string>} hex-encoded hash
+ */
+export async function hashPin(pin) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode('exospine_pin_salt_' + pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function renderShortcutsList() {

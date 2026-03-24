@@ -12,6 +12,49 @@ let _scrollListener = null;
 let _lastState = null;
 let _lastActions = null;
 
+// ── Multi-select state ──────────────────────────────────────────
+const _selectedIds = new Set();
+
+// ── Sort state ──────────────────────────────────────────────────
+const SORT_OPTIONS = [
+  { key: 'date-desc', label: 'Date (newest)' },
+  { key: 'date-asc', label: 'Date (oldest)' },
+  { key: 'sender-az', label: 'Sender A-Z' },
+  { key: 'subject-az', label: 'Subject A-Z' },
+];
+let _currentSort = localStorage.getItem('exospine_mail_sort') || 'date-desc';
+
+function sortMails(mails, sortKey) {
+  const sorted = [...mails];
+  switch (sortKey) {
+    case 'date-asc':
+      sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+      break;
+    case 'sender-az':
+      sorted.sort((a, b) => (a.from_name || a.from || '').localeCompare(b.from_name || b.from || ''));
+      break;
+    case 'subject-az':
+      sorted.sort((a, b) => (a.subject || '').localeCompare(b.subject || ''));
+      break;
+    case 'date-desc':
+    default:
+      sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+      break;
+  }
+  return sorted;
+}
+
+/** Clear multi-select state */
+export function clearMultiSelect() {
+  _selectedIds.clear();
+}
+
+// ── Empty state SVG illustration ────────────────────────────────
+const EMPTY_ENVELOPE_SVG = `<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="20" width="60" height="44" rx="6" stroke="currentColor" stroke-width="2" fill="none"/>
+  <path d="M10 26 L40 46 L70 26" stroke="currentColor" stroke-width="2" fill="none"/>
+</svg>`;
+
 // ── Scroll position preservation per folder ────────────────────────
 const _folderScrollPositions = new Map();
 
@@ -116,6 +159,7 @@ export function renderMailList(el, state, actions) {
   }
 
   // Toolbar
+  const sortLabel = (SORT_OPTIONS.find(s => s.key === _currentSort) || SORT_OPTIONS[0]).label;
   html += `
     <div class="mail-list-toolbar">
       <input
@@ -125,11 +169,28 @@ export function renderMailList(el, state, actions) {
         id="ml-search"
         aria-label="${t('search_emails')}"
       />
+      <select class="mail-list-sort" id="ml-sort" title="Sort emails" aria-label="Sort emails">
+        ${SORT_OPTIONS.map(s => `<option value="${s.key}"${s.key === _currentSort ? ' selected' : ''}>${s.label}</option>`).join('')}
+      </select>
       <button class="mail-list-btn${_threadViewEnabled ? ' active' : ''}" id="ml-thread-toggle" title="${_threadViewEnabled ? t('list_view') : t('thread_view')}" aria-label="${t('toggle_thread_view')}" aria-pressed="${_threadViewEnabled}">${_threadViewEnabled ? '\u2261' : '\u2630'}</button>
       <button class="mail-list-btn" id="ml-refresh" title="${t('refresh')}" aria-label="${t('refresh_emails')}">\u21BB</button>
       <button class="mail-list-btn primary" id="ml-compose" title="${t('compose_new_email')}" aria-label="${t('compose_new_email')}">${t('new_email')}</button>
     </div>
   `;
+
+  // Batch action bar (multi-select)
+  if (_selectedIds.size > 0) {
+    html += `
+      <div class="batch-action-bar" role="toolbar" aria-label="Batch actions">
+        <span class="batch-count">${_selectedIds.size} selected</span>
+        <button class="batch-btn" data-batch="archive" title="Archive selected">\uD83D\uDCE6 Archive</button>
+        <button class="batch-btn" data-batch="delete" title="Delete selected">\uD83D\uDDD1 Delete</button>
+        <button class="batch-btn" data-batch="mark-read" title="Mark selected as read">\u2709 Mark Read</button>
+        <button class="batch-btn" data-batch="move" title="Move selected">Move to\u2026</button>
+        <button class="batch-btn" data-batch="clear" title="Clear selection">\u2717 Clear</button>
+      </div>
+    `;
+  }
 
   // Error state
   if (state._mailsError) {
@@ -155,7 +216,10 @@ export function renderMailList(el, state, actions) {
     }
     html += '</div>';
   } else if (state.mails.length === 0) {
-    html += `<div class="mail-list-empty" role="status">${t('no_emails')}</div>`;
+    html += `<div class="mail-list-empty" role="status">
+      <div class="empty-state-illustration">${EMPTY_ENVELOPE_SVG}</div>
+      <div class="empty-state-text">No emails yet</div>
+    </div>`;
   } else {
     // Virtual scroll container
     html += '<div class="mail-list-items" id="ml-virtual-container" role="listbox" aria-label="Email list" style="overflow-y:auto;position:relative;">';
@@ -233,11 +297,24 @@ export function renderMailList(el, state, actions) {
   const searchInput = el.querySelector('#ml-search');
   if (searchInput) {
     let debounce = null;
+    let _searchAbortController = null;
     searchInput.addEventListener('input', () => {
       clearTimeout(debounce);
+      // Cancel previous in-flight search
+      if (_searchAbortController) {
+        _searchAbortController.abort();
+        _searchAbortController = null;
+      }
+      const query = searchInput.value.trim();
+      // Show "Searching..." indicator in the mail list while debouncing
+      const itemsContainer = el.querySelector('.mail-list-items');
+      if (itemsContainer && query) {
+        itemsContainer.innerHTML = '<div class="mail-list-loading"><div class="spinner"></div> Searching\u2026</div>';
+      }
       debounce = setTimeout(() => {
-        if (actions.onSearch) actions.onSearch(searchInput.value.trim());
-      }, 350);
+        _searchAbortController = new AbortController();
+        if (actions.onSearch) actions.onSearch(query);
+      }, 500);
     });
   }
 
@@ -264,6 +341,47 @@ export function renderMailList(el, state, actions) {
   if (retryBtn && actions.onRefresh) {
     retryBtn.addEventListener('click', actions.onRefresh);
   }
+
+  // Event: sort dropdown
+  const sortSelect = el.querySelector('#ml-sort');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      _currentSort = sortSelect.value;
+      localStorage.setItem('exospine_mail_sort', _currentSort);
+      renderMailList(el, _lastState, _lastActions);
+    });
+  }
+
+  // Event: batch actions
+  el.querySelectorAll('.batch-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.batch;
+      const ids = new Set(_selectedIds);
+      if (action === 'archive' && actions.onBatchArchive) {
+        actions.onBatchArchive(ids);
+        _selectedIds.clear();
+        renderMailList(el, _lastState, _lastActions);
+      } else if (action === 'delete' && actions.onBatchDelete) {
+        actions.onBatchDelete(ids);
+        _selectedIds.clear();
+        renderMailList(el, _lastState, _lastActions);
+      } else if (action === 'mark-read' && actions.onBatchMarkRead) {
+        actions.onBatchMarkRead(ids);
+        _selectedIds.clear();
+        renderMailList(el, _lastState, _lastActions);
+      } else if (action === 'move') {
+        const target = prompt('Move to folder:');
+        if (target && actions.onBatchMove) {
+          actions.onBatchMove(ids, target);
+          _selectedIds.clear();
+          renderMailList(el, _lastState, _lastActions);
+        }
+      } else if (action === 'clear') {
+        _selectedIds.clear();
+        renderMailList(el, _lastState, _lastActions);
+      }
+    });
+  });
 }
 
 // ── Render helpers: category badges + spam indicator ───────────────
@@ -299,8 +417,9 @@ function renderVisibleItems(container, state, actions) {
   // Cache display rules once per render call
   const displayRules = loadDisplayRules();
 
-  // Sort pinned emails to top (stable sort preserves date order within each group)
-  const sortedMails = [...state.mails].sort((a, b) => {
+  // Apply user sort first, then pin to top
+  const userSorted = sortMails(state.mails, _currentSort);
+  const sortedMails = [...userSorted].sort((a, b) => {
     const aPinned = a.is_pinned ? 1 : 0;
     const bPinned = b.is_pinned ? 1 : 0;
     return bPinned - aPinned;
@@ -469,6 +588,7 @@ function renderFlagIcon(mail) {
 
 function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) {
   const isSelected = state.selectedMail && state.selectedMail.id === mail.id;
+  const isMultiSelected = _selectedIds.has(mail.id);
   const isUnread = !(mail.is_read || mail.read);
   const isStarred = mail.is_starred || mail.starred;
   const isPinned = mail.is_pinned || false;
@@ -485,8 +605,13 @@ function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) 
   // Apply conditional display rules (use pre-cached rules if provided)
   const displayStyle = cachedRules !== null ? getDisplayRuleStyleWith(mail, cachedRules) : getDisplayRuleStyle(mail);
 
+  // Multi-select checkbox (visible when multi-select is active or on hover via CSS)
+  const checkboxVisible = _selectedIds.size > 0;
+  const checkbox = `<input type="checkbox" class="mail-item-checkbox${checkboxVisible ? ' visible' : ''}" data-check-id="${esc(mail.id)}" ${isMultiSelected ? 'checked' : ''} tabindex="-1" aria-label="Select email" />`;
+
   return `
-    <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${indent}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0" style="height:${ITEM_HEIGHT}px;box-sizing:border-box;${displayStyle}">
+    <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${isMultiSelected ? ' multi-selected' : ''}${indent}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0" style="height:${ITEM_HEIGHT}px;box-sizing:border-box;${displayStyle}">
+      ${checkbox}
       ${senderAvatar(mail.from_name || mail.from || 'Unknown')}
       ${isUnread ? '<div class="mail-item-unread-dot" aria-hidden="true"></div>' : ''}
       ${importanceInd}
@@ -506,6 +631,11 @@ function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) 
         <div class="mail-item-subject">${spamInd}${esc(mail.subject || '(No subject)')}${catBadges ? ' ' + catBadges : ''}</div>
         <div class="mail-item-preview">${esc(mail.preview || '')}</div>
       </div>
+      <div class="mail-item-quick-actions" aria-label="Quick actions">
+        <button class="quick-action-btn" data-quick="archive" data-quick-id="${esc(mail.id)}" title="Archive" aria-label="Archive">\uD83D\uDCE6</button>
+        <button class="quick-action-btn" data-quick="delete" data-quick-id="${esc(mail.id)}" title="Delete" aria-label="Delete">\uD83D\uDDD1</button>
+        <button class="quick-action-btn" data-quick="star" data-quick-id="${esc(mail.id)}" title="Star" aria-label="Star">${isStarred ? '\u2605' : '\u2606'}</button>
+      </div>
     </div>
   `;
 }
@@ -517,6 +647,34 @@ function attachItemEvents(contentEl, state, actions) {
   // on the contentEl instead of N listeners on each item.
 
   contentEl.addEventListener('click', (e) => {
+    // Checkbox toggle (multi-select)
+    const checkbox = e.target.closest('.mail-item-checkbox');
+    if (checkbox) {
+      e.stopPropagation();
+      const mailId = checkbox.dataset.checkId;
+      if (_selectedIds.has(mailId)) {
+        _selectedIds.delete(mailId);
+      } else {
+        _selectedIds.add(mailId);
+      }
+      renderMailList(contentEl.closest('#mail-list'), _lastState, _lastActions);
+      return;
+    }
+
+    // Quick action buttons
+    const quickBtn = e.target.closest('.quick-action-btn');
+    if (quickBtn) {
+      e.stopPropagation();
+      const quickAction = quickBtn.dataset.quick;
+      const mailId = quickBtn.dataset.quickId;
+      const mail = state.mails.find((m) => m.id === mailId);
+      if (!mail) return;
+      if (quickAction === 'archive' && actions.onArchive) actions.onArchive(mail);
+      else if (quickAction === 'delete' && actions.onDelete) actions.onDelete(mail);
+      else if (quickAction === 'star' && actions.onToggleStar) actions.onToggleStar(mailId);
+      return;
+    }
+
     // Star toggle
     const star = e.target.closest('.mail-item-star');
     if (star) {
@@ -551,10 +709,21 @@ function attachItemEvents(contentEl, state, actions) {
       return;
     }
 
-    // Mail item select
+    // Mail item select (Ctrl+Click = multi-select toggle)
     const item = e.target.closest('.mail-item[data-mail-id]');
     if (item) {
-      if (actions.onSelect) actions.onSelect(item.dataset.mailId);
+      const mailId = item.dataset.mailId;
+      if (e.ctrlKey || e.metaKey) {
+        // Toggle multi-select
+        if (_selectedIds.has(mailId)) {
+          _selectedIds.delete(mailId);
+        } else {
+          _selectedIds.add(mailId);
+        }
+        renderMailList(contentEl.closest('#mail-list'), _lastState, _lastActions);
+        return;
+      }
+      if (actions.onSelect) actions.onSelect(mailId);
     }
   });
 

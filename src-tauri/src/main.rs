@@ -4,6 +4,87 @@
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
+/// Parsed mailto: URL components.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct MailtoData {
+    pub to: String,
+    pub subject: String,
+    pub body: String,
+    pub cc: String,
+    pub bcc: String,
+}
+
+/// Parse a `mailto:` URL into its components.
+fn parse_mailto(url: &str) -> MailtoData {
+    let mut data = MailtoData::default();
+    let stripped = url.strip_prefix("mailto:").unwrap_or(url);
+
+    // Split address part from query string
+    let (addr_part, query_part) = if let Some(idx) = stripped.find('?') {
+        (&stripped[..idx], Some(&stripped[idx + 1..]))
+    } else {
+        (stripped, None)
+    };
+
+    // URL-decode the address
+    data.to = url_decode(addr_part);
+
+    // Parse query parameters
+    if let Some(query) = query_part {
+        for pair in query.split('&') {
+            if let Some((key, value)) = pair.split_once('=') {
+                let decoded = url_decode(value);
+                match key.to_lowercase().as_str() {
+                    "subject" => data.subject = decoded,
+                    "body" => data.body = decoded,
+                    "cc" => data.cc = decoded,
+                    "bcc" => data.bcc = decoded,
+                    "to" => {
+                        if !data.to.is_empty() {
+                            data.to.push_str(", ");
+                        }
+                        data.to.push_str(&decoded);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    data
+}
+
+/// Simple percent-decoding for mailto URLs.
+fn url_decode(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.bytes();
+    while let Some(b) = chars.next() {
+        if b == b'%' {
+            let hi = chars.next().unwrap_or(0);
+            let lo = chars.next().unwrap_or(0);
+            let hex = [hi, lo];
+            if let Ok(s) = std::str::from_utf8(&hex) {
+                if let Ok(val) = u8::from_str_radix(s, 16) {
+                    result.push(val as char);
+                    continue;
+                }
+            }
+            result.push('%');
+            result.push(hi as char);
+            result.push(lo as char);
+        } else if b == b'+' {
+            result.push(' ');
+        } else {
+            result.push(b as char);
+        }
+    }
+    result
+}
+
+/// Global storage for a pending mailto: compose request, picked up by the frontend.
+static PENDING_MAILTO: LazyLock<Mutex<Option<MailtoData>>> =
+    LazyLock::new(|| Mutex::new(None));
+
 mod accounts;
 mod app_state;
 mod commands;
@@ -27,7 +108,25 @@ pub struct AppState {
     pub shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
 
+/// Tauri command: get pending mailto data (if launched via mailto: link).
+#[tauri::command]
+fn get_pending_mailto() -> Option<MailtoData> {
+    let mut guard = PENDING_MAILTO.lock().unwrap_or_else(|e| e.into_inner());
+    guard.take()
+}
+
 fn main() {
+    // Check if launched with a mailto: argument
+    for arg in std::env::args().skip(1) {
+        if arg.starts_with("mailto:") {
+            let data = parse_mailto(&arg);
+            tracing::info!("Launched with mailto: to={}", data.to);
+            let mut guard = PENDING_MAILTO.lock().unwrap_or_else(|e| e.into_inner());
+            *guard = Some(data);
+            break;
+        }
+    }
+
     // Install rustls CryptoProvider for IMAP TLS connections
     let _ = rustls::crypto::ring::default_provider().install_default();
 
@@ -201,6 +300,38 @@ fn main() {
                 });
             }
 
+            // Periodic VACUUM: run once per week to reclaim disk space
+            {
+                let app_handle2 = app.handle().clone();
+                let mut shutdown_rx2 = shutdown_tx.subscribe();
+                tauri::async_runtime::spawn(async move {
+                    // Check on startup, then every 6 hours
+                    loop {
+                        {
+                            use tauri::Manager;
+                            let state: tauri::State<'_, AppState> = app_handle2.state();
+                            let db_guard = app_state::lock_or_recover(&state.db);
+                            if let Some(ref db) = *db_guard {
+                                if db.should_vacuum() {
+                                    tracing::info!("Running weekly VACUUM...");
+                                    match db.vacuum() {
+                                        Ok(()) => tracing::info!("VACUUM completed successfully"),
+                                        Err(e) => tracing::error!("VACUUM failed: {}", e),
+                                    }
+                                }
+                            }
+                        }
+                        tokio::select! {
+                            _ = tokio::time::sleep(std::time::Duration::from_secs(6 * 3600)) => {}
+                            _ = shutdown_rx2.recv() => {
+                                tracing::info!("VACUUM task: shutdown received");
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+
             // Start IMAP IDLE for each account in the background
             let app_handle = app.handle().clone();
             let idle_accounts: Vec<crate::app_state::Account> = {
@@ -343,6 +474,10 @@ fn main() {
             commands::pin_snooze::unflag_mail,
             // Read receipt command
             commands::pin_snooze::send_read_receipt,
+            // Mailto handler
+            get_pending_mailto,
+            // Secure wipe
+            commands::settings::secure_wipe,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| {

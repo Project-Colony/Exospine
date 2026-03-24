@@ -95,7 +95,7 @@ html, body {
 /* --- App layout -------------------------------------------- */
 #app {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 24px);
   width: 100vw;
   min-width: 760px;
 }
@@ -109,6 +109,7 @@ html, body {
   flex-direction: column;
   border-right: 1px solid rgba(255,255,255,0.06);
   overflow: hidden;
+  contain: content;
 }
 
 .sidebar-account {
@@ -270,6 +271,7 @@ html, body {
   display: flex;
   flex-direction: column;
   border-right: 1px solid rgba(255,255,255,0.06);
+  contain: content;
 }
 
 .mail-list-toolbar {
@@ -343,6 +345,7 @@ html, body {
   border-bottom: 1px solid var(--list-border);
   transition: background var(--transition);
   position: relative;
+  contain: layout style;
 }
 .mail-item:hover {
   background: var(--list-hover);
@@ -504,6 +507,7 @@ html, body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  contain: content;
 }
 
 .mail-view-empty {
@@ -1353,9 +1357,6 @@ html, body {
 #dialog-container[hidden] {
   display: none;
 }
-#dialog-container:not([hidden]) {
-  display: flex;
-}
 
 .dialog-box {
   background: var(--pane-bg);
@@ -1402,12 +1403,6 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* --- Focus indicators -------------------------------------- */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 /* --- Unread mail left-border accent ------------------------ */
@@ -2502,11 +2497,6 @@ html, body {
   background: var(--danger);
 }
 
-/* Adjust app height to account for status bar */
-#app {
-  height: calc(100vh - 24px);
-}
-
 /* --- Resizable panel splitters ----------------------------- */
 .panel-splitter {
   width: 4px;
@@ -3365,4 +3355,399 @@ html, body {
 }
 .exit-focus-btn:hover {
   background: var(--accent-hover);
+}
+
+/* ============================================================
+   Folder sync indicator (lazy folder sync)
+   ============================================================ */
+.folder-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Feature: Splash screen
+   ============================================================ */
+#splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.splash-logo {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  font-family: var(--font);
+}
+
+.splash-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255,255,255,0.12);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes splash-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.splash-fade-out {
+  animation: splash-fade-out 0.3s ease forwards;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Feature: Animation transitions
+   ============================================================ */
+.mail-view-body {
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Sidebar section collapse slide */
+.sidebar-section-content {
+  overflow: hidden;
+  max-height: 1000px;
+  transition: max-height 0.25s ease, opacity 0.25s ease;
+  opacity: 1;
+}
+
+.sidebar-section-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+}
+
+/* Toast scale-in animation (overrides default slide) */
+.toast {
+  animation: toast-scale-in 0.25s ease;
+}
+
+@keyframes toast-scale-in {
+  from { opacity: 0; transform: scale(0.85) translateX(20px); }
+  to   { opacity: 1; transform: scale(1) translateX(0); }
+}
+
+/* ============================================================
+   Feature: Quick actions on hover
+   ============================================================ */
+.mail-item-quick-actions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  background: var(--list-bg);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.mail-item:hover .mail-item-quick-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.quick-action-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--list-text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.quick-action-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--list-text);
+  border-color: rgba(255,255,255,0.15);
+}
+
+/* ============================================================
+   Feature: Multi-select checkbox
+   ============================================================ */
+.mail-item-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  accent-color: var(--accent);
+}
+
+.mail-item:hover .mail-item-checkbox,
+.mail-item-checkbox.visible,
+.mail-item-checkbox:checked {
+  opacity: 1;
+}
+
+.mail-item.multi-selected {
+  background: rgba(0, 120, 214, 0.12);
+}
+
+/* ============================================================
+   Feature: Batch action bar
+   ============================================================ */
+.batch-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+  animation: fadeIn 0.15s ease;
+}
+
+.batch-count {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.batch-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: var(--font);
+  transition: background var(--transition);
+}
+
+.batch-btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ============================================================
+   Feature: Mail list sort dropdown
+   ============================================================ */
+.mail-list-sort {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm);
+  color: var(--list-text-dim);
+  font-size: 11px;
+  font-family: var(--font);
+  padding: 4px 6px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.mail-list-sort:focus {
+  border-color: var(--accent);
+}
+
+.mail-list-sort option {
+  background: var(--list-bg);
+  color: var(--list-text);
+}
+
+/* ============================================================
+   Feature: Collapsible sidebar sections
+   ============================================================ */
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sidebar-text-dim);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition);
+}
+
+.sidebar-section-header:hover {
+  color: var(--sidebar-text);
+}
+
+.sidebar-section-arrow {
+  font-size: 8px;
+  transition: transform 0.2s ease;
+}
+
+/* ============================================================
+   Feature: Conversation timeline
+   ============================================================ */
+.conversation-timeline {
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--pane-border);
+  background: var(--pane-header-bg);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.conversation-timeline-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pane-text-dim);
+  margin-bottom: 8px;
+}
+
+.conversation-timeline-item {
+  display: flex;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+  position: relative;
+}
+
+.conversation-timeline-item:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.conversation-timeline-item.current {
+  background: var(--accent-light);
+  border-left: 3px solid var(--accent);
+}
+
+.conversation-timeline-dot {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  background: var(--pane-text-dim);
+  margin-top: 5px;
+}
+
+.conversation-timeline-item.current .conversation-timeline-dot {
+  background: var(--accent);
+}
+
+.conversation-timeline-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.conversation-timeline-from {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pane-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-timeline-date {
+  font-size: 10px;
+  color: var(--pane-text-dim);
+}
+
+.conversation-timeline-preview {
+  font-size: 11px;
+  color: var(--pane-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Feature: Empty state illustrations
+   ============================================================ */
+.empty-state-illustration {
+  color: var(--list-text-dim);
+  opacity: 0.4;
+  margin-bottom: 12px;
+}
+
+.mail-view-empty .empty-state-illustration {
+  color: var(--pane-text-dim);
+  opacity: 0.3;
+}
+
+.empty-state-text {
+  font-size: 14px;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.mail-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--list-text-dim);
+  font-size: 14px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.mail-view-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--pane-text-dim);
+  font-size: 15px;
+}
+
+/* ============================================================
+   Feature: Tooltip styles for buttons
+   ============================================================ */
+[title] {
+  position: relative;
+}
+
+button[title]:hover::after,
+.mail-list-btn[title]:hover::after,
+.mail-view-toolbar-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 20, 0.92);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10000;
+  pointer-events: none;
+  animation: fadeIn 0.1s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }

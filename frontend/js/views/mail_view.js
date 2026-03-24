@@ -49,7 +49,15 @@ export function renderMailView(el, state, actions) {
   const mail = state.selectedMail;
 
   if (!mail) {
-    el.innerHTML = `<div class="mail-view-empty" role="status" aria-live="polite">${t('select_email')}</div>`;
+    el.innerHTML = `<div class="mail-view-empty" role="status" aria-live="polite">
+      <div class="empty-state-illustration">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="20" width="60" height="44" rx="6" stroke="currentColor" stroke-width="2" fill="none"/>
+          <path d="M10 26 L40 46 L70 26" stroke="currentColor" stroke-width="2" fill="none"/>
+        </svg>
+      </div>
+      <div class="empty-state-text">Select an email to read</div>
+    </div>`;
     return;
   }
 
@@ -112,16 +120,16 @@ export function renderMailView(el, state, actions) {
   // Toolbar
   html += `
     <div class="mail-view-toolbar" role="toolbar" aria-label="Email actions">
-      <button class="mail-view-toolbar-btn" data-action="reply" aria-label="${t('reply')}">\u21A9 ${t('reply')}</button>
-      <button class="mail-view-toolbar-btn" data-action="reply-all" aria-label="${t('reply_all')}">\u21A9\u21A9 ${t('reply_all')}</button>
-      <button class="mail-view-toolbar-btn" data-action="forward" aria-label="${t('forward')}">\u21AA ${t('forward')}</button>
+      <button class="mail-view-toolbar-btn" data-action="reply" title="${t('reply')}" aria-label="${t('reply')}">\u21A9 ${t('reply')}</button>
+      <button class="mail-view-toolbar-btn" data-action="reply-all" title="${t('reply_all')}" aria-label="${t('reply_all')}">\u21A9\u21A9 ${t('reply_all')}</button>
+      <button class="mail-view-toolbar-btn" data-action="forward" title="${t('forward')}" aria-label="${t('forward')}">\u21AA ${t('forward')}</button>
       <div class="mail-view-toolbar-spacer"></div>
-      <button class="mail-view-toolbar-btn" data-action="print" aria-label="${t('print')}">\uD83D\uDDA8 ${t('print')}</button>
-      <button class="mail-view-toolbar-btn" data-action="export" aria-label="${t('export')}">\u2B07 ${t('export')}</button>
-      <button class="mail-view-toolbar-btn" data-action="view-headers" aria-label="${t('headers')}">\uD83D\uDD0D ${t('headers')}</button>
-      <button class="mail-view-toolbar-btn" data-action="mark-unread" aria-label="${t('mark_unread')}">\u2709 ${t('mark_unread')}</button>
+      <button class="mail-view-toolbar-btn" data-action="print" title="${t('print')}" aria-label="${t('print')}">\uD83D\uDDA8 ${t('print')}</button>
+      <button class="mail-view-toolbar-btn" data-action="export" title="${t('export')}" aria-label="${t('export')}">\u2B07 ${t('export')}</button>
+      <button class="mail-view-toolbar-btn" data-action="view-headers" title="${t('headers')}" aria-label="${t('headers')}">\uD83D\uDD0D ${t('headers')}</button>
+      <button class="mail-view-toolbar-btn" data-action="mark-unread" title="${t('mark_unread')}" aria-label="${t('mark_unread')}">\u2709 ${t('mark_unread')}</button>
       <div style="position:relative;display:inline-block;">
-        <button class="mail-view-toolbar-btn" data-action="snooze" aria-label="Snooze email" aria-expanded="false" aria-controls="snooze-dropdown">\u23F0 Snooze</button>
+        <button class="mail-view-toolbar-btn" data-action="snooze" title="Snooze email" aria-label="Snooze email" aria-expanded="false" aria-controls="snooze-dropdown">\u23F0 Snooze</button>
         <div class="snooze-dropdown" id="snooze-dropdown" hidden
              style="position:absolute;top:100%;right:0;background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:6px;padding:4px 0;z-index:100;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
           <div class="snooze-option" data-snooze="later-today" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0" aria-label="Snooze for 4 hours">Later today (4 hours)</div>
@@ -135,8 +143,8 @@ export function renderMailView(el, state, actions) {
           </div>
         </div>
       </div>
-      <button class="mail-view-toolbar-btn" data-action="archive" aria-label="${t('archive')}">\uD83D\uDCE6 ${t('archive')}</button>
-      <button class="mail-view-toolbar-btn danger" data-action="delete" aria-label="${t('delete')}">\uD83D\uDDD1 ${t('delete')}</button>
+      <button class="mail-view-toolbar-btn" data-action="archive" title="${t('archive')}" aria-label="${t('archive')}">\uD83D\uDCE6 ${t('archive')}</button>
+      <button class="mail-view-toolbar-btn danger" data-action="delete" title="${t('delete')}" aria-label="${t('delete')}">\uD83D\uDDD1 ${t('delete')}</button>
       <span class="toolbar-sep" style="width:1px;height:18px;background:var(--pane-border);margin:0 4px;" aria-hidden="true"></span>
       <div class="zoom-controls" style="display:flex;align-items:center;gap:2px;">
         <button class="mail-view-toolbar-btn" data-action="zoom-out" aria-label="Zoom out" title="Zoom out" style="padding:4px 8px;font-size:14px;">\u2212</button>
@@ -186,6 +194,36 @@ export function renderMailView(el, state, actions) {
         <button id="show-images-btn" aria-label="${t('show_images')}">${t('show_images')}</button>
       </div>
     `;
+  }
+
+  // Conversation timeline (if threaded)
+  if (mail.thread_id && state.mails) {
+    const threadMails = state.mails.filter(m =>
+      m.thread_id === mail.thread_id || (mail.thread_id === mail.id && m.id === mail.id)
+    );
+    if (threadMails.length > 1) {
+      // Sort by date ascending
+      const sorted = [...threadMails].sort((a, b) => new Date(a.date) - new Date(b.date));
+      html += '<div class="conversation-timeline" role="region" aria-label="Conversation timeline">';
+      html += '<div class="conversation-timeline-title">Conversation</div>';
+      for (const tm of sorted) {
+        const isCurrent = tm.id === mail.id;
+        const fromName = (tm.from_name || tm.from || 'Unknown').split('<')[0].trim();
+        const dateStr = formatFullDate(tm.date);
+        const preview = (tm.preview || '').slice(0, 60);
+        html += `
+          <div class="conversation-timeline-item${isCurrent ? ' current' : ''}" data-timeline-id="${esc(tm.id)}" role="button" tabindex="0" title="${esc(fromName)} - ${esc(dateStr)}">
+            <div class="conversation-timeline-dot"></div>
+            <div class="conversation-timeline-content">
+              <div class="conversation-timeline-from">${esc(fromName)}</div>
+              <div class="conversation-timeline-date">${esc(dateStr)}</div>
+              <div class="conversation-timeline-preview">${esc(preview)}</div>
+            </div>
+          </div>
+        `;
+      }
+      html += '</div>';
+    }
   }
 
   // Body — with quoted text collapsing for plain text
@@ -300,12 +338,14 @@ export function renderMailView(el, state, actions) {
       if (showBtn) {
         showBtn.addEventListener('click', () => {
           // Instead of rewriting the entire iframe (causes flash),
-          // restore original src on all blocked images inside the iframe
+          // restore original src on all blocked images inside the iframe.
+          // Add loading="lazy" to prevent all images from loading simultaneously.
           try {
             const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
             if (iframeDoc) {
               const imgs = iframeDoc.querySelectorAll('img[data-original-src]');
               imgs.forEach(img => {
+                img.setAttribute('loading', 'lazy');
                 img.src = img.getAttribute('data-original-src');
                 img.removeAttribute('data-original-src');
               });
@@ -452,6 +492,16 @@ export function renderMailView(el, state, actions) {
       const snoozeBtn = el.querySelector('[data-action="snooze"]');
       if (snoozeBtn) snoozeBtn.setAttribute('aria-expanded', 'false');
     }
+  });
+
+  // ── Conversation timeline click ────────────────────────────────
+  el.querySelectorAll('.conversation-timeline-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      const id = item.dataset.timelineId;
+      if (id && actions.onSelectThread) {
+        actions.onSelectThread(id);
+      }
+    });
   });
 
   // ── Attachment preview + download ──────────────────────────────

@@ -7,7 +7,7 @@ import { renderSidebar, updateUnreadBadges } from './views/sidebar.js';
 import { renderMailList } from './views/mail_list.js';
 import { renderMailView } from './views/mail_view.js';
 import { openCompose, makeReplyPrefill, makeForwardPrefill } from './views/compose.js';
-import { openSettings, getMergedShortcuts } from './views/settings.js';
+import { openSettings, getMergedShortcuts, hashPin } from './views/settings.js';
 import { openOnboarding } from './views/onboarding.js';
 import { openAnalytics } from './views/analytics.js';
 import { openCalendar } from './views/calendar.js';
@@ -475,6 +475,11 @@ function mailListActions() {
     onUnflagMail: handleUnflagMail,
     // Sweep sender
     onSweepSender: handleSweepSender,
+    // Batch actions (multi-select)
+    onBatchArchive: handleBatchArchive,
+    onBatchDelete: handleBatchDelete,
+    onBatchMarkRead: handleBatchMarkRead,
+    onBatchMove: handleBatchMove,
   };
 }
 
@@ -487,6 +492,7 @@ function mailViewActions() {
     onDelete: handleDelete,
     onMarkUnread: handleMarkUnread,
     onSnooze: handleSnooze,
+    onSelectThread: (mailId) => selectMail(mailId),
   };
 }
 
@@ -892,10 +898,23 @@ function handleForward(mail) {
 }
 
 async function handleArchive(mail) {
+  const originalFolder = state.activeFolder;
+  const accountId = activeAccountId();
+  const mailCopy = { ...mail };
+
   try {
-    await api.archiveMail(activeAccountId(), state.activeFolder, mail.id);
-    showToast('Email archived.', 'success');
+    await api.archiveMail(accountId, originalFolder, mail.id);
     removeMail(mail.id);
+    showToast('Email archived. [Undo]', 'success', 5000, async () => {
+      try {
+        await api.moveMail(accountId, 'Archive', mail.id, originalFolder);
+        state.mails.unshift(mailCopy);
+        renderList();
+        showToast('Archive undone.', 'info');
+      } catch (e) {
+        showToast(`Undo failed: ${e}`, 'error');
+      }
+    });
   } catch (err) {
     showToast(`Failed to archive: ${err}`, 'error');
   }
@@ -910,10 +929,23 @@ async function handleDelete(mail) {
   });
   if (!confirmed) return;
 
+  const originalFolder = state.activeFolder;
+  const accountId = activeAccountId();
+  const mailCopy = { ...mail };
+
   try {
-    await api.deleteMail(activeAccountId(), state.activeFolder, mail.id);
-    showToast('Email deleted.', 'success');
+    await api.deleteMail(accountId, originalFolder, mail.id);
     removeMail(mail.id);
+    showToast('Email deleted. [Undo]', 'success', 5000, async () => {
+      try {
+        await api.moveMail(accountId, 'Trash', mail.id, originalFolder);
+        state.mails.unshift(mailCopy);
+        renderList();
+        showToast('Delete undone.', 'info');
+      } catch (e) {
+        showToast(`Undo failed: ${e}`, 'error');
+      }
+    });
   } catch (err) {
     showToast(`Failed to delete: ${err}`, 'error');
   }
@@ -1023,6 +1055,73 @@ async function handleSweepSender(mail) {
   } catch (err) {
     showToast(`Sweep failed: ${err}`, 'error');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Batch actions (multi-select)
+// ---------------------------------------------------------------------------
+async function handleBatchArchive(mailIds) {
+  const accountId = activeAccountId();
+  const folder = state.activeFolder;
+  let count = 0;
+  for (const id of mailIds) {
+    try {
+      await api.archiveMail(accountId, folder, id);
+      removeMail(id);
+      count++;
+    } catch {}
+  }
+  showToast(`${count} email(s) archived.`, 'success');
+}
+
+async function handleBatchDelete(mailIds) {
+  const confirmed = await showDialog({
+    title: 'Delete Emails',
+    message: `Move ${mailIds.size || mailIds.length} email(s) to Trash?`,
+    confirmLabel: 'Delete',
+    danger: true,
+  });
+  if (!confirmed) return;
+
+  const accountId = activeAccountId();
+  const folder = state.activeFolder;
+  let count = 0;
+  for (const id of mailIds) {
+    try {
+      await api.deleteMail(accountId, folder, id);
+      removeMail(id);
+      count++;
+    } catch {}
+  }
+  showToast(`${count} email(s) deleted.`, 'success');
+}
+
+async function handleBatchMarkRead(mailIds) {
+  const accountId = activeAccountId();
+  const folder = state.activeFolder;
+  for (const id of mailIds) {
+    try {
+      await api.markRead(accountId, folder, id);
+      const mail = state.mails.find((m) => m.id === id);
+      if (mail) mail.is_read = true;
+    } catch {}
+  }
+  renderList();
+  showToast(`${mailIds.size || mailIds.length} email(s) marked as read.`, 'info');
+}
+
+async function handleBatchMove(mailIds, targetFolder) {
+  const accountId = activeAccountId();
+  const folder = state.activeFolder;
+  let count = 0;
+  for (const id of mailIds) {
+    try {
+      await api.moveMail(accountId, folder, id, targetFolder);
+      removeMail(id);
+      count++;
+    } catch {}
+  }
+  showToast(`${count} email(s) moved to ${targetFolder}.`, 'success');
 }
 
 function removeMail(mailId) {
@@ -1532,7 +1631,198 @@ function setupEmlDragDrop() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Lazy folder sync — load other folders' counts in background one by one
+// ---------------------------------------------------------------------------
+async function lazyLoadFolderCounts() {
+  const accountId = activeAccountId();
+  if (!accountId || !state.folders.length) return;
+
+  for (const folder of state.folders) {
+    const folderName = typeof folder === 'object' ? folder.name : folder;
+    // Skip the active folder — already loaded
+    if (folderName === state.activeFolder) continue;
+
+    // Add syncing indicator to this folder in the sidebar
+    const folderEl = sidebarEl.querySelector(`.sidebar-folder[data-folder="${CSS.escape(folderName)}"]`);
+    if (folderEl && !folderEl.querySelector('.folder-sync-indicator')) {
+      const indicator = document.createElement('span');
+      indicator.className = 'folder-sync-indicator';
+      indicator.setAttribute('aria-label', 'Syncing');
+      indicator.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;"></span>';
+      folderEl.appendChild(indicator);
+    }
+
+    try {
+      // Refresh this folder to get updated counts
+      await api.refreshFolder(accountId, folderName);
+    } catch {
+      // Non-critical, ignore
+    }
+
+    // Remove syncing indicator
+    if (folderEl) {
+      const indicator = folderEl.querySelector('.folder-sync-indicator');
+      if (indicator) indicator.remove();
+    }
+  }
+
+  // Reload folders to get updated counts and update sidebar badges
+  await loadFolders();
+  updateUnreadBadges(sidebarEl, state);
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic favicon with unread badge
+// ---------------------------------------------------------------------------
+let _baseFaviconData = null;
+
+function updateFavicon(unreadCount) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+
+  // Draw base icon (simple envelope shape)
+  ctx.fillStyle = '#00bcd4';
+  ctx.fillRect(2, 6, 28, 20);
+  ctx.fillStyle = '#00838f';
+  ctx.beginPath();
+  ctx.moveTo(2, 6);
+  ctx.lineTo(16, 18);
+  ctx.lineTo(30, 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Draw unread badge if count > 0
+  if (unreadCount > 0) {
+    const text = unreadCount > 99 ? '99+' : String(unreadCount);
+    const badgeRadius = text.length > 2 ? 10 : 8;
+    const badgeX = 32 - badgeRadius;
+    const badgeY = badgeRadius;
+
+    ctx.beginPath();
+    ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI);
+    ctx.fillStyle = '#e53935';
+    ctx.fill();
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${text.length > 2 ? 8 : 10}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, badgeX, badgeY + 1);
+  }
+
+  // Apply as favicon
+  let link = document.querySelector('link[rel="icon"]');
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
+  }
+  link.href = canvas.toDataURL('image/png');
+}
+
+// ---------------------------------------------------------------------------
+// PIN lock screen on startup
+// ---------------------------------------------------------------------------
+async function showPinLockScreen() {
+  const pinHash = localStorage.getItem('exospine_pin_hash');
+  if (!pinHash) return true; // No PIN set, proceed
+
+  return new Promise((resolve) => {
+    const lockEl = document.getElementById('lock-screen');
+    if (!lockEl) { resolve(true); return; }
+
+    let attempts = parseInt(localStorage.getItem('exospine_pin_attempts') || '0', 10);
+    let lockedUntil = parseInt(localStorage.getItem('exospine_pin_locked_until') || '0', 10);
+
+    lockEl.hidden = false;
+    lockEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:var(--sidebar-bg, #1a1a2e);color:var(--pane-text, #e0e0e0);">
+        <div style="font-size:28px;font-weight:700;margin-bottom:8px;">Exospine</div>
+        <div style="font-size:14px;color:var(--pane-text-dim, #888);margin-bottom:24px;">Enter your PIN to unlock</div>
+        <div id="pin-error" style="color:#e53935;font-size:13px;min-height:20px;margin-bottom:8px;"></div>
+        <input type="password" id="pin-input" maxlength="6" inputmode="numeric" pattern="[0-9]*"
+          style="width:180px;text-align:center;font-size:24px;letter-spacing:8px;padding:10px;border:2px solid var(--pane-border, #333);border-radius:8px;background:var(--pane-bg, #222);color:var(--pane-text, #eee);outline:none;"
+          placeholder="****" />
+        <button id="pin-submit" style="margin-top:16px;padding:8px 32px;font-size:14px;font-weight:600;background:var(--accent, #0078d6);color:#fff;border:none;border-radius:6px;cursor:pointer;">
+          Unlock
+        </button>
+      </div>
+    `;
+
+    const input = lockEl.querySelector('#pin-input');
+    const errorEl = lockEl.querySelector('#pin-error');
+    const submitBtn = lockEl.querySelector('#pin-submit');
+
+    function checkLockout() {
+      if (lockedUntil > Date.now()) {
+        const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
+        errorEl.textContent = 'Too many attempts. Try again in ' + remaining + 's';
+        input.disabled = true;
+        submitBtn.disabled = true;
+        setTimeout(checkLockout, 1000);
+        return true;
+      }
+      input.disabled = false;
+      submitBtn.disabled = false;
+      errorEl.textContent = '';
+      return false;
+    }
+
+    if (checkLockout()) {
+      // Already locked out
+    }
+
+    input.focus();
+
+    async function tryUnlock() {
+      if (lockedUntil > Date.now()) return;
+      const pin = input.value;
+      if (!pin) return;
+
+      const hash = await hashPin(pin);
+      if (hash === pinHash) {
+        // Success
+        localStorage.setItem('exospine_pin_attempts', '0');
+        localStorage.removeItem('exospine_pin_locked_until');
+        lockEl.hidden = true;
+        lockEl.innerHTML = '';
+        resolve(true);
+      } else {
+        attempts++;
+        localStorage.setItem('exospine_pin_attempts', String(attempts));
+        input.value = '';
+
+        if (attempts >= 3) {
+          lockedUntil = Date.now() + 30000; // 30 seconds
+          localStorage.setItem('exospine_pin_locked_until', String(lockedUntil));
+          localStorage.setItem('exospine_pin_attempts', '0');
+          attempts = 0;
+          checkLockout();
+        } else {
+          errorEl.textContent = 'Wrong PIN. ' + (3 - attempts) + ' attempt(s) remaining.';
+        }
+        input.focus();
+      }
+    }
+
+    submitBtn.addEventListener('click', tryUnlock);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') tryUnlock();
+    });
+  });
+}
+
 async function init() {
+  // PIN lock screen — block until unlocked
+  const pinOk = await showPinLockScreen();
+  if (!pinOk) return;
+
   setupKeyboardShortcuts();
   setupTauriEvents();
   setupConnectionStatus();
@@ -1543,7 +1833,45 @@ async function init() {
   // Request notification permission early
   try { if (Notification.permission === 'default') Notification.requestPermission(); } catch {}
 
-  // Load settings first to apply theme and language
+  // Load accounts first — critical path
+  await loadAccounts();
+
+  if (state.accounts.length === 0) {
+    // Load settings for theming even on onboarding
+    try {
+      state.settings = await api.getSettings();
+      applyTheme(state.settings.theme);
+      if (state.settings.language) {
+        setLanguage(state.settings.language);
+        applyDirection(state.settings.language);
+      }
+    } catch {}
+    openOnboarding({ isFirstRun: true, onAccountAdded: reloadAccounts });
+    renderAll();
+    // Hide splash screen
+    const splash2 = document.getElementById('splash-screen');
+    if (splash2) {
+      splash2.classList.add('splash-fade-out');
+      splash2.addEventListener('animationend', () => splash2.remove());
+    }
+    return;
+  }
+
+  // Prioritize rendering the mail list BEFORE loading settings, contacts, etc.
+  // Only load the active folder (INBOX) mails first
+  await loadFolders();
+  renderAll();
+  await loadMails();
+  prefetchBodies(state.mails);
+
+  // Hide splash screen
+  const splash = document.getElementById('splash-screen');
+  if (splash) {
+    splash.classList.add('splash-fade-out');
+    splash.addEventListener('animationend', () => splash.remove());
+  }
+
+  // Load settings after mail list is visible — non-blocking
   try {
     state.settings = await api.getSettings();
     applyTheme(state.settings.theme);
@@ -1555,29 +1883,21 @@ async function init() {
     // Settings not available yet, use defaults
   }
 
-  // Data retention: cleanup old messages if configured
-  try {
-    const retentionDays = parseInt(localStorage.getItem('exospine_retention_days') || '0', 10);
-    if (retentionDays > 0) {
-      await api.cleanupOldMessages(retentionDays);
-    }
-  } catch {
-    // Silent fail for cleanup
-  }
+  // Defer non-critical loads to idle time
+  const idleCb = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn) => setTimeout(fn, 100);
 
-  await loadAccounts();
+  idleCb(() => {
+    // Data retention: cleanup old messages if configured
+    try {
+      const retentionDays = parseInt(localStorage.getItem('exospine_retention_days') || '0', 10);
+      if (retentionDays > 0) {
+        api.cleanupOldMessages(retentionDays).catch(() => {});
+      }
+    } catch {}
+  });
 
-  if (state.accounts.length === 0) {
-    openOnboarding({ isFirstRun: true, onAccountAdded: reloadAccounts });
-    // Render empty sidebar/list/view behind the overlay
-    renderAll();
-    return;
-  }
-
-  await loadFolders();
-  renderAll();
-  await loadMails();
-  prefetchBodies(state.mails);
+  // Lazy folder sync: load other folders' counts in background one by one
+  lazyLoadFolderCounts();
 
   // Background sync: fetch all remaining mails from IMAP without blocking the UI
   const syncAccountId = activeAccountId();
@@ -1608,11 +1928,29 @@ async function init() {
     });
   }
 
-  // Background task: update window title with unread count every 30 seconds
+  // Check for pending mailto: link (if launched from OS mailto handler)
+  try {
+    const mailto = await api.getPendingMailto();
+    if (mailto && mailto.to) {
+      openCompose({
+        accountId: activeAccountId(),
+        to: mailto.to,
+        cc: mailto.cc || '',
+        bcc: mailto.bcc || '',
+        subject: mailto.subject || '',
+        body: mailto.body || '',
+      }, () => refreshCurrentFolder());
+    }
+  } catch {
+    // No pending mailto, ignore
+  }
+
+  // Background task: update window title and favicon with unread count every 30 seconds
   async function updateUnreadTitle() {
     try {
       const count = await api.getUnreadCount();
       document.title = count > 0 ? `Exospine (${count} unread)` : 'Exospine';
+      updateFavicon(count);
     } catch {
       // Silent fail
     }

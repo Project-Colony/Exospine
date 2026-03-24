@@ -159,3 +159,9 @@ export const getUnreadCount = () => invoke('get_unread_count');
 
 // Open .eml file
 export const openEmlFile = (path) => invoke('open_eml_file', { path });
+
+// Secure wipe
+export const secureWipe = () => invoke('secure_wipe');
+
+// Mailto handler
+export const getPendingMailto = () => invoke('get_pending_mailto');

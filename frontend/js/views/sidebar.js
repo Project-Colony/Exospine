@@ -54,6 +54,22 @@ function saveCustomSearchFolders(folders) {
   localStorage.setItem('exospine_search_folders', JSON.stringify(folders));
 }
 
+// ── Collapsible sidebar sections ─────────────────────────────────────
+const FAVORITE_FOLDERS = ['INBOX', 'Sent', '[Gmail]/Sent Mail', '[Gmail]/Starred'];
+
+function loadCollapsedSections() {
+  try {
+    const raw = localStorage.getItem('exospine_sidebar_collapsed');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCollapsedSections(collapsed) {
+  localStorage.setItem('exospine_sidebar_collapsed', JSON.stringify(collapsed));
+}
+
 // ── Sidebar render cache ─────────────────────────────────────────────
 let _sidebarCacheKey = null;
 
@@ -145,16 +161,28 @@ export function renderSidebar(el, state, actions) {
       </div>
     `;
   } else {
-    // Folders
-    html += '<div class="sidebar-folders" role="listbox" aria-label="Mail folders">';
+    // Group folders into collapsible sections: Favorites and Folders
+    const collapsed = loadCollapsedSections();
+    const favFolders = [];
+    const otherFolders = [];
+
     for (const folder of state.folders) {
+      const name = typeof folder === 'string' ? folder : folder.name;
+      if (FAVORITE_FOLDERS.includes(name)) {
+        favFolders.push(folder);
+      } else {
+        otherFolders.push(folder);
+      }
+    }
+
+    // Helper to render a folder item
+    function renderFolderItem(folder) {
       const name = typeof folder === 'string' ? folder : folder.name;
       const unread = typeof folder === 'object' ? (folder.unread_count || folder.unread || 0) : 0;
       const isActive = name === state.activeFolder && !state._unifiedInbox;
       const icon = FOLDER_ICONS[name] || '\uD83D\uDCC1';
       const displayName = folderDisplayName(name);
-
-      html += `
+      return `
         <div class="sidebar-folder${isActive ? ' active' : ''}" data-folder="${esc(name)}" role="option" aria-selected="${isActive}" tabindex="0">
           <span class="sidebar-folder-icon" aria-hidden="true">${icon}</span>
           <span class="sidebar-folder-label">${esc(displayName)}</span>
@@ -162,15 +190,43 @@ export function renderSidebar(el, state, actions) {
         </div>
       `;
     }
+
+    // Favorites section
+    const favCollapsed = collapsed['favorites'] || false;
+    html += `<div class="sidebar-section-header" data-section="favorites" role="button" tabindex="0" aria-expanded="${!favCollapsed}" title="Toggle Favorites">
+      <span class="sidebar-section-arrow">${favCollapsed ? '\u25B6' : '\u25BC'}</span>
+      <span>Favorites</span>
+    </div>`;
+    html += `<div class="sidebar-folders sidebar-section-content${favCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Favorite folders">`;
+    for (const folder of favFolders) {
+      html += renderFolderItem(folder);
+    }
+    html += '</div>';
+
+    // Other Folders section
+    const foldersCollapsed = collapsed['folders'] || false;
+    html += `<div class="sidebar-section-header" data-section="folders" role="button" tabindex="0" aria-expanded="${!foldersCollapsed}" title="Toggle Folders">
+      <span class="sidebar-section-arrow">${foldersCollapsed ? '\u25B6' : '\u25BC'}</span>
+      <span>Folders</span>
+    </div>`;
+    html += `<div class="sidebar-folders sidebar-section-content${foldersCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Mail folders">`;
+    for (const folder of otherFolders) {
+      html += renderFolderItem(folder);
+    }
     html += '</div>';
   }
 
-  // Search Folders section
+  // Search Folders section (collapsible)
   const customSearchFolders = loadCustomSearchFolders();
   const allSearchFolders = [...PREDEFINED_SEARCH_FOLDERS, ...customSearchFolders];
+  const collapsedSections = loadCollapsedSections();
+  const searchCollapsed = collapsedSections['search-folders'] || false;
 
-  html += '<div class="sidebar-section-title">' + esc(t('search_folders')) + '</div>';
-  html += '<div class="sidebar-folders sidebar-search-folders" role="listbox" aria-label="Search folders">';
+  html += `<div class="sidebar-section-header" data-section="search-folders" role="button" tabindex="0" aria-expanded="${!searchCollapsed}" title="Toggle Search Folders">
+    <span class="sidebar-section-arrow">${searchCollapsed ? '\u25B6' : '\u25BC'}</span>
+    <span>${esc(t('search_folders'))}</span>
+  </div>`;
+  html += `<div class="sidebar-folders sidebar-search-folders sidebar-section-content${searchCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Search folders">`;
   for (const sf of allSearchFolders) {
     const isActive = state._activeSearchFolder === sf.name;
     const icon = sf.icon || '\uD83D\uDD0D';
@@ -194,23 +250,23 @@ export function renderSidebar(el, state, actions) {
   // Bottom buttons
   html += `
     <div class="sidebar-bottom">
-      <button class="sidebar-btn" id="sidebar-add-account" aria-label="${t('add_account')}">
+      <button class="sidebar-btn" id="sidebar-add-account" title="${t('add_account')}" aria-label="${t('add_account')}">
         <span aria-hidden="true">+</span>
         <span>${t('add_account')}</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-analytics" aria-label="Analytics">
+      <button class="sidebar-btn" id="sidebar-analytics" title="Analytics" aria-label="Analytics">
         <span aria-hidden="true">\uD83D\uDCCA</span>
         <span>Analytics</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-calendar" aria-label="Calendar">
+      <button class="sidebar-btn" id="sidebar-calendar" title="Calendar" aria-label="Calendar">
         <span aria-hidden="true">\uD83D\uDCC5</span>
         <span>Calendar</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-contacts" aria-label="Contacts">
+      <button class="sidebar-btn" id="sidebar-contacts" title="Contacts" aria-label="Contacts">
         <span aria-hidden="true">\uD83D\uDC64</span>
         <span>Contacts</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-settings" aria-label="${t('settings')}">
+      <button class="sidebar-btn" id="sidebar-settings" title="${t('settings')}" aria-label="${t('settings')}">
         <span aria-hidden="true">\u2699</span>
         <span>${t('settings')}</span>
       </button>
@@ -229,6 +285,19 @@ export function renderSidebar(el, state, actions) {
   if (el._sidebarDropHandler) el.removeEventListener('drop', el._sidebarDropHandler);
 
   el._sidebarClickHandler = (e) => {
+    // Collapsible section headers
+    const sectionHeader = e.target.closest('.sidebar-section-header');
+    if (sectionHeader) {
+      const section = sectionHeader.dataset.section;
+      const collapsed = loadCollapsedSections();
+      collapsed[section] = !collapsed[section];
+      saveCollapsedSections(collapsed);
+      // Force re-render by clearing cache
+      _sidebarCacheKey = null;
+      renderSidebar(el, state, actions);
+      return;
+    }
+
     // Account switcher
     const acctItem = e.target.closest('.sidebar-account-item');
     if (acctItem) {

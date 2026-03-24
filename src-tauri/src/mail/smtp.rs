@@ -3,8 +3,7 @@
 use anyhow::{Context, Result};
 use lettre::message::header::ContentType;
 use lettre::message::{Attachment, Mailbox, MessageBuilder, MultiPart, SinglePart};
-use lettre::transport::smtp::authentication::Credentials;
-use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use lettre::{AsyncTransport, Message};
 
 use crate::app_state::{Account, ComposeDraft};
 
@@ -149,13 +148,7 @@ pub async fn send_mail_with_priority(
         }
     };
 
-    let creds = Credentials::new(account.username.clone(), password.to_string());
-
-    let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&account.smtp_host)
-        .context("Failed to create SMTP transport")?
-        .credentials(creds)
-        .port(account.smtp_port)
-        .build();
+    let mailer = crate::mail::smtp_pool::get_transport(account, password)?;
 
     mailer
         .send(email)

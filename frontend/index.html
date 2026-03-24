@@ -5,15 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' ipc: http://ipc.localhost https://ipc.localhost; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; frame-src blob: data:; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost;">
   <title>Exospine</title>
+  <style>
+    /* Ensure text is visible immediately while monospace fonts load */
+    @font-face { font-family: "Cascadia Code"; font-display: swap; src: local("Cascadia Code"); }
+    @font-face { font-family: "Fira Code"; font-display: swap; src: local("Fira Code"); }
+  </style>
   <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
+  <!-- Splash screen -->
+  <div id="splash-screen">
+    <div class="splash-logo">Exospine</div>
+    <div class="splash-spinner"></div>
+  </div>
+
   <!-- Skip links for keyboard navigation -->
   <a href="#mail-list" class="skip-link" aria-label="Skip to mail list">Skip to mail list</a>
   <a href="#mail-view" class="skip-link" aria-label="Skip to content">Skip to content</a>
 
   <div id="app">
-    <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle sidebar" hidden>&#9776;</button>
+    <button class="hamburger-btn" id="hamburger-btn" title="Toggle sidebar" aria-label="Toggle sidebar" hidden>&#9776;</button>
     <aside id="sidebar" role="navigation" aria-label="Mailbox navigation" tabindex="-1"></aside>
     <main id="content" role="main">
       <section id="mail-list" aria-label="Email list" aria-live="polite" tabindex="-1"></section>
@@ -36,7 +47,7 @@
       <div class="lock-screen-icon">&#128274;</div>
       <h2 class="lock-screen-title">Exospine is locked</h2>
       <p class="lock-screen-subtitle">Session paused due to inactivity</p>
-      <button id="lock-screen-unlock" class="lock-screen-btn">Unlock</button>
+      <button id="lock-screen-unlock" class="lock-screen-btn" title="Unlock Exospine">Unlock</button>
     </div>
   </div>
   <script type="module" src="js/app.js"></script>

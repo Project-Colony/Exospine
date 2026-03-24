@@ -219,6 +219,16 @@ impl Config {
     pub fn config_path() -> PathBuf {
         data_dir().join("config.toml")
     }
+
+    /// Delete the accounts.json file from disk (used by secure wipe).
+    pub fn delete_accounts_file(&self) -> anyhow::Result<()> {
+        let path = accounts_path();
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+            tracing::info!("Deleted accounts file: {}", path.display());
+        }
+        Ok(())
+    }
 }
 
 // ── Account persistence ──────────────────────────────────────────────

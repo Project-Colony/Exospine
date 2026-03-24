@@ -79,6 +79,47 @@ pub struct SaveSignatureParams {
     pub signature_html: Option<String>,
 }
 
+/// Securely wipe all data: messages, accounts, config, credentials.
+#[tauri::command]
+pub async fn secure_wipe(state: State<'_, AppState>) -> Result<(), String> {
+    tracing::warn!("secure_wipe: wiping all data!");
+
+    // 1. Delete all keyring credentials
+    {
+        let accounts = lock_or_recover(&state.accounts);
+        for acct in accounts.iter() {
+            let _ = crate::accounts::keyring_store::delete_password(&acct.id);
+            crate::app_state::remove_credential(&acct.id);
+        }
+    }
+
+    // 2. Wipe SQLite database
+    {
+        let db_guard = lock_or_recover(&state.db);
+        if let Some(ref db) = *db_guard {
+            db.wipe_all().map_err(|e| format!("Failed to wipe database: {}", e))?;
+        }
+    }
+
+    // 3. Clear in-memory accounts
+    {
+        let mut accounts = lock_or_recover(&state.accounts);
+        accounts.clear();
+    }
+
+    // 4. Delete accounts.json on disk
+    {
+        let config = lock_or_recover(&state.config);
+        let _ = config.delete_accounts_file();
+    }
+
+    // 5. Evict SMTP pool
+    crate::mail::smtp_pool::evict_all();
+
+    tracing::warn!("secure_wipe: completed");
+    Ok(())
+}
+
 /// Save the email signature for an account and persist to accounts.json.
 #[tauri::command]
 pub async fn save_signature(
