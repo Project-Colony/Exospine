@@ -276,9 +276,11 @@ export async function openCompose(prefill = {}, onSent = null) {
   setupFileDrop(overlay, _attachments);
 
   // Wire up contact auto-complete on To/CC/BCC
-  setupAutocomplete('compose-to', 'ac-to');
-  setupAutocomplete('compose-cc', 'ac-cc');
-  setupAutocomplete('compose-bcc', 'ac-bcc');
+  const _acCleanups = [
+    setupAutocomplete('compose-to', 'ac-to'),
+    setupAutocomplete('compose-cc', 'ac-cc'),
+    setupAutocomplete('compose-bcc', 'ac-bcc'),
+  ];
 
   // Templates dropdown
   setupTemplatesDropdown(prefill);
@@ -411,7 +413,7 @@ export async function openCompose(prefill = {}, onSent = null) {
   // Start auto-save (every 30 seconds)
   startAutoSave(getDraft);
 
-  // Close — cleans up Escape listener, auto-save, and pending undo-send in ALL exit paths
+  // Close — cleans up Escape listener, auto-save, autocomplete, and pending undo-send in ALL exit paths
   const close = () => {
     stopAutoSave();
     if (onKey) {
@@ -421,6 +423,10 @@ export async function openCompose(prefill = {}, onSent = null) {
     if (_sendTimeout) {
       clearTimeout(_sendTimeout);
       _sendTimeout = null;
+    }
+    // Clean up autocomplete pending timeouts
+    for (const cleanup of _acCleanups) {
+      if (cleanup) cleanup();
     }
     overlay.hidden = true;
     overlay.innerHTML = '';
@@ -1030,9 +1036,10 @@ function escapeForText(str) {
 function setupAutocomplete(inputId, dropdownId) {
   const input = overlay.querySelector(`#${inputId}`);
   const dropdown = overlay.querySelector(`#${dropdownId}`);
-  if (!input || !dropdown) return;
+  if (!input || !dropdown) return null;
 
   let debounce = null;
+  let blurTimeout = null;
 
   input.addEventListener('input', () => {
     clearTimeout(debounce);
@@ -1094,10 +1101,16 @@ function setupAutocomplete(inputId, dropdownId) {
 
   input.addEventListener('blur', () => {
     // Small delay to allow click on dropdown items
-    setTimeout(() => {
+    blurTimeout = setTimeout(() => {
       dropdown.hidden = true;
     }, 150);
   });
+
+  // Return cleanup function to cancel pending timeouts
+  return () => {
+    clearTimeout(debounce);
+    clearTimeout(blurTimeout);
+  };
 }
 
 // ── Markdown to HTML converter ─────────────────────────────────────────

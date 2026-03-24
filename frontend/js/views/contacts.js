@@ -169,8 +169,15 @@ export async function openContacts() {
       </div>
     `;
 
-    // Wire events
+    // Wire events — use event delegation for contact items to avoid
+    // stacking per-element listeners on every render() call.
+    const onKey = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', onKey);
+
     const close = () => {
+      document.removeEventListener('keydown', onKey);
       overlay.hidden = true;
       overlay.innerHTML = '';
     };
@@ -180,14 +187,6 @@ export async function openContacts() {
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) close();
     });
-
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        close();
-        document.removeEventListener('keydown', onKey);
-      }
-    };
-    document.addEventListener('keydown', onKey);
 
     // Search
     const searchInput = overlay.querySelector('#contacts-search-input');
@@ -204,15 +203,18 @@ export async function openContacts() {
       });
     }
 
-    // Select contact
-    overlay.querySelectorAll('.contacts-item').forEach(item => {
-      item.addEventListener('click', () => {
+    // Select contact — event delegation on container
+    const contactsList = overlay.querySelector('.contacts-list-scroll');
+    if (contactsList) {
+      contactsList.addEventListener('click', (e) => {
+        const item = e.target.closest('.contacts-item');
+        if (!item) return;
         const email = item.dataset.email;
         selectedContact = contacts.find(c => c.email === email) || null;
         editMode = false;
         render();
       });
-    });
+    }
 
     // Edit button
     const editBtn = overlay.querySelector('#contact-edit-btn');

@@ -389,6 +389,7 @@ if (hamburgerBtn) {
   hamburgerBtn.addEventListener('click', () => {
     sidebarEl.classList.toggle('sidebar-open');
   });
+  // Intentional: registered once at startup, needed for the entire app lifetime.
   document.addEventListener('click', (e) => {
     if (sidebarEl.classList.contains('sidebar-open') &&
         !sidebarEl.contains(e.target) &&
@@ -1167,6 +1168,8 @@ function setupKeyboardShortcuts() {
     return desc;
   }
 
+  // Global keyboard shortcuts listener — intentional: registered once at
+  // app startup and needed for the entire app lifetime. No cleanup needed.
   document.addEventListener('keydown', (e) => {
     const shortcuts = getMergedShortcuts();
     const keyDesc = eventToKeyDesc(e);
@@ -1342,7 +1345,9 @@ function resetActivity() {
   lastActivity = Date.now();
 }
 
-// Track user activity
+// Track user activity — these global listeners are intentional: they are
+// registered once at app startup and needed for the entire app lifetime
+// (auto-lock after inactivity). No cleanup is necessary.
 document.addEventListener('mousemove', resetActivity);
 document.addEventListener('keydown', resetActivity);
 document.addEventListener('mousedown', resetActivity);

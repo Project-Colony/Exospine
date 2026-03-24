@@ -57,7 +57,13 @@ export function openOnboarding({ isFirstRun = false, onAccountAdded }) {
     </div>
   `;
 
+  let onKey = null;
+
   const close = () => {
+    if (onKey) {
+      document.removeEventListener('keydown', onKey);
+      onKey = null;
+    }
     overlay.hidden = true;
     overlay.innerHTML = '';
   };
@@ -70,11 +76,8 @@ export function openOnboarding({ isFirstRun = false, onAccountAdded }) {
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) close();
     });
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        close();
-        document.removeEventListener('keydown', onKey);
-      }
+    onKey = (e) => {
+      if (e.key === 'Escape') close();
     };
     document.addEventListener('keydown', onKey);
   }

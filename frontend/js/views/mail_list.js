@@ -179,6 +179,11 @@ export function renderMailList(el, state, actions) {
   const prevFolder = el.dataset.currentFolder || '';
   if (oldContainer && prevFolder) {
     _folderScrollPositions.set(prevFolder, oldContainer.scrollTop);
+    // Cap to max 50 folders to prevent unbounded memory growth
+    if (_folderScrollPositions.size > 50) {
+      const oldest = _folderScrollPositions.keys().next().value;
+      _folderScrollPositions.delete(oldest);
+    }
   }
 
   el.innerHTML = html;

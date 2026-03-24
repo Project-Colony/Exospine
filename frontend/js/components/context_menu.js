@@ -59,12 +59,11 @@ export function showContextMenu(x, y, items) {
 
   _activeMenu = menu;
 
-  // Close on click outside
-  setTimeout(() => {
-    document.addEventListener('click', _onOutsideClick);
-    document.addEventListener('contextmenu', _onOutsideClick);
-    document.addEventListener('keydown', _onEscape);
-  }, 0);
+  // Close on click outside — listeners added immediately; closeContextMenu()
+  // at the top of this function already removed any previous listeners.
+  document.addEventListener('click', _onOutsideClick);
+  document.addEventListener('contextmenu', _onOutsideClick);
+  document.addEventListener('keydown', _onEscape);
 
   // Focus the first item
   const firstItem = menu.querySelector('.context-menu-item');

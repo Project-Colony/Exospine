@@ -27,7 +27,13 @@ export async function openAnalytics(accountId) {
     </div>
   `;
 
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  document.addEventListener('keydown', onKey);
+
   const close = () => {
+    document.removeEventListener('keydown', onKey);
     overlay.hidden = true;
     overlay.innerHTML = '';
   };
@@ -37,14 +43,6 @@ export async function openAnalytics(accountId) {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) close();
   });
-
-  const onKey = (e) => {
-    if (e.key === 'Escape') {
-      close();
-      document.removeEventListener('keydown', onKey);
-    }
-  };
-  document.addEventListener('keydown', onKey);
 
   // Fetch analytics data
   try {

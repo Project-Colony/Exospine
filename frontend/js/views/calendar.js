@@ -219,8 +219,15 @@ export function openCalendar() {
       </div>
     `;
 
-    // Wire events
+    // Wire events — use event delegation on the overlay body to avoid
+    // adding per-element listeners that stack on every render() call.
+    const onKey = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', onKey);
+
     const close = () => {
+      document.removeEventListener('keydown', onKey);
       overlay.hidden = true;
       overlay.innerHTML = '';
     };
@@ -230,14 +237,6 @@ export function openCalendar() {
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) close();
     });
-
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        close();
-        document.removeEventListener('keydown', onKey);
-      }
-    };
-    document.addEventListener('keydown', onKey);
 
     // Month navigation
     overlay.querySelector('#cal-prev').addEventListener('click', () => {
@@ -259,25 +258,30 @@ export function openCalendar() {
       render();
     });
 
-    // Day click
-    overlay.querySelectorAll('.calendar-day[data-day]').forEach(cell => {
-      cell.addEventListener('click', () => {
-        selectedDay = parseInt(cell.dataset.day, 10);
-        render();
+    // Day click + delete event — use event delegation instead of per-element listeners
+    const calBody = overlay.querySelector('.settings-body');
+    if (calBody) {
+      calBody.addEventListener('click', (e) => {
+        // Delete event button
+        const deleteBtn = e.target.closest('[data-delete-event]');
+        if (deleteBtn) {
+          e.stopPropagation();
+          const evId = deleteBtn.dataset.deleteEvent;
+          const evts = loadEvents().filter(ev => ev.id !== evId);
+          saveEvents(evts);
+          showToast('Event deleted.', 'info');
+          render();
+          return;
+        }
+        // Day cell click
+        const dayCell = e.target.closest('.calendar-day[data-day]');
+        if (dayCell) {
+          selectedDay = parseInt(dayCell.dataset.day, 10);
+          render();
+          return;
+        }
       });
-    });
-
-    // Delete event
-    overlay.querySelectorAll('[data-delete-event]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const evId = btn.dataset.deleteEvent;
-        const evts = loadEvents().filter(ev => ev.id !== evId);
-        saveEvents(evts);
-        showToast('Event deleted.', 'info');
-        render();
-      });
-    });
+    }
 
     // Add event button
     const addEventBtn = overlay.querySelector('[data-action="add-event"]');
