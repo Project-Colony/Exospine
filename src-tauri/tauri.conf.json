@@ -1,0 +1,22 @@
+{
+  "productName": "Exospine",
+  "version": "0.2.0",
+  "identifier": "com.mothersphere.exospine",
+  "build": {
+    "frontendDist": "../frontend"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Exospine",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' ipc: http://ipc.localhost https://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src * data: blob:; connect-src * ipc: http://ipc.localhost https://ipc.localhost; script-src 'self' 'unsafe-eval'"
+    }
+  }
+}

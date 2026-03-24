@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' ipc: http://ipc.localhost https://ipc.localhost; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; frame-src blob: data:; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost;">
+  <title>Exospine</title>
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <!-- Skip links for keyboard navigation -->
+  <a href="#mail-list" class="skip-link" aria-label="Skip to mail list">Skip to mail list</a>
+  <a href="#mail-view" class="skip-link" aria-label="Skip to content">Skip to content</a>
+
+  <div id="app">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle sidebar" hidden>&#9776;</button>
+    <aside id="sidebar" role="navigation" aria-label="Mailbox navigation" tabindex="-1"></aside>
+    <main id="content" role="main">
+      <section id="mail-list" aria-label="Email list" aria-live="polite" tabindex="-1"></section>
+      <section id="mail-view" role="complementary" aria-label="Email content" aria-live="polite" tabindex="-1"></section>
+    </main>
+  </div>
+  <div id="status-bar" class="status-bar" role="status" aria-label="Connection status">
+    <div id="connection-status" class="connection-status">
+      <span id="connection-dot" class="connection-dot connected" aria-hidden="true"></span>
+      <span id="connection-text">Connected</span>
+    </div>
+  </div>
+  <div id="compose-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Compose email"></div>
+  <div id="settings-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Settings"></div>
+  <div id="onboarding-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Account setup"></div>
+  <div id="toast-container" role="alert" aria-live="assertive" aria-atomic="true"></div>
+  <div id="dialog-container" role="alertdialog" aria-modal="true"></div>
+  <div id="lock-screen" class="lock-screen" hidden>
+    <div class="lock-screen-content">
+      <div class="lock-screen-icon">&#128274;</div>
+      <h2 class="lock-screen-title">Exospine is locked</h2>
+      <p class="lock-screen-subtitle">Session paused due to inactivity</p>
+      <button id="lock-screen-unlock" class="lock-screen-btn">Unlock</button>
+    </div>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
