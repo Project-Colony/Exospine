@@ -15,6 +15,11 @@ import { openContacts } from './views/contacts.js';
 import { setLanguage } from './i18n.js';
 
 // ---------------------------------------------------------------------------
+// Interval tracking — all intervals are stored for cleanup on beforeunload
+// ---------------------------------------------------------------------------
+const _intervals = [];
+
+// ---------------------------------------------------------------------------
 // localStorage batch debounce — coalesce writes with 1s interval
 // ---------------------------------------------------------------------------
 const _lsBatchQueue = new Map(); // key -> value
@@ -288,6 +293,7 @@ function startAutoTheme() {
   stopAutoTheme();
   applyAutoTheme();
   _autoThemeInterval = setInterval(applyAutoTheme, 5 * 60 * 1000);
+  _intervals.push(_autoThemeInterval);
 }
 
 function stopAutoTheme() {
@@ -1364,11 +1370,11 @@ if (lockUnlockBtn) {
 }
 
 // Check inactivity every 30 seconds
-setInterval(() => {
+_intervals.push(setInterval(() => {
   if (!isLocked && Date.now() - lastActivity > LOCK_TIMEOUT_MS) {
     showLockScreen();
   }
-}, 30000);
+}, 30000));
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -1396,14 +1402,14 @@ function setupConnectionStatus() {
   window.addEventListener('offline', () => updateStatus(false));
 
   // Periodic health check every 30 seconds
-  setInterval(async () => {
+  _intervals.push(setInterval(async () => {
     try {
       await api.getAccounts();
       updateStatus(true);
     } catch {
       updateStatus(false);
     }
-  }, 30000);
+  }, 30000));
 }
 
 // ---------------------------------------------------------------------------
@@ -1607,12 +1613,13 @@ async function init() {
     }
   }
   updateUnreadTitle();
-  setInterval(updateUnreadTitle, 30000);
+  _intervals.push(setInterval(updateUnreadTitle, 30000));
 
   // Background task: periodic check for new mails using check_interval_secs from settings
   const checkIntervalMs = ((state.settings && state.settings.check_interval) || 60) * 1000;
-  let _lastMailIds = new Set((state.mails || []).map(m => m.id));
-  setInterval(async () => {
+  let _lastMailCount = (state.mails || []).length;
+  let _lastMailFirstId = (state.mails && state.mails[0]) ? state.mails[0].id : null;
+  _intervals.push(setInterval(async () => {
     try {
       const accountId = activeAccountId();
       if (!accountId || !state.activeFolder) return;
@@ -1623,24 +1630,25 @@ async function init() {
         // Update folder unread counts in sidebar
         await loadFolders();
         renderSidebar(sidebarEl, state, sidebarActions());
-        const currentIds = new Set((state.mails || []).map(m => m.id));
-        let newCount = 0;
-        for (const id of currentIds) {
-          if (!_lastMailIds.has(id)) newCount++;
+        const currentCount = (state.mails || []).length;
+        const currentFirstId = (state.mails && state.mails[0]) ? state.mails[0].id : null;
+        const newCount = Math.max(0, currentCount - _lastMailCount);
+        if (newCount > 0 || currentFirstId !== _lastMailFirstId) {
+          if (newCount > 0) {
+            playNotificationSound();
+            showToast(`${newCount} new email${newCount > 1 ? 's' : ''} received.`, 'info');
+          }
         }
-        if (newCount > 0) {
-          playNotificationSound();
-          showToast(`${newCount} new email${newCount > 1 ? 's' : ''} received.`, 'info');
-        }
-        _lastMailIds = currentIds;
+        _lastMailCount = currentCount;
+        _lastMailFirstId = currentFirstId;
       }
     } catch {
       // Silent fail for background refresh
     }
-  }, checkIntervalMs);
+  }, checkIntervalMs));
 
   // Background task: check for due scheduled emails and snoozed emails every 60 seconds
-  setInterval(async () => {
+  _intervals.push(setInterval(async () => {
     try {
       // Send due scheduled emails
       const sent = await api.sendDueScheduled();
@@ -1673,7 +1681,12 @@ async function init() {
     } catch {
       // Silent fail
     }
-  }, 60000);
+  }, 60000));
+
+  // Cleanup all intervals on page unload
+  window.addEventListener('beforeunload', () => {
+    _intervals.forEach(id => clearInterval(id));
+  });
 }
 
 // Start

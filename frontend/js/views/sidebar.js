@@ -219,143 +219,60 @@ export function renderSidebar(el, state, actions) {
 
   el.innerHTML = html;
 
-  // Event listeners — account switcher
-  el.querySelectorAll('.sidebar-account-item').forEach((item) => {
-    const handler = () => {
-      const index = parseInt(item.dataset.accountIndex, 10);
-      if (!isNaN(index) && actions.onSwitchAccount) {
-        actions.onSwitchAccount(index);
-      }
-    };
-    item.addEventListener('click', handler);
-    item.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handler();
-      }
-    });
-  });
+  // ── Event delegation: ONE set of listeners on the sidebar container ──
+  // Remove previous delegated listeners if any (stored on el itself)
+  if (el._sidebarClickHandler) el.removeEventListener('click', el._sidebarClickHandler);
+  if (el._sidebarKeydownHandler) el.removeEventListener('keydown', el._sidebarKeydownHandler);
+  if (el._sidebarContextmenuHandler) el.removeEventListener('contextmenu', el._sidebarContextmenuHandler);
+  if (el._sidebarDragoverHandler) el.removeEventListener('dragover', el._sidebarDragoverHandler);
+  if (el._sidebarDragleaveHandler) el.removeEventListener('dragleave', el._sidebarDragleaveHandler);
+  if (el._sidebarDropHandler) el.removeEventListener('drop', el._sidebarDropHandler);
 
-  // Event listener — unified inbox
-  const unifiedBtn = el.querySelector('[data-action="unified-inbox"]');
-  if (unifiedBtn) {
-    const handler = () => {
+  el._sidebarClickHandler = (e) => {
+    // Account switcher
+    const acctItem = e.target.closest('.sidebar-account-item');
+    if (acctItem) {
+      const index = parseInt(acctItem.dataset.accountIndex, 10);
+      if (!isNaN(index) && actions.onSwitchAccount) actions.onSwitchAccount(index);
+      return;
+    }
+
+    // Unified inbox
+    const unifiedBtn = e.target.closest('[data-action="unified-inbox"]');
+    if (unifiedBtn) {
       if (actions.onUnifiedInbox) actions.onUnifiedInbox();
-    };
-    unifiedBtn.addEventListener('click', handler);
-    unifiedBtn.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
-    });
-  }
+      return;
+    }
 
-  // Event listeners — folders
-  el.querySelectorAll('.sidebar-folder[data-folder]').forEach((item) => {
-    const folderName = item.dataset.folder;
-
-    const handler = () => {
-      if (folderName && actions.onFolderSelect) {
-        actions.onFolderSelect(folderName);
-      }
-    };
-    item.addEventListener('click', handler);
-    item.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handler();
-      }
-    });
-
-    // Feature 3: Context menu on folder right-click
-    item.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      const menuItems = [
-        {
-          label: '\u21BB ' + t('refresh'),
-          action: () => {
-            if (actions.onRefreshFolder) actions.onRefreshFolder(folderName);
-          },
-        },
-        {
-          label: '\u2709 Mark all as read',
-          action: () => {
-            showToast('Mark all as read is not yet implemented.', 'info');
-          },
-        },
-      ];
-      showContextMenu(e.clientX, e.clientY, menuItems);
-    });
-
-    // Feature 4: Drag & Drop — folder as drop target
-    item.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      item.classList.add('drag-over');
-    });
-
-    item.addEventListener('dragleave', () => {
-      item.classList.remove('drag-over');
-    });
-
-    item.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      item.classList.remove('drag-over');
-
-      const raw = e.dataTransfer.getData('application/x-exospine-mail');
-      if (!raw) return;
-
-      let data;
-      try {
-        data = JSON.parse(raw);
-      } catch (parseErr) {
-        console.error('Invalid drag data:', parseErr);
-        return;
-      }
-
-      try {
-        const targetFolder = folderName;
-
-        // Don't move to the same folder
-        if (data.folder === targetFolder) return;
-
-        await api.moveMail(data.accountId, data.folder, data.mailId, targetFolder);
-        showToast(`Moved to ${folderDisplayName(targetFolder)}`, 'success');
-
-        // Notify the app to refresh
-        if (actions.onMoveMail) actions.onMoveMail(data.mailId);
-      } catch (err) {
-        showToast(`Move failed: ${err}`, 'error');
-      }
-    });
-  });
-
-  // Event listeners — search folders
-  el.querySelectorAll('.sidebar-folder[data-search-folder]').forEach((item) => {
-    const sfName = item.dataset.searchFolder;
-    const sfQuery = item.dataset.searchQuery;
-    const handler = () => {
-      if (actions.onSearchFolder) actions.onSearchFolder(sfName, sfQuery);
-    };
-    item.addEventListener('click', handler);
-    item.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
-    });
-  });
-
-  // Delete custom search folders
-  el.querySelectorAll('.sidebar-search-folder-delete').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    // Delete custom search folder
+    const deleteBtn = e.target.closest('.sidebar-search-folder-delete');
+    if (deleteBtn) {
       e.stopPropagation();
-      const name = btn.dataset.deleteSearch;
+      const name = deleteBtn.dataset.deleteSearch;
       const custom = loadCustomSearchFolders().filter((f) => f.name !== name);
       saveCustomSearchFolders(custom);
       renderSidebar(el, state, actions);
-    });
-  });
+      return;
+    }
 
-  // Add search folder
-  const addSfBtn = el.querySelector('[data-action="add-search-folder"]');
-  if (addSfBtn) {
-    const handler = () => {
+    // Folder select
+    const folderItem = e.target.closest('.sidebar-folder[data-folder]');
+    if (folderItem) {
+      const folderName = folderItem.dataset.folder;
+      if (folderName && actions.onFolderSelect) actions.onFolderSelect(folderName);
+      return;
+    }
+
+    // Search folder select
+    const sfItem = e.target.closest('.sidebar-folder[data-search-folder]');
+    if (sfItem) {
+      if (actions.onSearchFolder) actions.onSearchFolder(sfItem.dataset.searchFolder, sfItem.dataset.searchQuery);
+      return;
+    }
+
+    // Add search folder
+    const addSfBtn = e.target.closest('[data-action="add-search-folder"]');
+    if (addSfBtn) {
       const name = prompt('Search folder name:');
       if (!name) return;
       const query = prompt('Search query (e.g. "from:user@example.com"):');
@@ -364,43 +281,96 @@ export function renderSidebar(el, state, actions) {
       custom.push({ name, query, icon: '\uD83D\uDD0D', custom: true });
       saveCustomSearchFolders(custom);
       renderSidebar(el, state, actions);
-    };
-    addSfBtn.addEventListener('click', handler);
-    addSfBtn.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
-    });
-  }
+      return;
+    }
 
-  const addBtn = el.querySelector('#sidebar-add-account');
-  if (addBtn && actions.onAddAccount) {
-    addBtn.addEventListener('click', actions.onAddAccount);
-  }
+    // Bottom buttons
+    if (e.target.closest('#sidebar-add-account') && actions.onAddAccount) { actions.onAddAccount(); return; }
+    if (e.target.closest('#sidebar-analytics') && actions.onOpenAnalytics) { actions.onOpenAnalytics(); return; }
+    if (e.target.closest('#sidebar-calendar') && actions.onOpenCalendar) { actions.onOpenCalendar(); return; }
+    if (e.target.closest('#sidebar-contacts') && actions.onOpenContacts) { actions.onOpenContacts(); return; }
+    if (e.target.closest('#sidebar-settings') && actions.onOpenSettings) { actions.onOpenSettings(); return; }
+    if (e.target.closest('#sidebar-retry-folders') && actions.onRetryFolders) { actions.onRetryFolders(); return; }
+  };
 
-  const analyticsBtn = el.querySelector('#sidebar-analytics');
-  if (analyticsBtn && actions.onOpenAnalytics) {
-    analyticsBtn.addEventListener('click', actions.onOpenAnalytics);
-  }
+  el._sidebarKeydownHandler = (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const target = e.target.closest('.sidebar-account-item, [data-action="unified-inbox"], .sidebar-folder[data-folder], .sidebar-folder[data-search-folder], [data-action="add-search-folder"]');
+    if (!target) return;
+    e.preventDefault();
+    // Simulate click — the click handler above handles all cases
+    target.click();
+  };
 
-  const calendarBtn = el.querySelector('#sidebar-calendar');
-  if (calendarBtn && actions.onOpenCalendar) {
-    calendarBtn.addEventListener('click', actions.onOpenCalendar);
-  }
+  el._sidebarContextmenuHandler = (e) => {
+    const folderItem = e.target.closest('.sidebar-folder[data-folder]');
+    if (!folderItem) return;
+    e.preventDefault();
+    const folderName = folderItem.dataset.folder;
+    const menuItems = [
+      {
+        label: '\u21BB ' + t('refresh'),
+        action: () => {
+          if (actions.onRefreshFolder) actions.onRefreshFolder(folderName);
+        },
+      },
+      {
+        label: '\u2709 Mark all as read',
+        action: () => {
+          showToast('Mark all as read is not yet implemented.', 'info');
+        },
+      },
+    ];
+    showContextMenu(e.clientX, e.clientY, menuItems);
+  };
 
-  const contactsBtn = el.querySelector('#sidebar-contacts');
-  if (contactsBtn && actions.onOpenContacts) {
-    contactsBtn.addEventListener('click', actions.onOpenContacts);
-  }
+  el._sidebarDragoverHandler = (e) => {
+    const folderItem = e.target.closest('.sidebar-folder[data-folder]');
+    if (!folderItem) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    folderItem.classList.add('drag-over');
+  };
 
-  const settingsBtn = el.querySelector('#sidebar-settings');
-  if (settingsBtn && actions.onOpenSettings) {
-    settingsBtn.addEventListener('click', actions.onOpenSettings);
-  }
+  el._sidebarDragleaveHandler = (e) => {
+    const folderItem = e.target.closest('.sidebar-folder[data-folder]');
+    if (folderItem) folderItem.classList.remove('drag-over');
+  };
 
-  // Retry folders
-  const retryBtn = el.querySelector('#sidebar-retry-folders');
-  if (retryBtn && actions.onRetryFolders) {
-    retryBtn.addEventListener('click', actions.onRetryFolders);
-  }
+  el._sidebarDropHandler = async (e) => {
+    const folderItem = e.target.closest('.sidebar-folder[data-folder]');
+    if (!folderItem) return;
+    e.preventDefault();
+    folderItem.classList.remove('drag-over');
+
+    const raw = e.dataTransfer.getData('application/x-exospine-mail');
+    if (!raw) return;
+
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (parseErr) {
+      console.error('Invalid drag data:', parseErr);
+      return;
+    }
+
+    try {
+      const targetFolder = folderItem.dataset.folder;
+      if (data.folder === targetFolder) return;
+      await api.moveMail(data.accountId, data.folder, data.mailId, targetFolder);
+      showToast(`Moved to ${folderDisplayName(targetFolder)}`, 'success');
+      if (actions.onMoveMail) actions.onMoveMail(data.mailId);
+    } catch (err) {
+      showToast(`Move failed: ${err}`, 'error');
+    }
+  };
+
+  el.addEventListener('click', el._sidebarClickHandler);
+  el.addEventListener('keydown', el._sidebarKeydownHandler);
+  el.addEventListener('contextmenu', el._sidebarContextmenuHandler);
+  el.addEventListener('dragover', el._sidebarDragoverHandler);
+  el.addEventListener('dragleave', el._sidebarDragleaveHandler);
+  el.addEventListener('drop', el._sidebarDropHandler);
 }
 
 /**

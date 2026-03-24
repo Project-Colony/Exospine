@@ -114,6 +114,8 @@ function saveCustomTemplates(templates) {
  * @param {function} [onSent] callback after successful send
  */
 export async function openCompose(prefill = {}, onSent = null) {
+  // Clean up any lingering auto-save from a previous compose session
+  stopAutoSave();
   overlay.hidden = false;
 
   // Fetch per-account signature (fall back to default)
@@ -259,8 +261,14 @@ export async function openCompose(prefill = {}, onSent = null) {
     if (wordEl) wordEl.textContent = `${words} word${words !== 1 ? 's' : ''}`;
     if (charEl) charEl.textContent = `${chars} character${chars !== 1 ? 's' : ''}`;
   }
-  if (_composeBody) _composeBody.addEventListener('input', updateWordCharCount);
-  if (_composeMd) _composeMd.addEventListener('input', updateWordCharCount);
+  // Debounce word/char count updates with requestAnimationFrame
+  let _wcRAF = null;
+  const debouncedWCC = () => {
+    if (_wcRAF) cancelAnimationFrame(_wcRAF);
+    _wcRAF = requestAnimationFrame(updateWordCharCount);
+  };
+  if (_composeBody) _composeBody.addEventListener('input', debouncedWCC);
+  if (_composeMd) _composeMd.addEventListener('input', debouncedWCC);
   updateWordCharCount();
 
   // Wire up drag-and-drop file attachments
@@ -326,8 +334,12 @@ export async function openCompose(prefill = {}, onSent = null) {
       e.stopPropagation();
       schedDropdown.hidden = !schedDropdown.hidden;
     });
-    // Close dropdown on outside click
-    document.addEventListener('click', () => { schedDropdown.hidden = true; }, { once: false });
+    // Close dropdown on outside click — use overlay-scoped delegation instead of permanent document listener
+    overlay.addEventListener('click', (e) => {
+      if (!schedDropdown.contains(e.target) && e.target !== schedBtn) {
+        schedDropdown.hidden = true;
+      }
+    });
     schedDropdown.addEventListener('click', (e) => e.stopPropagation());
   }
 

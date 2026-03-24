@@ -6,6 +6,7 @@
 
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
+use std::time::Duration;
 
 use anyhow::Result;
 
@@ -42,16 +43,21 @@ pub async fn get_session(
     };
 
     if let Some(mut entry) = pooled {
-        // Verify the connection is still alive with a NOOP
-        match entry.session.noop().await {
-            Ok(_) => return Ok(entry.session),
-            Err(e) => {
+        // Verify the connection is still alive with a NOOP (5s timeout)
+        match tokio::time::timeout(Duration::from_secs(5), entry.session.noop()).await {
+            Ok(Ok(_)) => return Ok(entry.session),
+            Ok(Err(e)) => {
                 tracing::debug!(
                     account = %account.email,
                     error = %e,
                     "Pooled IMAP session stale, creating new one"
                 );
-                // Session is dead — drop it and fall through to create a new one
+            }
+            Err(_) => {
+                tracing::debug!(
+                    account = %account.email,
+                    "Pooled IMAP session NOOP timed out, creating new one"
+                );
             }
         }
     }
@@ -77,9 +83,9 @@ pub async fn get_session_for_folder(
     };
 
     if let Some(mut entry) = pooled {
-        // Verify the connection is still alive with a NOOP
-        match entry.session.noop().await {
-            Ok(_) => {
+        // Verify the connection is still alive with a NOOP (5s timeout)
+        match tokio::time::timeout(Duration::from_secs(5), entry.session.noop()).await {
+            Ok(Ok(_)) => {
                 if entry.selected_folder.as_deref() == Some(folder) {
                     // Already SELECT'd on this folder — skip the SELECT command
                     tracing::debug!(
@@ -93,11 +99,17 @@ pub async fn get_session_for_folder(
                 entry.session.select(folder).await?;
                 return Ok(entry.session);
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 tracing::debug!(
                     account = %account.email,
                     error = %e,
                     "Pooled IMAP session stale, creating new one"
+                );
+            }
+            Err(_) => {
+                tracing::debug!(
+                    account = %account.email,
+                    "Pooled IMAP session NOOP timed out, creating new one"
                 );
             }
         }

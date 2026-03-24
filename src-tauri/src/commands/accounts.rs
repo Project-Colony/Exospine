@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::app_state::{lock_or_recover, store_credential, Account};
+use crate::app_state::{lock_or_recover, remove_credential, store_credential, Account};
 use crate::AppState;
 
 /// Serializable provider detection result for the frontend.
@@ -251,6 +251,12 @@ pub async fn remove_account(
 
     // Delete from keyring
     let _ = crate::accounts::keyring_store::delete_password(&account_id);
+
+    // Clean up in-memory credentials
+    remove_credential(&account_id);
+
+    // Evict any pooled IMAP session
+    crate::mail::connection::evict_session(&account_id).await;
 
     // Remove from state
     {

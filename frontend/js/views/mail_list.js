@@ -291,6 +291,9 @@ function renderVisibleItems(container, state, actions) {
   const contentEl = container.querySelector('#ml-virtual-content');
   if (!contentEl) return;
 
+  // Cache display rules once per render call
+  const displayRules = loadDisplayRules();
+
   // Sort pinned emails to top (stable sort preserves date order within each group)
   const sortedMails = [...state.mails].sort((a, b) => {
     const aPinned = a.is_pinned ? 1 : 0;
@@ -318,7 +321,7 @@ function renderVisibleItems(container, state, actions) {
   html += `<div style="height:${topSpacer}px;" aria-hidden="true"></div>`;
 
   for (let i = startIdx; i < endIdx; i++) {
-    html += renderMailItem(visibleMails[i], state);
+    html += renderMailItem(visibleMails[i], state, false, displayRules);
   }
 
   html += `<div style="height:${bottomSpacer}px;" aria-hidden="true"></div>`;
@@ -332,6 +335,9 @@ function renderVisibleItems(container, state, actions) {
 function renderThreadedItems(container, state, actions) {
   const contentEl = container.querySelector('#ml-virtual-content');
   if (!contentEl) return;
+
+  // Cache display rules once per render call
+  const displayRules = loadDisplayRules();
 
   const threads = groupByThread(state.mails);
 
@@ -368,11 +374,11 @@ function renderThreadedItems(container, state, actions) {
   for (let i = startIdx; i < endIdx; i++) {
     const row = rows[i];
     if (row.type === 'mail') {
-      html += renderMailItem(row.mail, state);
+      html += renderMailItem(row.mail, state, false, displayRules);
     } else if (row.type === 'thread-header') {
       html += renderThreadHeader(row.thread, row.expanded);
     } else if (row.type === 'thread-child') {
-      html += renderMailItem(row.mail, state, true);
+      html += renderMailItem(row.mail, state, true, displayRules);
     }
   }
 
@@ -456,7 +462,7 @@ function renderFlagIcon(mail) {
   return `<div class="mail-item-flag flagged" data-flag-id="${esc(mail.id)}" title="Flagged: due ${esc(mail.flag_due_date)}" role="button" tabindex="0" style="cursor:pointer;font-size:13px;padding:2px 4px;color:${color};">\u2691</div>`;
 }
 
-function renderMailItem(mail, state, isThreadChild = false) {
+function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) {
   const isSelected = state.selectedMail && state.selectedMail.id === mail.id;
   const isUnread = !(mail.is_read || mail.read);
   const isStarred = mail.is_starred || mail.starred;
@@ -471,8 +477,8 @@ function renderMailItem(mail, state, isThreadChild = false) {
     ? `<span class="mail-item-account-badge" title="${esc(mail._accountEmail)}">${esc((mail._accountName || mail._accountEmail || '')[0] || '?')}</span>`
     : '';
 
-  // Apply conditional display rules from localStorage
-  const displayStyle = getDisplayRuleStyle(mail);
+  // Apply conditional display rules (use pre-cached rules if provided)
+  const displayStyle = cachedRules !== null ? getDisplayRuleStyleWith(mail, cachedRules) : getDisplayRuleStyle(mail);
 
   return `
     <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${indent}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0" style="height:${ITEM_HEIGHT}px;box-sizing:border-box;${displayStyle}">
@@ -721,6 +727,7 @@ function showFlagMenu(x, y, mailId, actions) {
 let _displayRulesCache = null;
 let _displayRulesCacheTime = 0;
 
+/** Apply display rules using the time-based cache (for backward compat / single-item calls). */
 function getDisplayRuleStyle(mail) {
   // Refresh cache every 5 seconds
   const now = Date.now();
@@ -728,8 +735,11 @@ function getDisplayRuleStyle(mail) {
     _displayRulesCache = loadDisplayRules();
     _displayRulesCacheTime = now;
   }
+  return getDisplayRuleStyleWith(mail, _displayRulesCache);
+}
 
-  const rules = _displayRulesCache;
+/** Apply display rules from a pre-loaded rules array (avoids per-item cache lookup). */
+function getDisplayRuleStyleWith(mail, rules) {
   if (!rules || rules.length === 0) return '';
 
   const styles = [];
