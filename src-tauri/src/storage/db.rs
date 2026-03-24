@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::app_state::{Account, ComposeDraft, MailEntry};
 
+/// A contact row: (email, name, frequency, phone, company, notes).
+pub type ContactRow = (String, String, u32, String, String, String);
+
 /// A scheduled email waiting to be sent.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScheduledEmail {
@@ -541,7 +544,7 @@ impl Database {
             .map(|s| s as &dyn rusqlite::types::ToSql)
             .collect();
         let entries = stmt
-            .query_map(param_refs.as_slice(), |row| row_to_mail_entry_full(row))?
+            .query_map(param_refs.as_slice(), row_to_mail_entry_full)?
             .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(entries)
     }
@@ -648,7 +651,7 @@ impl Database {
     }
 
     /// Get all contacts, ordered by name.
-    pub fn get_all_contacts(&self) -> Result<Vec<(String, String, u32, String, String, String)>> {
+    pub fn get_all_contacts(&self) -> Result<Vec<ContactRow>> {
         let mut stmt = self.conn.prepare(
             "SELECT email, name, frequency, phone, company, notes FROM contacts
              ORDER BY name ASC, email ASC",

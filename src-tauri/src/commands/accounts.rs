@@ -150,14 +150,16 @@ pub async fn add_oauth_account(
     tracing::info!("add_oauth_account: email={}", params.email);
 
     let account = crate::accounts::setup::create_oauth_account(
-        &params.name,
-        &params.email,
-        &params.access_token,
-        &params.refresh_token,
-        &params.imap_host,
-        params.imap_port,
-        &params.smtp_host,
-        params.smtp_port,
+        crate::accounts::setup::OAuthAccountParams {
+            name: &params.name,
+            email: &params.email,
+            access_token: &params.access_token,
+            refresh_token: &params.refresh_token,
+            imap_host: &params.imap_host,
+            imap_port: params.imap_port,
+            smtp_host: &params.smtp_host,
+            smtp_port: params.smtp_port,
+        },
     )
     .await
     .map_err(|e| format!("Failed to create OAuth account: {}", e))?;

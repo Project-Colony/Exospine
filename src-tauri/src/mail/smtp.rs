@@ -86,7 +86,7 @@ pub async fn send_mail_with_priority(
     let has_html = draft
         .body_html
         .as_ref()
-        .map_or(false, |h| !h.trim().is_empty());
+        .is_some_and(|h| !h.trim().is_empty());
 
     let email = if !has_html && draft.attachments.is_empty() {
         // Simple plain-text email (no HTML, no attachments).

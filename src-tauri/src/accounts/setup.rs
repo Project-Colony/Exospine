@@ -124,34 +124,37 @@ pub async fn create_account(
     Ok(account)
 }
 
+/// Parameters for creating an OAuth2-authenticated account.
+pub struct OAuthAccountParams<'a> {
+    pub name: &'a str,
+    pub email: &'a str,
+    pub access_token: &'a str,
+    pub refresh_token: &'a str,
+    pub imap_host: &'a str,
+    pub imap_port: u16,
+    pub smtp_host: &'a str,
+    pub smtp_port: u16,
+}
+
 /// Create an [`Account`] for an OAuth2-authenticated provider.
-pub async fn create_oauth_account(
-    name: &str,
-    email: &str,
-    access_token: &str,
-    refresh_token: &str,
-    imap_host: &str,
-    imap_port: u16,
-    smtp_host: &str,
-    smtp_port: u16,
-) -> Result<Account> {
+pub async fn create_oauth_account(params: OAuthAccountParams<'_>) -> Result<Account> {
     let id = uuid::Uuid::new_v4().to_string();
 
-    keyring_store::store_password(&id, access_token)
+    keyring_store::store_password(&id, params.access_token)
         .context("Failed to store OAuth access token securely")?;
 
     let account = Account {
         id,
-        name: name.to_owned(),
-        email: email.to_owned(),
-        imap_host: imap_host.to_owned(),
-        imap_port,
-        smtp_host: smtp_host.to_owned(),
-        smtp_port,
-        username: email.to_owned(),
+        name: params.name.to_owned(),
+        email: params.email.to_owned(),
+        imap_host: params.imap_host.to_owned(),
+        imap_port: params.imap_port,
+        smtp_host: params.smtp_host.to_owned(),
+        smtp_port: params.smtp_port,
+        username: params.email.to_owned(),
         use_tls: true,
         auth_method: crate::app_state::AuthMethod::OAuth2 {
-            refresh_token: refresh_token.to_owned(),
+            refresh_token: params.refresh_token.to_owned(),
         },
         folders: Vec::new(),
         signature: String::new(),

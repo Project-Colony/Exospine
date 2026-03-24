@@ -70,9 +70,10 @@ pub async fn fetch_password(account_id: String) -> Result<String, String> {
 // ── Authentication method ──────────────────────────────────────────────
 
 /// Authentication method for an account.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AuthMethod {
     /// Standard username + password (or app-specific password).
+    #[default]
     Basic,
     /// OAuth2 with a stored refresh token.
     OAuth2 {
@@ -81,11 +82,6 @@ pub enum AuthMethod {
     },
 }
 
-impl Default for AuthMethod {
-    fn default() -> Self {
-        Self::Basic
-    }
-}
 
 // ── Account ────────────────────────────────────────────────────────────
 
@@ -170,20 +166,15 @@ impl Default for Folder {
 }
 
 /// Semantic type of a mail folder, used for special handling and icons.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FolderType {
     Inbox,
     Sent,
     Drafts,
     Trash,
     Starred,
+    #[default]
     Custom,
-}
-
-impl Default for FolderType {
-    fn default() -> Self {
-        Self::Custom
-    }
 }
 
 // ── Mail entry ─────────────────────────────────────────────────────────

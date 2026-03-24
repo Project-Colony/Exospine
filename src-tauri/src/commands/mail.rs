@@ -455,7 +455,7 @@ pub async fn get_mail_body(
         {
             let db_guard = lock_or_recover(&state.db);
             if let Some(ref db) = *db_guard {
-                if let Err(e) = db.save_messages(&[mail.clone()]) {
+                if let Err(e) = db.save_messages(std::slice::from_ref(mail)) {
                     tracing::error!("get_mail_body: failed to cache body to DB: {}", e);
                 }
             }
@@ -780,6 +780,7 @@ pub async fn archive_mail(
 /// Search messages in the local SQLite cache for a given account and folder.
 /// Supports optional structured filters: filter_from, filter_subject, filter_to, filter_has_attachment.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn search_local(
     state: State<'_, AppState>,
     query: String,

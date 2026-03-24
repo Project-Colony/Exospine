@@ -42,8 +42,8 @@ pub async fn fetch_folders_with_counts(session: &mut ImapSession) -> Result<Vec<
         let (unread_count, total_count) =
             match session.status(&name, "(UNSEEN MESSAGES)").await {
                 Ok(mailbox) => {
-                    let unseen = mailbox.unseen.unwrap_or(0) as u32;
-                    let messages = mailbox.exists as u32;
+                    let unseen = mailbox.unseen.unwrap_or(0);
+                    let messages = mailbox.exists;
                     (unseen, messages)
                 }
                 Err(e) => {
@@ -151,9 +151,9 @@ pub fn classify_folder(name: &str, attributes: &[&str]) -> FolderType {
         FolderType::Sent
     } else if lower.contains("draft") {
         FolderType::Drafts
-    } else if lower.contains("trash") || lower.contains("deleted") || lower.contains("bin") {
-        FolderType::Trash
-    } else if lower.contains("junk") || lower.contains("spam") {
+    } else if lower.contains("trash") || lower.contains("deleted") || lower.contains("bin")
+        || lower.contains("junk") || lower.contains("spam")
+    {
         FolderType::Trash
     } else if lower.contains("starred") || lower.contains("flagged") {
         FolderType::Starred

@@ -206,7 +206,6 @@ fn main() {
             let idle_accounts: Vec<crate::app_state::Account> = {
                 let state: tauri::State<'_, AppState> = app.state();
                 let accts = app_state::lock_or_recover(&state.accounts).clone();
-                drop(state);
                 accts
             };
             for acct in idle_accounts {

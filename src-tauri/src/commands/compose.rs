@@ -65,7 +65,7 @@ pub async fn save_draft(
     let content_type = if draft
         .body_html
         .as_ref()
-        .map_or(false, |h| !h.trim().is_empty())
+        .is_some_and(|h| !h.trim().is_empty())
     {
         "text/html; charset=utf-8"
     } else {
