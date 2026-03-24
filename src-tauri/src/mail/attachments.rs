@@ -48,7 +48,51 @@ pub fn extract_metadata(raw: &[u8]) -> Vec<AttachmentMeta> {
         });
     }
 
+    // Fallback: if content_type is generic octet-stream, infer from filename extension
+    for meta in &mut metas {
+        if meta.content_type == "application/octet-stream" {
+            if let Some(better) = mime_from_extension(&meta.filename) {
+                meta.content_type = better.to_string();
+            }
+        }
+    }
+
     metas
+}
+
+/// Map common file extensions to MIME types.
+fn mime_from_extension(filename: &str) -> Option<&'static str> {
+    let ext = filename.rsplit('.').next()?.to_lowercase();
+    match ext.as_str() {
+        "txt" => Some("text/plain"),
+        "pdf" => Some("application/pdf"),
+        "csv" => Some("text/csv"),
+        "json" => Some("application/json"),
+        "md" => Some("text/markdown"),
+        "xml" => Some("text/xml"),
+        "html" | "htm" => Some("text/html"),
+        "png" => Some("image/png"),
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "gif" => Some("image/gif"),
+        "svg" => Some("image/svg+xml"),
+        "zip" => Some("application/zip"),
+        "gz" | "gzip" => Some("application/gzip"),
+        "tar" => Some("application/x-tar"),
+        "doc" => Some("application/msword"),
+        "docx" => Some("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        "xls" => Some("application/vnd.ms-excel"),
+        "xlsx" => Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        "ppt" => Some("application/vnd.ms-powerpoint"),
+        "pptx" => Some("application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+        "mp3" => Some("audio/mpeg"),
+        "mp4" => Some("video/mp4"),
+        "wav" => Some("audio/wav"),
+        "webp" => Some("image/webp"),
+        "ico" => Some("image/x-icon"),
+        "ics" => Some("text/calendar"),
+        "eml" => Some("message/rfc822"),
+        _ => None,
+    }
 }
 
 /// Save a specific attachment to disk by extracting it from the raw email.

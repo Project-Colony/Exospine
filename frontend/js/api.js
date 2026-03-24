@@ -62,8 +62,8 @@ export const detectProvider = (email) => invoke('detect_provider', { email });
 
 export const removeAccount = (accountId) => invoke('remove_account', { accountId });
 
-export const searchLocal = (query, accountId, folder) =>
-  invoke('search_local', { query, accountId, folder });
+export const searchLocal = (query, accountId, folder, filterFrom = null, filterSubject = null, filterTo = null, filterHasAttachment = false) =>
+  invoke('search_local', { query, accountId, folder, filterFrom, filterSubject, filterTo, filterHasAttachment });
 
 export const downloadAttachment = (accountId, folder, mailUid, partIndex) =>
   invoke('download_attachment', { accountId, folder, mailUid, partIndex });

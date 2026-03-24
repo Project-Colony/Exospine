@@ -14,6 +14,7 @@ use crate::AppState;
 /// Try to connect to IMAP. If the connection fails with what looks like an
 /// authentication error on an OAuth2 account, attempt to refresh the token
 /// and retry once.
+#[allow(dead_code)]
 async fn connect_with_oauth_retry(
     state: &State<'_, AppState>,
     account: &Account,
@@ -113,7 +114,7 @@ pub async fn get_folders(
     let account = get_account(&state, &account_id)?;
     let password = fetch_password(account_id.clone()).await?;
 
-    let mut session = crate::mail::connection::connect_with_retry(&account, &password, 3)
+    let mut session = crate::mail::connection::get_session(&account_id, &account, &password)
         .await
         .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
 
@@ -125,7 +126,7 @@ pub async fn get_folders(
     .map_err(|_| "Timeout: folder fetch took longer than 30 seconds".to_string())?
     .map_err(|e| format!("Failed to fetch folders: {}", e))?;
 
-    let _ = session.logout().await;
+    crate::mail::connection::return_session(&account_id, session);
 
     // 3. Cache folders in account state and persist to accounts.json
     {
@@ -165,13 +166,22 @@ pub async fn get_mails(
         }
     };
 
+    // Pagination boundary check: if requested offset exceeds total count, return empty
+    if cached_count > 0 && offset >= cached_count as u32 {
+        tracing::debug!(
+            "get_mails: page {} beyond total count {} — returning empty",
+            page, cached_count
+        );
+        return Ok(Vec::new());
+    }
+
     // If no cached data and first page, fetch the latest N mails from IMAP (fast)
     if cached_count == 0 && page == 0 {
         tracing::info!("get_mails: no cache, fetching from IMAP for {}/{}", account_id, folder);
         let account = get_account(&state, &account_id)?;
         let password = fetch_password(account_id.clone()).await?;
 
-        let mut session = crate::mail::connection::connect_with_retry(&account, &password, 3)
+        let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
             .await
             .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
 
@@ -181,7 +191,7 @@ pub async fn get_mails(
                 .await
                 .map_err(|e| format!("Failed to fetch messages: {}", e))?;
 
-        let _ = session.logout().await;
+        crate::mail::connection::return_session_with_folder(&account_id, session, folder.clone());
 
         // Ensure account_id is set on all entries (fetch_messages passes "" to parser)
         for m in &mut mails {
@@ -231,7 +241,9 @@ pub async fn sync_all_mails(
     let account = get_account(&state, &account_id)?;
     let password = fetch_password(account_id.clone()).await?;
 
-    let mut session = connect_with_oauth_retry(&state, &account, &password).await?;
+    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
+        .await
+        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
 
     // 1. Get all UIDs from IMAP
     let all_uids = crate::mail::imap::fetch_uids_for_folder(&mut session, &folder)
@@ -239,7 +251,7 @@ pub async fn sync_all_mails(
         .map_err(|e| format!("Failed to fetch UIDs: {}", e))?;
 
     if all_uids.is_empty() {
-        let _ = session.logout().await;
+        crate::mail::connection::return_session_with_folder(&account_id, session, folder);
         tracing::info!("sync_all_mails: no UIDs found, nothing to sync");
         return Ok(0);
     }
@@ -261,7 +273,7 @@ pub async fn sync_all_mails(
         .collect();
 
     if missing_uids.is_empty() {
-        let _ = session.logout().await;
+        crate::mail::connection::return_session_with_folder(&account_id, session, folder);
         tracing::info!("sync_all_mails: all UIDs already cached");
         return Ok(0);
     }
@@ -328,7 +340,7 @@ pub async fn sync_all_mails(
         }
     }
 
-    let _ = session.logout().await;
+    crate::mail::connection::return_session_with_folder(&account_id, session, folder.clone());
 
     if failed > 0 {
         tracing::warn!(
@@ -489,7 +501,7 @@ pub async fn refresh_folder(
         }
     };
 
-    let mut session = crate::mail::connection::connect_with_retry(&account, &password, 3)
+    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
         .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
 
@@ -517,7 +529,7 @@ pub async fn refresh_folder(
         crate::config::save_accounts(&accounts);
     }
 
-    let _ = session.logout().await;
+    crate::mail::connection::return_session_with_folder(&account_id, session, folder.clone());
 
     // Save to DB
     if !new_mails.is_empty() {
@@ -766,17 +778,90 @@ pub async fn archive_mail(
 }
 
 /// Search messages in the local SQLite cache for a given account and folder.
+/// Supports optional structured filters: filter_from, filter_subject, filter_to, filter_has_attachment.
 #[tauri::command]
 pub async fn search_local(
     state: State<'_, AppState>,
     query: String,
     account_id: String,
     folder: String,
+    filter_from: Option<String>,
+    filter_subject: Option<String>,
+    filter_to: Option<String>,
+    filter_has_attachment: Option<bool>,
 ) -> Result<Vec<MailEntry>, String> {
-    tracing::debug!("search_local: query={}, account_id={}, folder={}", query, account_id, folder);
+    tracing::debug!(
+        "search_local: query={}, account_id={}, folder={}, from={:?}, subject={:?}, to={:?}, has_attachment={:?}",
+        query, account_id, folder, filter_from, filter_subject, filter_to, filter_has_attachment
+    );
     let db_guard = lock_or_recover(&state.db);
     let db = db_guard.as_ref().ok_or("Database not available")?;
-    db.search_messages_in_folder(&query, &account_id, &folder)
+
+    // If no structured filters, use the standard search
+    let has_filters = filter_from.is_some()
+        || filter_subject.is_some()
+        || filter_to.is_some()
+        || filter_has_attachment.unwrap_or(false);
+
+    if !has_filters {
+        return db
+            .search_messages_in_folder(&query, &account_id, &folder)
+            .map_err(|e| e.to_string());
+    }
+
+    // Build dynamic SQL WHERE clause for structured search
+    let mut conditions = vec![
+        "account_id = ?1".to_string(),
+        "folder = ?2".to_string(),
+    ];
+    let mut param_values: Vec<String> = vec![account_id.clone(), folder.clone()];
+    let mut param_idx = 3u32;
+
+    if !query.is_empty() {
+        let pattern = format!("%{}%", query);
+        conditions.push(format!(
+            "(subject LIKE ?{idx} OR from_addr LIKE ?{idx} OR preview LIKE ?{idx})",
+            idx = param_idx
+        ));
+        param_values.push(pattern);
+        param_idx += 1;
+    }
+
+    if let Some(ref from_filter) = filter_from {
+        let pattern = format!("%{}%", from_filter);
+        conditions.push(format!("from_addr LIKE ?{}", param_idx));
+        param_values.push(pattern);
+        param_idx += 1;
+    }
+
+    if let Some(ref subject_filter) = filter_subject {
+        let pattern = format!("%{}%", subject_filter);
+        conditions.push(format!("subject LIKE ?{}", param_idx));
+        param_values.push(pattern);
+        param_idx += 1;
+    }
+
+    if let Some(ref to_filter) = filter_to {
+        let pattern = format!("%{}%", to_filter);
+        conditions.push(format!("to_addrs LIKE ?{}", param_idx));
+        param_values.push(pattern);
+        param_idx += 1;
+    }
+
+    if filter_has_attachment.unwrap_or(false) {
+        conditions.push("has_attachments = 1".to_string());
+    }
+
+    let _ = param_idx; // suppress unused warning
+
+    let where_clause = conditions.join(" AND ");
+    let sql = format!(
+        "SELECT id, account_id, folder, from_addr, to_addrs, subject, date, preview, body_text, body_html, is_read, is_starred, has_attachments, uid, message_id, in_reply_to, refs, thread_id, spam_score, categories, is_pinned, snoozed_until \
+         FROM messages WHERE {} ORDER BY date DESC LIMIT 100",
+        where_clause
+    );
+
+    db.search_messages_dynamic(&sql, &param_values)
         .map_err(|e| e.to_string())
 }
 
@@ -953,6 +1038,7 @@ pub async fn get_security_log(count: Option<u32>) -> Result<Vec<String>, String>
 }
 
 /// Add a category/label to a mail message.
+/// Also attempts to sync the keyword to IMAP via STORE +FLAGS.
 #[tauri::command]
 pub async fn add_category(
     state: State<'_, AppState>,
@@ -960,13 +1046,21 @@ pub async fn add_category(
     category: String,
 ) -> Result<(), String> {
     tracing::debug!("add_category: mail_id={}, category={}", mail_id, category);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not available")?;
-    db.add_category(&mail_id, &category)
-        .map_err(|e| format!("Failed to add category: {}", e))
+    {
+        let db_guard = lock_or_recover(&state.db);
+        let db = db_guard.as_ref().ok_or("Database not available")?;
+        db.add_category(&mail_id, &category)
+            .map_err(|e| format!("Failed to add category: {}", e))?;
+    }
+
+    // Best-effort sync to IMAP keywords
+    sync_imap_keyword(&state, &mail_id, &category, true).await;
+
+    Ok(())
 }
 
 /// Remove a category/label from a mail message.
+/// Also attempts to remove the IMAP keyword via STORE -FLAGS.
 #[tauri::command]
 pub async fn remove_category(
     state: State<'_, AppState>,
@@ -974,10 +1068,95 @@ pub async fn remove_category(
     category: String,
 ) -> Result<(), String> {
     tracing::debug!("remove_category: mail_id={}, category={}", mail_id, category);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not available")?;
-    db.remove_category(&mail_id, &category)
-        .map_err(|e| format!("Failed to remove category: {}", e))
+    {
+        let db_guard = lock_or_recover(&state.db);
+        let db = db_guard.as_ref().ok_or("Database not available")?;
+        db.remove_category(&mail_id, &category)
+            .map_err(|e| format!("Failed to remove category: {}", e))?;
+    }
+
+    // Best-effort sync to IMAP keywords
+    sync_imap_keyword(&state, &mail_id, &category, false).await;
+
+    Ok(())
+}
+
+/// Helper: sync a category as an IMAP keyword flag (+FLAGS or -FLAGS).
+/// Best-effort: failures are logged but do not cause the command to fail.
+async fn sync_imap_keyword(
+    state: &State<'_, AppState>,
+    mail_id: &str,
+    category: &str,
+    add: bool,
+) {
+    // Look up account_id, folder, uid for this mail
+    let meta = {
+        let db_guard = lock_or_recover(&state.db);
+        match db_guard.as_ref() {
+            Some(db) => db.load_message_meta(mail_id).ok(),
+            None => None,
+        }
+    };
+
+    let Some((account_id, folder, uid)) = meta else {
+        tracing::debug!("sync_imap_keyword: no meta for mail_id={}, skipping IMAP sync", mail_id);
+        return;
+    };
+
+    let account = match get_account(state, &account_id) {
+        Ok(a) => a,
+        Err(_) => return,
+    };
+    let password = match fetch_password(account_id.clone()).await {
+        Ok(p) => p,
+        Err(_) => return,
+    };
+
+    let session_result = crate::mail::connection::get_session_for_folder(
+        &account_id, &account, &password, &folder,
+    )
+    .await;
+
+    let mut session = match session_result {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!("sync_imap_keyword: failed to connect for {}: {}", mail_id, e);
+            return;
+        }
+    };
+
+    let flag_op = if add { "+FLAGS" } else { "-FLAGS" };
+    let uid_str = uid.to_string();
+    let keyword = category.replace(' ', "_");
+
+    match session
+        .uid_store(&uid_str, &format!("{} ({})", flag_op, keyword))
+        .await
+    {
+        Ok(stream) => {
+            // Consume the stream to complete the operation
+            use futures::TryStreamExt;
+            let _ = stream.try_collect::<Vec<_>>().await;
+            tracing::debug!(
+                "sync_imap_keyword: {} keyword '{}' on uid={} in {}/{}",
+                if add { "added" } else { "removed" },
+                keyword,
+                uid,
+                account_id,
+                folder
+            );
+        }
+        Err(e) => {
+            tracing::warn!(
+                "sync_imap_keyword: STORE {} failed for uid={}: {}",
+                flag_op,
+                uid,
+                e
+            );
+        }
+    }
+
+    crate::mail::connection::return_session_with_folder(&account_id, session, folder);
 }
 
 /// Report a mail as spam (stores user decision for future filtering).

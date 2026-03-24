@@ -30,7 +30,6 @@ static POOL: LazyLock<Mutex<HashMap<String, PoolEntry>>> =
 ///
 /// When the caller is done with the session, it should call [`return_session`]
 /// instead of logging out.
-#[allow(dead_code)]
 pub async fn get_session(
     account_id: &str,
     account: &Account,
@@ -65,7 +64,6 @@ pub async fn get_session(
 ///
 /// If the pool contains a session that already has this folder selected, the
 /// SELECT command is skipped entirely (~500ms saved). Otherwise SELECT is issued.
-#[allow(dead_code)]
 pub async fn get_session_for_folder(
     account_id: &str,
     account: &Account,
@@ -114,7 +112,6 @@ pub async fn get_session_for_folder(
 /// Return an IMAP session to the pool for later reuse.
 ///
 /// If returning fails for any reason the session is silently dropped.
-#[allow(dead_code)]
 pub fn return_session(account_id: &str, session: ImapSession) {
     let mut pool = crate::app_state::lock_or_recover(&POOL);
     pool.insert(account_id.to_owned(), PoolEntry {
@@ -124,7 +121,6 @@ pub fn return_session(account_id: &str, session: ImapSession) {
 }
 
 /// Return an IMAP session to the pool, remembering which folder is SELECT'd.
-#[allow(dead_code)]
 pub fn return_session_with_folder(account_id: &str, session: ImapSession, folder: String) {
     let mut pool = crate::app_state::lock_or_recover(&POOL);
     pool.insert(account_id.to_owned(), PoolEntry {

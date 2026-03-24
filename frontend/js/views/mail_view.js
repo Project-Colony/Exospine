@@ -13,9 +13,31 @@ function _saveZoomDebounced(val) {
   _zoomSaveTimer = setTimeout(() => localStorage.setItem('exospine_zoom', String(val)), 1000);
 }
 const _dismissedReceipts = new Set(); // Track dismissed read receipts per session
+const _expandedQuoteIds = new Set(); // Track expanded quoted text blocks across re-renders
 
 // ── Attachment preview cache ───────────────────────────────────────
 const _previewCache = new Map(); // "accountId:folder:uid:partIndex" -> data
+const _PREVIEW_CACHE_MAX = 20;
+
+function _previewCacheSet(key, value) {
+  // LRU eviction: if at capacity, delete the oldest (first) entry
+  if (_previewCache.size >= _PREVIEW_CACHE_MAX && !_previewCache.has(key)) {
+    const oldest = _previewCache.keys().next().value;
+    _previewCache.delete(oldest);
+  }
+  // Delete and re-insert to move to end (most recently used)
+  _previewCache.delete(key);
+  _previewCache.set(key, value);
+}
+
+function _previewCacheGet(key) {
+  if (!_previewCache.has(key)) return undefined;
+  const value = _previewCache.get(key);
+  // Move to end (most recently used)
+  _previewCache.delete(key);
+  _previewCache.set(key, value);
+  return value;
+}
 
 /**
  * Render the reading pane.
@@ -241,12 +263,21 @@ export function renderMailView(el, state, actions) {
   el.addEventListener('click', (e) => {
     const toggle = e.target.closest('.quoted-text-toggle');
     if (!toggle) return;
+    const qid = toggle.dataset.quoteId;
     const quotedBlock = toggle.nextElementSibling;
     if (quotedBlock) {
       const isHidden = quotedBlock.hidden;
       quotedBlock.hidden = !isHidden;
       toggle.setAttribute('aria-expanded', String(!isHidden));
       toggle.textContent = isHidden ? '\u22EF Hide quoted text' : '\u22EF Show quoted text';
+      // Persist expanded state for re-renders
+      if (qid) {
+        if (!isHidden) {
+          _expandedQuoteIds.delete(qid);
+        } else {
+          _expandedQuoteIds.add(qid);
+        }
+      }
     }
   });
   el.addEventListener('keydown', (e) => {
@@ -495,10 +526,10 @@ async function openAttachmentPreview(el, mail, partIndex, previewType, contentTy
   const cacheKey = `${mail.account_id}:${mail.folder}:${mail.uid}:${partIndex}`;
 
   try {
-    let data = _previewCache.get(cacheKey);
+    let data = _previewCacheGet(cacheKey);
     if (!data) {
       data = await api.getAttachmentContent(mail.account_id, mail.folder, mail.uid, partIndex);
-      _previewCache.set(cacheKey, data);
+      _previewCacheSet(cacheKey, data);
     }
 
     if (previewType === 'image') {
@@ -571,12 +602,29 @@ function showImageLightbox(src, filename) {
 }
 
 // ── Feature: Collapse quoted text in plain text emails ─────────────
+let _quoteIdCounter = 0;
 function collapseQuotedText(text) {
+  _quoteIdCounter = 0;
+
+  function makeToggle() {
+    const qid = 'quote-' + (_quoteIdCounter++);
+    const isExpanded = _expandedQuoteIds.has(qid);
+    const label = isExpanded ? '\u22EF Hide quoted text' : '\u22EF Show quoted text';
+    return {
+      toggle: `<div class="quoted-text-toggle" data-quote-id="${qid}" role="button" tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? 'Hide' : 'Show'} quoted text">${label}</div>`,
+      blockAttr: isExpanded ? '' : ' hidden',
+      qid,
+    };
+  }
+
   // Pattern 1: "On ... wrote:" followed by the rest
-  text = text.replace(
-    /(On .+wrote:[\s\S]+$)/m,
-    '<div class="quoted-text-toggle" role="button" tabindex="0" aria-expanded="false" aria-label="Show quoted text">\u22EF Show quoted text</div><div class="quoted-text" hidden>$1</div>'
-  );
+  if (/(On .+wrote:[\s\S]+$)/m.test(text)) {
+    const qt = makeToggle();
+    text = text.replace(
+      /(On .+wrote:[\s\S]+$)/m,
+      qt.toggle + '<div class="quoted-text" data-quote-id="' + qt.qid + '"' + qt.blockAttr + '>$1</div>'
+    );
+  }
 
   // Pattern 2: Lines starting with ">" (if not already handled)
   if (!text.includes('quoted-text-toggle')) {
@@ -595,8 +643,9 @@ function collapseQuotedText(text) {
       } else if (!isQuotedLine && inQuote) {
         const quotedLines = lines.slice(quoteStart, i);
         if (quotedLines.length >= 3) {
-          result.push('<div class="quoted-text-toggle" role="button" tabindex="0" aria-expanded="false" aria-label="Show quoted text">\u22EF Show quoted text</div>');
-          result.push('<div class="quoted-text" hidden>' + quotedLines.join('\n') + '</div>');
+          const qt = makeToggle();
+          result.push(qt.toggle);
+          result.push('<div class="quoted-text" data-quote-id="' + qt.qid + '"' + qt.blockAttr + '>' + quotedLines.join('\n') + '</div>');
         } else {
           result.push(...quotedLines);
         }
@@ -611,8 +660,9 @@ function collapseQuotedText(text) {
     if (inQuote) {
       const quotedLines = lines.slice(quoteStart);
       if (quotedLines.length >= 3) {
-        result.push('<div class="quoted-text-toggle" role="button" tabindex="0" aria-expanded="false" aria-label="Show quoted text">\u22EF Show quoted text</div>');
-        result.push('<div class="quoted-text" hidden>' + quotedLines.join('\n') + '</div>');
+        const qt = makeToggle();
+        result.push(qt.toggle);
+        result.push('<div class="quoted-text" data-quote-id="' + qt.qid + '"' + qt.blockAttr + '>' + quotedLines.join('\n') + '</div>');
       } else {
         result.push(...quotedLines);
       }
@@ -648,15 +698,17 @@ async function handleDownloadAttachment(mail, partIndex) {
 function printEmail(mail, body) {
   if (!body) return;
   const content = body.html || `<pre style="white-space:pre-wrap;font-family:sans-serif;">${esc(body.text || '')}</pre>`;
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
+  const w = window.open('', '_blank');
+  if (!w) {
     showToast('Pop-up blocked. Please allow pop-ups.', 'error');
     return;
   }
-  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(mail.subject || '')}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:20px;font-size:14px;color:#1e1e1e;}img{max-width:100%;height:auto;}</style></head><body>${content}</body></html>`);
-  printWindow.document.close();
-  printWindow.print();
-  printWindow.close();
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(mail.subject || '')}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:20px;font-size:14px;color:#1e1e1e;}img{max-width:100%;height:auto;}</style></head><body>${content}</body></html>`);
+  w.document.close();
+  w.onafterprint = () => w.close();
+  w.print();
+  // Fallback: close after 30s in case onafterprint doesn't fire
+  setTimeout(() => { try { w.close(); } catch {} }, 30000);
 }
 
 /**

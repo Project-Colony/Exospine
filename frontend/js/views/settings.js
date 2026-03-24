@@ -339,6 +339,22 @@ export async function openSettings(state, actions) {
         if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
         keyDesc += e.key;
 
+        // Check for conflicts with existing shortcuts
+        const merged = getMergedShortcuts();
+        const conflictAction = Object.entries(merged).find(
+          ([a, k]) => a !== action && k === keyDesc
+        );
+        if (conflictAction) {
+          const labels = {
+            compose: 'Compose', reply: 'Reply', replyAll: 'Reply All',
+            forward: 'Forward', delete: 'Delete', archive: 'Archive',
+            star: 'Star', unread: 'Mark Unread', next: 'Next Email',
+            prev: 'Previous Email', refresh: 'Refresh', focusMode: 'Focus Mode',
+          };
+          const conflictLabel = labels[conflictAction[0]] || conflictAction[0];
+          showToast(`Warning: "${keyDesc}" is already used by "${conflictLabel}". Overriding.`, 'warning');
+        }
+
         const bindings = loadCustomKeybindings();
         bindings[action] = keyDesc;
         saveCustomKeybindings(bindings);
@@ -672,7 +688,7 @@ export async function openSettings(state, actions) {
         try {
           await api.saveSignature(accountId, signature, null);
         } catch (sigErr) {
-          console.warn('Failed to save signature for', accountId, sigErr);
+          showToast(`Failed to save signature for ${accountId}: ${sigErr}`, 'error');
         }
       }
 

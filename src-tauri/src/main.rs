@@ -1,7 +1,8 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Mutex;
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
 
 mod accounts;
 mod app_state;
@@ -393,15 +394,36 @@ fn main() {
         });
 }
 
+// ── Per-account token refresh lock ───────────────────────────────────
+
+/// Prevents concurrent token refreshes for the same account.
+/// Multiple tasks waiting on the same account will serialize;
+/// the first to finish stores the new token and the rest will
+/// find it in the credential store, avoiding double-refresh.
+static TOKEN_REFRESH_LOCKS: LazyLock<Mutex<HashMap<String, std::sync::Arc<tokio::sync::Mutex<()>>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn get_token_refresh_lock(account_id: &str) -> std::sync::Arc<tokio::sync::Mutex<()>> {
+    let mut map = TOKEN_REFRESH_LOCKS.lock().unwrap_or_else(|e| e.into_inner());
+    map.entry(account_id.to_string())
+        .or_insert_with(|| std::sync::Arc::new(tokio::sync::Mutex::new(())))
+        .clone()
+}
+
 // ── OAuth2 token refresh helper for IMAP auth failures ──────────────
 
 /// Try to refresh an OAuth2 token for the given account.
 /// Returns the new access token on success, or an error message.
 /// Also stores the rotated refresh token if one is returned.
+/// Uses a per-account lock to prevent concurrent double-refreshes.
 pub async fn try_refresh_oauth_token(
     account: &Account,
     config: &Config,
 ) -> Result<String, String> {
+    // Acquire per-account lock — if another task is already refreshing,
+    // we wait for it and then return the already-refreshed credential.
+    let lock = get_token_refresh_lock(&account.id);
+    let _guard = lock.lock().await;
     let refresh_token = match &account.auth_method {
         app_state::AuthMethod::OAuth2 { refresh_token } => refresh_token.clone(),
         _ => return Err("Account is not OAuth2".to_string()),

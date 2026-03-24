@@ -404,6 +404,45 @@ export function renderSidebar(el, state, actions) {
 }
 
 /**
+ * Lightweight unread badge update — only patches badge text in existing DOM
+ * without re-rendering the entire sidebar. Call this instead of renderSidebar
+ * when only unread counts changed.
+ * @param {HTMLElement} el  #sidebar element
+ * @param {object} state    app state (only state.folders is read)
+ */
+export function updateUnreadBadges(el, state) {
+  for (const folder of state.folders) {
+    const name = typeof folder === 'string' ? folder : folder.name;
+    const unread = typeof folder === 'object' ? (folder.unread_count || folder.unread || 0) : 0;
+    const folderEl = el.querySelector(`.sidebar-folder[data-folder="${CSS.escape(name)}"]`);
+    if (!folderEl) continue;
+
+    const existing = folderEl.querySelector('.sidebar-folder-badge');
+    if (unread > 0) {
+      if (existing) {
+        // Just update the number text
+        if (existing.textContent !== String(unread)) {
+          existing.textContent = unread;
+          existing.setAttribute('aria-label', `${unread} unread`);
+        }
+      } else {
+        // Add badge
+        const badge = document.createElement('span');
+        badge.className = 'sidebar-folder-badge';
+        badge.setAttribute('aria-label', `${unread} unread`);
+        badge.textContent = unread;
+        folderEl.appendChild(badge);
+      }
+    } else {
+      // Remove badge if count is 0
+      if (existing) existing.remove();
+    }
+  }
+  // Update fingerprint cache so a subsequent full renderSidebar knows badges are current
+  _sidebarCacheKey = _sidebarFingerprint(state);
+}
+
+/**
  * Return a human-friendly display name for IMAP folder paths.
  * Strips common prefixes like "[Gmail]/" for cleaner sidebar display,
  * and decodes IMAP modified UTF-7 encoded names.

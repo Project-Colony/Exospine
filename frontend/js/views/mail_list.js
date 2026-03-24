@@ -12,6 +12,9 @@ let _scrollListener = null;
 let _lastState = null;
 let _lastActions = null;
 
+// ── Scroll position preservation per folder ────────────────────────
+const _folderScrollPositions = new Map();
+
 // ── Predefined categories with colors ──────────────────────────────
 const CATEGORIES = [
   { name: 'Important', color: '#e74c3c' },
@@ -44,7 +47,9 @@ function groupByThread(mails) {
   if (_cachedThreadMails === mails && _cachedThreads) return _cachedThreads;
   const map = new Map();
   for (const mail of mails) {
-    const tid = mail.thread_id || mail.id;
+    // Only group mails that share a thread_id different from their own id.
+    // If thread_id is empty or equals the mail's own id, treat as standalone.
+    const tid = (mail.thread_id && mail.thread_id !== mail.id) ? mail.thread_id : mail.id;
     if (!map.has(tid)) {
       map.set(tid, []);
     }
@@ -169,15 +174,26 @@ export function renderMailList(el, state, actions) {
     }
   }
 
-  // Preserve scroll position
+  // Preserve scroll position — save current scroll to folder map before replacing DOM
   const oldContainer = el.querySelector('#ml-virtual-container');
-  const savedScroll = oldContainer ? oldContainer.scrollTop : 0;
+  const prevFolder = el.dataset.currentFolder || '';
+  if (oldContainer && prevFolder) {
+    _folderScrollPositions.set(prevFolder, oldContainer.scrollTop);
+  }
 
   el.innerHTML = html;
+  // Track which folder this render is for
+  el.dataset.currentFolder = state.activeFolder || '';
 
   // Virtual scroll
   const container = el.querySelector('#ml-virtual-container');
   if (container) {
+    // Restore scroll: use folder-keyed position if returning to a folder,
+    // otherwise fall back to the previous same-render scroll position
+    const folderScroll = _folderScrollPositions.get(state.activeFolder || '');
+    const savedScroll = (state.activeFolder && state.activeFolder === prevFolder && oldContainer)
+      ? (oldContainer ? oldContainer.scrollTop : 0)
+      : (folderScroll || 0);
     container.scrollTop = savedScroll;
     if (_threadViewEnabled) {
       renderThreadedItems(container, state, actions);

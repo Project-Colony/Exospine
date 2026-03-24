@@ -1058,6 +1058,12 @@ function setupAutocomplete(inputId, dropdownId) {
             e.preventDefault();
             const email = item.dataset.email;
             const name = item.dataset.name;
+
+            // Validate email format before inserting
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+              return; // Skip invalid email entries
+            }
+
             const display = name ? `${name} <${email}>` : email;
 
             // Replace the current part (after last comma) with the selected contact

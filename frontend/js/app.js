@@ -3,7 +3,7 @@
 import * as api from './api.js';
 import { showToast } from './components/toast.js';
 import { showDialog } from './components/dialog.js';
-import { renderSidebar } from './views/sidebar.js';
+import { renderSidebar, updateUnreadBadges } from './views/sidebar.js';
 import { renderMailList } from './views/mail_list.js';
 import { renderMailView } from './views/mail_view.js';
 import { openCompose, makeReplyPrefill, makeForwardPrefill } from './views/compose.js';
@@ -80,21 +80,33 @@ async function replayQueue() {
   if (_actionQueue.length === 0) return;
   showToast(`Replaying ${_actionQueue.length} queued action(s)...`, 'info');
 
+  const MAX_RETRIES = 3;
+
   // Process in batches of 5 with Promise.allSettled
   while (_actionQueue.length > 0) {
     const batch = _actionQueue.splice(0, 5);
     const results = await Promise.allSettled(batch.map((a) => executeAction(a)));
 
-    // Re-queue any that failed (in order)
+    // Re-queue any that failed (in order), with retry count
     const failed = [];
+    const discarded = [];
     for (let i = 0; i < results.length; i++) {
       if (results[i].status === 'rejected') {
-        failed.push(batch[i]);
+        const action = batch[i];
+        action._retryCount = (action._retryCount || 0) + 1;
+        if (action._retryCount >= MAX_RETRIES) {
+          discarded.push(action);
+        } else {
+          failed.push(action);
+        }
       }
+    }
+    if (discarded.length > 0) {
+      showToast(`${discarded.length} action(s) failed after ${MAX_RETRIES} retries and were discarded.`, 'error');
     }
     if (failed.length > 0) {
       _actionQueue.unshift(...failed);
-      break; // stop on first batch with failures
+      break; // stop on first batch with failures, will retry next time
     }
   }
 
@@ -299,6 +311,7 @@ function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', 'high-contrast');
   } else if (theme === 'custom') {
     document.documentElement.removeAttribute('data-theme');
+    // Read and apply custom theme colors from localStorage
     applyCustomTheme();
   } else {
     document.documentElement.removeAttribute('data-theme');
@@ -470,18 +483,28 @@ function mailViewActions() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Safe render wrapper — error boundaries for views
+// ---------------------------------------------------------------------------
+function safeRender(fn, fallbackEl) {
+  try { fn(); } catch (e) {
+    console.error('Render error:', e);
+    if (fallbackEl) fallbackEl.innerHTML = '<div style="padding:20px;color:red;">Something went wrong. <button onclick="location.reload()">Reload</button></div>';
+  }
+}
+
 function renderAll() {
-  renderSidebar(sidebarEl, state, sidebarActions());
-  renderMailList(mailListEl, state, mailListActions());
-  renderMailView(mailViewEl, state, mailViewActions());
+  safeRender(() => renderSidebar(sidebarEl, state, sidebarActions()), sidebarEl);
+  safeRender(() => renderMailList(mailListEl, state, mailListActions()), mailListEl);
+  safeRender(() => renderMailView(mailViewEl, state, mailViewActions()), mailViewEl);
 }
 
 function renderList() {
-  renderMailList(mailListEl, state, mailListActions());
+  safeRender(() => renderMailList(mailListEl, state, mailListActions()), mailListEl);
 }
 
 function renderView() {
-  renderMailView(mailViewEl, state, mailViewActions());
+  safeRender(() => renderMailView(mailViewEl, state, mailViewActions()), mailViewEl);
 }
 
 // ---------------------------------------------------------------------------
@@ -531,6 +554,14 @@ async function loadMails(append = false) {
   }
 
   state.loading = false;
+
+  // After sync: if the selected mail no longer exists in the loaded mails, deselect it
+  if (state.selectedMail && !state.mails.some((m) => m.id === state.selectedMail.id)) {
+    state.selectedMail = null;
+    state.mailBody = null;
+    renderView();
+  }
+
   renderList();
 }
 
@@ -656,12 +687,40 @@ async function refreshCurrentFolder() {
 
   await loadMails();
   await loadFolders();
-  renderSidebar(sidebarEl, state, sidebarActions());
+  // Only update badge numbers instead of full sidebar re-render
+  updateUnreadBadges(sidebarEl, state);
 }
 
 async function loadMoreMails() {
   state.page += 1;
   await loadMails(true);
+}
+
+/**
+ * Parse search query for operators: from:, subject:, to:, has:attachment.
+ * Remaining text is treated as a general query.
+ */
+function parseSearchOperators(query) {
+  const result = { text: '', from: '', subject: '', to: '', hasAttachment: false };
+  const remaining = [];
+
+  const tokens = query.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+  for (const token of tokens) {
+    const lower = token.toLowerCase();
+    if (lower.startsWith('from:')) {
+      result.from = token.slice(5).replace(/^"|"$/g, '');
+    } else if (lower.startsWith('subject:')) {
+      result.subject = token.slice(8).replace(/^"|"$/g, '');
+    } else if (lower.startsWith('to:')) {
+      result.to = token.slice(3).replace(/^"|"$/g, '');
+    } else if (lower === 'has:attachment' || lower === 'has:attachments') {
+      result.hasAttachment = true;
+    } else {
+      remaining.push(token);
+    }
+  }
+  result.text = remaining.join(' ');
+  return result;
 }
 
 async function searchMails(query) {
@@ -677,8 +736,20 @@ async function searchMails(query) {
 
   try {
     const accountId = activeAccountId();
-    const results = await api.searchLocal(query, accountId, state.activeFolder);
-    state.mails = Array.isArray(results) ? results : (results.mails || []);
+    const parsed = parseSearchOperators(query);
+    const hasOperators = parsed.from || parsed.subject || parsed.to || parsed.hasAttachment;
+
+    if (hasOperators) {
+      const results = await api.searchLocal(
+        parsed.text || '', accountId, state.activeFolder,
+        parsed.from || null, parsed.subject || null, parsed.to || null,
+        parsed.hasAttachment || false
+      );
+      state.mails = Array.isArray(results) ? results : (results.mails || []);
+    } else {
+      const results = await api.searchLocal(query, accountId, state.activeFolder);
+      state.mails = Array.isArray(results) ? results : (results.mails || []);
+    }
     state.hasMore = false;
   } catch (err) {
     showToast(`Search failed: ${err}`, 'error');
@@ -1250,7 +1321,7 @@ function setupTauriEvents() {
     });
   } catch {
     // Tauri events API not available (running outside Tauri or dev mode)
-    console.warn('Tauri event API not available. Running in standalone mode.');
+    console.debug('Tauri event API not available. Running in standalone mode.');
   }
 }
 
@@ -1505,13 +1576,16 @@ async function init() {
     state._syncProgress = 0;
     renderList();
 
-    api.syncAllMails(syncAccountId, syncFolder).then((count) => {
+    api.syncAllMails(syncAccountId, syncFolder).then(async (count) => {
       state._syncing = false;
       state._syncProgress = 0;
       if (count > 0) {
         playNotificationSound();
         showToast(`Synced ${count} mails in background.`, 'info');
-        loadMails();
+        await loadMails();
+        // Update folder unread counts in sidebar
+        await loadFolders();
+        renderSidebar(sidebarEl, state, sidebarActions());
       } else {
         renderList();
       }
@@ -1535,7 +1609,8 @@ async function init() {
   updateUnreadTitle();
   setInterval(updateUnreadTitle, 30000);
 
-  // Background task: periodic check for new mails every 60 seconds
+  // Background task: periodic check for new mails using check_interval_secs from settings
+  const checkIntervalMs = ((state.settings && state.settings.check_interval) || 60) * 1000;
   let _lastMailIds = new Set((state.mails || []).map(m => m.id));
   setInterval(async () => {
     try {
@@ -1545,6 +1620,9 @@ async function init() {
       if (refreshed && refreshed.length > 0) {
         // Refresh detected new mails on server
         await loadMails();
+        // Update folder unread counts in sidebar
+        await loadFolders();
+        renderSidebar(sidebarEl, state, sidebarActions());
         const currentIds = new Set((state.mails || []).map(m => m.id));
         let newCount = 0;
         for (const id of currentIds) {
@@ -1559,7 +1637,7 @@ async function init() {
     } catch {
       // Silent fail for background refresh
     }
-  }, 60000);
+  }, checkIntervalMs);
 
   // Background task: check for due scheduled emails and snoozed emails every 60 seconds
   setInterval(async () => {
@@ -1586,8 +1664,11 @@ async function init() {
           }
         }
         showToast(`${dueSnoozed.length} snoozed email${dueSnoozed.length > 1 ? 's' : ''} returned.`, 'info');
-        // Reload mail list to show unssnoozed mails
+        // Reload mail list to show unsnoozed mails
         await loadMails();
+        // Update folder unread counts in sidebar
+        await loadFolders();
+        renderSidebar(sidebarEl, state, sidebarActions());
       }
     } catch {
       // Silent fail

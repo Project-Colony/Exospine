@@ -532,6 +532,20 @@ impl Database {
         Ok(entries)
     }
 
+    /// Execute a dynamic SQL search query with positional string parameters.
+    /// The SQL must select the same columns as `row_to_mail_entry_full`.
+    pub fn search_messages_dynamic(&self, sql: &str, params: &[String]) -> Result<Vec<MailEntry>> {
+        let mut stmt = self.conn.prepare(sql)?;
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params
+            .iter()
+            .map(|s| s as &dyn rusqlite::types::ToSql)
+            .collect();
+        let entries = stmt
+            .query_map(param_refs.as_slice(), |row| row_to_mail_entry_full(row))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(entries)
+    }
+
     // ── Sweep sender ─────────────────────────────────────────────────
 
     /// Delete all messages from a given sender in a folder. Returns UIDs of deleted messages.
