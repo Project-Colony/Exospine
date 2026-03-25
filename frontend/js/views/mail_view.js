@@ -5,6 +5,23 @@ import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { t } from '../i18n.js';
 
+// -- Muted threads (persisted in localStorage) --
+function getMutedThreads() {
+  try {
+    const raw = localStorage.getItem('exospine_muted_threads');
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function setMutedThreads(ids) {
+  localStorage.setItem('exospine_muted_threads', JSON.stringify(ids));
+}
+export function isThreadMuted(threadId) {
+  return getMutedThreads().includes(threadId);
+}
+
+// -- Reminder timers (in-memory, cleared on page reload) --
+const _reminderTimers = new Map();
+
 // ── Zoom state (persisted across mail selections) ──────────────────
 let _zoomLevel = parseFloat(localStorage.getItem('exospine_zoom') || '100');
 let _zoomSaveTimer = null;
@@ -84,7 +101,7 @@ export function renderMailView(el, state, actions) {
       <div class="mail-view-meta">
         <div class="mail-view-meta-row">
           <span class="mail-view-meta-label" id="mv-from-label">From</span>
-          <span class="mail-view-meta-value" aria-labelledby="mv-from-label">${esc(mail.from || 'Unknown')} <button class="mail-view-copy-email" data-copy-email="${esc(mail.from || '')}" title="Copy email address" aria-label="Copy email address" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--accent);padding:0 4px;vertical-align:middle;">\u{1F4CB}</button></span>
+          <span class="mail-view-meta-value" aria-labelledby="mv-from-label"><span class="mail-view-from-hover" data-from-email="${esc(mail.from || '')}">${esc(mail.from || 'Unknown')}</span> <button class="mail-view-copy-email" data-copy-email="${esc(mail.from || '')}" title="Copy email address" aria-label="Copy email address" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--accent);padding:0 4px;vertical-align:middle;">\u{1F4CB}</button></span>
         </div>
         <div class="mail-view-meta-row">
           <span class="mail-view-meta-label" id="mv-to-label">To</span>
@@ -98,6 +115,7 @@ export function renderMailView(el, state, actions) {
         ` : ''}
       </div>
       <div class="mail-view-date">${formatFullDate(mail.date)}</div>
+      <div class="mail-view-reading-time" aria-label="Reading time">${(() => { const txt = (body && body.text) || (body && body.html && body.html.replace(/<[^>]+>/g, "")); if (!txt) return ""; const words = txt.trim().split(/\s+/).length; const mins = Math.max(1, Math.round(words / 200)); return "~" + mins + " min read"; })()}</div>
     </div>
   `;
 
@@ -127,6 +145,17 @@ export function renderMailView(el, state, actions) {
       <button class="mail-view-toolbar-btn" data-action="print" title="${t('print')}" aria-label="${t('print')}">\uD83D\uDDA8 ${t('print')}</button>
       <button class="mail-view-toolbar-btn" data-action="export" title="${t('export')}" aria-label="${t('export')}">\u2B07 ${t('export')}</button>
       <button class="mail-view-toolbar-btn" data-action="view-headers" title="${t('headers')}" aria-label="${t('headers')}">\uD83D\uDD0D ${t('headers')}</button>
+      <button class="mail-view-toolbar-btn" data-action="mute-thread" title="Mute thread" aria-label="Mute thread">${(() => { const tid = mail.thread_id || mail.id; const muted = getMutedThreads().includes(tid); return muted ? '\u{1F507} Unmute' : '\u{1F515} Mute'; })()}</button>
+      <div style="position:relative;display:inline-block;">
+        <button class="mail-view-toolbar-btn" data-action="remind" title="Remind me" aria-label="Remind me" aria-expanded="false" aria-controls="remind-dropdown">\u{23F0} Remind</button>
+        <div class="remind-dropdown" id="remind-dropdown" hidden
+             style="position:absolute;top:100%;right:0;background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:6px;padding:4px 0;z-index:100;min-width:160px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+          <div class="remind-option" data-remind="30" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0">In 30 minutes</div>
+          <div class="remind-option" data-remind="60" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0">In 1 hour</div>
+          <div class="remind-option" data-remind="180" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0">In 3 hours</div>
+          <div class="remind-option" data-remind="tomorrow" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0">Tomorrow</div>
+        </div>
+      </div>
       <button class="mail-view-toolbar-btn" data-action="mark-unread" title="${t('mark_unread')}" aria-label="${t('mark_unread')}">\u2709 ${t('mark_unread')}</button>
       <div style="position:relative;display:inline-block;">
         <button class="mail-view-toolbar-btn" data-action="snooze" title="Snooze email" aria-label="Snooze email" aria-expanded="false" aria-controls="snooze-dropdown">\u23F0 Snooze</button>
@@ -278,6 +307,19 @@ export function renderMailView(el, state, actions) {
       }
     }
   }
+
+
+  // Quick reply templates
+  html += '<div class="quick-reply-templates" id="quick-reply-templates">';
+  html += '<span class="quick-reply-templates-label">Quick reply:</span>';
+  const templates = ["Thanks!", "Got it!", "I\'ll check", "Will do!"];
+  for (const tpl of templates) {
+    html += `<button class="quick-reply-pill" data-reply-text="${esc(tpl)}">${esc(tpl)}</button>`;
+  }
+  html += '</div>';
+
+  // Sender profile card (hidden, shown on hover)
+  html += '<div class="sender-profile-card" id="sender-profile-card" hidden></div>';
 
   el.innerHTML = html;
 
@@ -532,6 +574,168 @@ export function renderMailView(el, state, actions) {
       }
     });
   });
+
+  // -- Feature 1: Mute thread toggle --
+  const muteBtn = el.querySelector('[data-action="mute-thread"]');
+  if (muteBtn) {
+    muteBtn.addEventListener('click', () => {
+      const tid = mail.thread_id || mail.id;
+      const muted = getMutedThreads();
+      const idx = muted.indexOf(tid);
+      if (idx >= 0) {
+        muted.splice(idx, 1);
+        showToast('Thread unmuted.', 'info');
+      } else {
+        muted.push(tid);
+        showToast('Thread muted. No notifications for this thread.', 'info');
+      }
+      setMutedThreads(muted);
+      muteBtn.textContent = muted.includes(tid) ? '\u{1F507} Unmute' : '\u{1F515} Mute';
+    });
+  }
+
+  // -- Feature 4: Remind dropdown toggle + handlers --
+  const remindBtn = el.querySelector('[data-action="remind"]');
+  if (remindBtn) {
+    remindBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dropdown = el.querySelector('#remind-dropdown');
+      if (dropdown) {
+        dropdown.hidden = !dropdown.hidden;
+        remindBtn.setAttribute('aria-expanded', String(!dropdown.hidden));
+      }
+    });
+  }
+  el.querySelectorAll('.remind-option').forEach((opt) => {
+    opt.addEventListener('click', () => {
+      const val = opt.dataset.remind;
+      let delayMs;
+      if (val === 'tomorrow') {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0);
+        delayMs = Math.max(0, tomorrow.getTime() - Date.now());
+      } else {
+        delayMs = parseInt(val, 10) * 60 * 1000;
+      }
+      const mailSubject = mail.subject || '(No subject)';
+      const mailId = mail.id;
+      // Clear previous reminder for same mail
+      if (_reminderTimers.has(mailId)) clearTimeout(_reminderTimers.get(mailId));
+      const timer = setTimeout(() => {
+        _reminderTimers.delete(mailId);
+        try {
+          if (Notification.permission === 'granted') {
+            new Notification('Email Reminder', { body: mailSubject });
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(p => {
+              if (p === 'granted') new Notification('Email Reminder', { body: mailSubject });
+            });
+          }
+        } catch {}
+        showToast('Reminder: ' + mailSubject, 'info');
+      }, delayMs);
+      _reminderTimers.set(mailId, timer);
+      showToast('Reminder set!', 'success');
+      const dropdown = el.querySelector('#remind-dropdown');
+      if (dropdown) dropdown.hidden = true;
+    });
+  });
+  // Close remind dropdown on outside click
+  document.addEventListener('click', () => {
+    const dropdown = el.querySelector('#remind-dropdown');
+    if (dropdown) {
+      dropdown.hidden = true;
+      const btn = el.querySelector('[data-action="remind"]');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // -- Feature 3: Quick reply template pills --
+  el.querySelectorAll('.quick-reply-pill').forEach((pill) => {
+    pill.addEventListener('click', async () => {
+      const text = pill.dataset.replyText;
+      if (!text || !mail) return;
+      pill.disabled = true;
+      try {
+        const draft = {
+          account_id: mail.account_id || mail._accountId,
+          to: mail.from || '',
+          cc: '',
+          bcc: '',
+          subject: (mail.subject || '').startsWith('Re:') ? mail.subject : 'Re: ' + (mail.subject || ''),
+          body: text,
+          in_reply_to: mail.id,
+        };
+        await api.sendMail(draft);
+        showToast('Reply sent: ' + text, 'success');
+      } catch (err) {
+        showToast('Failed to send reply: ' + err, 'error');
+      }
+      pill.disabled = false;
+    });
+  });
+
+  // -- Feature 6 + 8: Sender profile card on hover --
+  const fromHover = el.querySelector('.mail-view-from-hover');
+  const profileCard = el.querySelector('#sender-profile-card');
+  if (fromHover && profileCard) {
+    let _profileTimeout = null;
+    fromHover.addEventListener('mouseenter', async () => {
+      clearTimeout(_profileTimeout);
+      const fromRaw = fromHover.dataset.fromEmail || '';
+      const emailMatch = fromRaw.match(/<([^>]+)>/);
+      const email = emailMatch ? emailMatch[1] : fromRaw.trim();
+      const nameMatch = fromRaw.match(/^([^<]+)</);
+      const name = nameMatch ? nameMatch[1].trim() : email;
+      const initial = (name || '?')[0].toUpperCase();
+      const colors = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e'];
+      let hash = 0;
+      for (const c of email) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+      const color = colors[Math.abs(hash) % colors.length];
+
+      // Feature 8: Count emails from this sender in current state
+      let emailCount = 0;
+      if (state.mails) {
+        for (const m of state.mails) {
+          const mFrom = (m.from || '').toLowerCase();
+          if (mFrom.includes(email.toLowerCase())) emailCount++;
+        }
+      }
+
+      profileCard.innerHTML = `
+        <div class="sender-card-avatar" style="background:${color}">${esc(initial)}</div>
+        <div class="sender-card-info">
+          <div class="sender-card-name">${esc(name)}</div>
+          <div class="sender-card-email">${esc(email)}</div>
+          ${emailCount > 0 ? `<div class="sender-card-stats">${emailCount} email${emailCount !== 1 ? 's' : ''} in view</div>` : ''}
+        </div>
+        <button class="sender-card-copy" data-copy-sender="${esc(email)}" title="Copy email">\u{1F4CB}</button>
+      `;
+      profileCard.hidden = false;
+
+      // Position card near the from field
+      const rect = fromHover.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      profileCard.style.top = (rect.bottom - elRect.top + 4) + 'px';
+      profileCard.style.left = (rect.left - elRect.left) + 'px';
+
+      // Copy button handler
+      const copyBtn = profileCard.querySelector('.sender-card-copy');
+      if (copyBtn) {
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(copyBtn.dataset.copySender).then(() => {
+            showToast('Email copied.', 'info');
+          }).catch(() => {});
+        };
+      }
+    });
+    fromHover.addEventListener('mouseleave', () => {
+      _profileTimeout = setTimeout(() => { profileCard.hidden = true; }, 300);
+    });
+    profileCard.addEventListener('mouseenter', () => { clearTimeout(_profileTimeout); });
+    profileCard.addEventListener('mouseleave', () => { profileCard.hidden = true; });
+  }
 
   // Attachment preview close button
   const previewCloseBtn = el.querySelector('#attachment-preview-close');

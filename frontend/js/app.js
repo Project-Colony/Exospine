@@ -5,7 +5,7 @@ import { showToast } from './components/toast.js';
 import { showDialog } from './components/dialog.js';
 import { renderSidebar, updateUnreadBadges } from './views/sidebar.js';
 import { renderMailList } from './views/mail_list.js';
-import { renderMailView } from './views/mail_view.js';
+import { renderMailView, isThreadMuted } from './views/mail_view.js';
 import { openCompose, makeReplyPrefill, makeForwardPrefill } from './views/compose.js';
 import { openSettings, getMergedShortcuts, hashPin } from './views/settings.js';
 import { openOnboarding } from './views/onboarding.js';
@@ -1408,8 +1408,13 @@ function setupTauriEvents() {
     });
 
     listen('new-mail', (event) => {
-      const { count, folder } = event.payload || {};
+      const { count, folder, thread_id } = event.payload || {};
       if (count && folder === state.activeFolder) {
+        // Feature 1: Skip notification for muted threads
+        if (thread_id && isThreadMuted(thread_id)) {
+          refreshCurrentFolder();
+          return;
+        }
         playNotificationSound();
         showToast(`${count} new email${count > 1 ? 's' : ''} received.`, 'info');
         refreshCurrentFolder();
@@ -1453,9 +1458,17 @@ document.addEventListener('mousedown', resetActivity);
 document.addEventListener('scroll', resetActivity, true);
 document.addEventListener('touchstart', resetActivity);
 
+function clearSensitiveData() {
+  bodyCache.clear();
+  state.mailBody = null;
+  state.selectedMail = null;
+  _prefetchInFlight.clear();
+}
+
 function showLockScreen() {
   if (isLocked) return;
   isLocked = true;
+  clearSensitiveData();
   const el = document.getElementById('lock-screen');
   if (el) el.hidden = false;
 }
@@ -1978,8 +1991,12 @@ async function init() {
         const newCount = Math.max(0, currentCount - _lastMailCount);
         if (newCount > 0 || currentFirstId !== _lastMailFirstId) {
           if (newCount > 0) {
-            playNotificationSound();
-            showToast(`${newCount} new email${newCount > 1 ? 's' : ''} received.`, 'info');
+            // Feature 1: Check muted threads — still refresh but skip sound/toast
+            const anyMuted = state.mails.slice(0, newCount).some(m => isThreadMuted(m.thread_id || m.id));
+            if (!anyMuted) {
+              playNotificationSound();
+              showToast(`${newCount} new email${newCount > 1 ? 's' : ''} received.`, 'info');
+            }
           }
         }
         _lastMailCount = currentCount;

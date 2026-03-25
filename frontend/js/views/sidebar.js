@@ -54,6 +54,32 @@ function saveCustomSearchFolders(folders) {
   localStorage.setItem('exospine_search_folders', JSON.stringify(folders));
 }
 
+
+// ── Folder order persistence (drag reorder) ─────────────────────
+function loadFolderOrder(section) {
+  try {
+    const raw = localStorage.getItem('exospine_folder_order_' + section);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveFolderOrder(section, order) {
+  localStorage.setItem('exospine_folder_order_' + section, JSON.stringify(order));
+}
+
+function applyFolderOrder(folders, section) {
+  const order = loadFolderOrder(section);
+  if (!order) return folders;
+  const nameOf = (f) => typeof f === 'string' ? f : f.name;
+  const orderMap = new Map(order.map((n, i) => [n, i]));
+  const sorted = [...folders].sort((a, b) => {
+    const ai = orderMap.has(nameOf(a)) ? orderMap.get(nameOf(a)) : 9999;
+    const bi = orderMap.has(nameOf(b)) ? orderMap.get(nameOf(b)) : 9999;
+    return ai - bi;
+  });
+  return sorted;
+}
+
 // ── Collapsible sidebar sections ─────────────────────────────────────
 const FAVORITE_FOLDERS = ['INBOX', 'Sent', '[Gmail]/Sent Mail', '[Gmail]/Starred'];
 
@@ -175,6 +201,10 @@ export function renderSidebar(el, state, actions) {
       }
     }
 
+    // Apply saved folder order
+    const orderedFavFolders = applyFolderOrder(favFolders, 'favorites');
+    const orderedOtherFolders = applyFolderOrder(otherFolders, 'folders');
+
     // Helper to render a folder item
     function renderFolderItem(folder) {
       const name = typeof folder === 'string' ? folder : folder.name;
@@ -183,7 +213,7 @@ export function renderSidebar(el, state, actions) {
       const icon = FOLDER_ICONS[name] || '\uD83D\uDCC1';
       const displayName = folderDisplayName(name);
       return `
-        <div class="sidebar-folder${isActive ? ' active' : ''}" data-folder="${esc(name)}" role="option" aria-selected="${isActive}" tabindex="0">
+        <div class="sidebar-folder${isActive ? ' active' : ''}" data-folder="${esc(name)}" role="option" aria-selected="${isActive}" tabindex="0" draggable="true">
           <span class="sidebar-folder-icon" aria-hidden="true">${icon}</span>
           <span class="sidebar-folder-label">${esc(displayName)}</span>
           ${unread > 0 ? `<span class="sidebar-folder-badge" aria-label="${unread} unread">${unread}</span>` : ''}
@@ -198,7 +228,7 @@ export function renderSidebar(el, state, actions) {
       <span>Favorites</span>
     </div>`;
     html += `<div class="sidebar-folders sidebar-section-content${favCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Favorite folders">`;
-    for (const folder of favFolders) {
+    for (const folder of orderedFavFolders) {
       html += renderFolderItem(folder);
     }
     html += '</div>';
@@ -210,7 +240,7 @@ export function renderSidebar(el, state, actions) {
       <span>Folders</span>
     </div>`;
     html += `<div class="sidebar-folders sidebar-section-content${foldersCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Mail folders">`;
-    for (const folder of otherFolders) {
+    for (const folder of orderedOtherFolders) {
       html += renderFolderItem(folder);
     }
     html += '</div>';
@@ -283,6 +313,10 @@ export function renderSidebar(el, state, actions) {
   if (el._sidebarDragoverHandler) el.removeEventListener('dragover', el._sidebarDragoverHandler);
   if (el._sidebarDragleaveHandler) el.removeEventListener('dragleave', el._sidebarDragleaveHandler);
   if (el._sidebarDropHandler) el.removeEventListener('drop', el._sidebarDropHandler);
+  if (el._sidebarFolderDragstartHandler) el.removeEventListener('dragstart', el._sidebarFolderDragstartHandler);
+  if (el._sidebarFolderDragendHandler) el.removeEventListener('dragend', el._sidebarFolderDragendHandler);
+  if (el._sidebarFolderReorderDragover) el.removeEventListener('dragover', el._sidebarFolderReorderDragover);
+  if (el._sidebarFolderReorderDrop) el.removeEventListener('drop', el._sidebarFolderReorderDrop);
 
   el._sidebarClickHandler = (e) => {
     // Collapsible section headers
@@ -440,6 +474,75 @@ export function renderSidebar(el, state, actions) {
   el.addEventListener('dragover', el._sidebarDragoverHandler);
   el.addEventListener('dragleave', el._sidebarDragleaveHandler);
   el.addEventListener('drop', el._sidebarDropHandler);
+
+  // ── Feature 7: Drag reorder folders within sections ──────────
+  el._sidebarFolderDragstartHandler = (e) => {
+    const folderItem = e.target.closest('.sidebar-folder[data-folder][draggable="true"]');
+    if (!folderItem) return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/x-folder-reorder', folderItem.dataset.folder);
+    folderItem.classList.add('dragging');
+  };
+
+  el._sidebarFolderDragendHandler = (e) => {
+    const folderItem = e.target.closest('.sidebar-folder[data-folder]');
+    if (folderItem) folderItem.classList.remove('dragging');
+    el.querySelectorAll('.sidebar-folder.drag-over-reorder').forEach(f => f.classList.remove('drag-over-reorder'));
+  };
+
+  el._sidebarFolderReorderDragover = (e) => {
+    const folderItem = e.target.closest('.sidebar-folder[data-folder]');
+    if (!folderItem) return;
+    if (!e.dataTransfer.types.includes('text/x-folder-reorder')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    el.querySelectorAll('.sidebar-folder.drag-over-reorder').forEach(f => f.classList.remove('drag-over-reorder'));
+    folderItem.classList.add('drag-over-reorder');
+  };
+
+  el._sidebarFolderReorderDrop = (e) => {
+    const targetFolder = e.target.closest('.sidebar-folder[data-folder]');
+    if (!targetFolder) return;
+    const draggedName = e.dataTransfer.getData('text/x-folder-reorder');
+    if (!draggedName) return;
+    e.preventDefault();
+    targetFolder.classList.remove('drag-over-reorder');
+
+    const targetName = targetFolder.dataset.folder;
+    if (draggedName === targetName) return;
+
+    // Determine which section both folders are in
+    const section = targetFolder.closest('.sidebar-section-content');
+    if (!section) return;
+    const sectionHeader = section.previousElementSibling;
+    if (!sectionHeader) return;
+    const sectionName = sectionHeader.dataset.section;
+    if (!sectionName || sectionName === 'search-folders') return;
+
+    // Get all folder names in this section in current DOM order
+    const items = section.querySelectorAll('.sidebar-folder[data-folder]');
+    const order = [];
+    for (const item of items) order.push(item.dataset.folder);
+
+    // Reorder: move dragged to target position
+    const fromIdx = order.indexOf(draggedName);
+    const toIdx = order.indexOf(targetName);
+    if (fromIdx < 0 || toIdx < 0) return;
+    order.splice(fromIdx, 1);
+    order.splice(toIdx, 0, draggedName);
+
+    saveFolderOrder(sectionName, order);
+    // Force re-render
+    _sidebarCacheKey = null;
+    renderSidebar(el, state, actions);
+  };
+
+  el.addEventListener('dragstart', el._sidebarFolderDragstartHandler);
+  el.addEventListener('dragend', el._sidebarFolderDragendHandler);
+  // Separate listeners for folder reorder (uses different data type)
+  el.addEventListener('dragover', el._sidebarFolderReorderDragover);
+  el.addEventListener('drop', el._sidebarFolderReorderDrop);
+
 }
 
 /**

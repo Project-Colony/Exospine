@@ -76,6 +76,24 @@ function getCategoryColor(name) {
   return CATEGORY_COLORS[name] || '#7f8c8d';
 }
 
+
+// ── Account colors for unified inbox left border ────────────────
+const ACCOUNT_COLORS = [
+  'rgb(0, 120, 214)',
+  'rgb(160, 90, 220)',
+  'rgb(220, 80, 60)',
+  'rgb(40, 167, 69)',
+  'rgb(230, 150, 0)',
+  'rgb(0, 180, 160)',
+];
+
+function getAccountColor(accountEmail, accounts) {
+  if (!accountEmail || !accounts || accounts.length <= 1) return '';
+  const idx = accounts.findIndex(a => a.email === accountEmail);
+  if (idx < 0) return '';
+  return ACCOUNT_COLORS[idx % ACCOUNT_COLORS.length];
+}
+
 // ── Thread grouping (cached) ──────────────────────────────────────
 
 let _cachedThreadMails = null; // reference to the mails array used for caching
@@ -610,7 +628,7 @@ function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) 
   const checkbox = `<input type="checkbox" class="mail-item-checkbox${checkboxVisible ? ' visible' : ''}" data-check-id="${esc(mail.id)}" ${isMultiSelected ? 'checked' : ''} tabindex="-1" aria-label="Select email" />`;
 
   return `
-    <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${isMultiSelected ? ' multi-selected' : ''}${indent}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0" style="height:${ITEM_HEIGHT}px;box-sizing:border-box;${displayStyle}">
+    <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${isMultiSelected ? ' multi-selected' : ''}${indent}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0" style="height:${ITEM_HEIGHT}px;box-sizing:border-box;${displayStyle}${mail._accountEmail ? 'border-left:3px solid ' + getAccountColor(mail._accountEmail, (typeof state !== 'undefined' && state.accounts) || []) + ';' : ''}">
       ${checkbox}
       ${senderAvatar(mail.from_name || mail.from || 'Unknown')}
       ${isUnread ? '<div class="mail-item-unread-dot" aria-hidden="true"></div>' : ''}
