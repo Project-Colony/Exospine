@@ -29,7 +29,7 @@ export function showToast(message, type = 'info', duration = 5000, onClick = nul
 
   const dismiss = () => {
     if (autoDismissTimer) clearTimeout(autoDismissTimer);
-    el.style.animation = 'toast-out 0.2s ease forwards';
+    el.classList.add('toast-dismissing');
     el.addEventListener('animationend', () => el.remove());
   };
 
@@ -45,7 +45,6 @@ export function showToast(message, type = 'info', duration = 5000, onClick = nul
       dismiss();
       onClick();
     });
-    el.style.cursor = 'pointer';
   }
 
   container.appendChild(el);

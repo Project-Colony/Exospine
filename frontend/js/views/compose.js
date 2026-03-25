@@ -140,21 +140,21 @@ export async function openCompose(prefill = {}, onSent = null) {
     <div class="overlay-panel compose-panel">
       <div class="compose-header">
         <span class="compose-title">${prefill.subject ? t('reply_title') : t('new_email_title')}</span>
-        <span class="compose-autosave-indicator" id="compose-autosave-indicator" hidden style="font-size:11px;color:var(--pane-text-dim);margin-left:auto;margin-right:8px;"></span>
+        <span class="compose-autosave-indicator" id="compose-autosave-indicator" hidden></span>
         <button class="compose-close" id="compose-close" title="Close" aria-label="Close compose window">\u00D7</button>
       </div>
       <div class="compose-fields">
-        <div class="compose-field" style="position:relative;">
+        <div class="compose-field compose-field-relative">
           <label class="compose-field-label" for="compose-to">${t('to')}</label>
           <input type="text" class="compose-field-input" id="compose-to" value="${esc(prefill.to || '')}" placeholder="recipient@example.com" autocomplete="off" aria-label="To recipients" />
           <div class="compose-autocomplete" id="ac-to" hidden role="listbox" aria-label="Contact suggestions"></div>
         </div>
-        <div class="compose-field" style="position:relative;">
+        <div class="compose-field compose-field-relative">
           <label class="compose-field-label" for="compose-cc">${t('cc')}</label>
           <input type="text" class="compose-field-input" id="compose-cc" value="${esc(prefill.cc || '')}" placeholder="" autocomplete="off" aria-label="CC recipients" />
           <div class="compose-autocomplete" id="ac-cc" hidden role="listbox" aria-label="Contact suggestions"></div>
         </div>
-        <div class="compose-field" style="position:relative;">
+        <div class="compose-field compose-field-relative">
           <label class="compose-field-label" for="compose-bcc">${t('bcc')}</label>
           <input type="text" class="compose-field-input" id="compose-bcc" value="${esc(prefill.bcc || '')}" placeholder="" autocomplete="off" aria-label="BCC recipients" />
           <div class="compose-autocomplete" id="ac-bcc" hidden role="listbox" aria-label="Contact suggestions"></div>
@@ -165,7 +165,7 @@ export async function openCompose(prefill = {}, onSent = null) {
         </div>
         <div class="compose-field">
           <label class="compose-field-label" for="compose-importance">Priority</label>
-          <select id="compose-importance" class="compose-field-input" aria-label="Email priority" style="flex:0;min-width:120px;padding:4px 8px;border:1px solid var(--pane-border);border-radius:var(--radius-sm);font-size:13px;background:var(--pane-bg);color:var(--pane-text);">
+          <select id="compose-importance" class="compose-field-input compose-importance-select" aria-label="Email priority">
             <option value="normal">Normal</option>
             <option value="high">\u2757 High</option>
             <option value="low">\u2193 Low</option>
@@ -197,12 +197,12 @@ export async function openCompose(prefill = {}, onSent = null) {
           <button type="button" data-cmd="insertHorizontalRule" title="Horizontal line" aria-label="Insert horizontal line">\u2014</button>
           <button type="button" data-cmd="removeFormat" title="Clear formatting" aria-label="Clear formatting">\u2715</button>
           <span class="toolbar-sep" aria-hidden="true"></span>
-          <div style="position:relative;display:inline-block;">
+          <div class="toolbar-dropdown-wrapper">
             <button type="button" id="compose-templates-btn" title="${t('templates')}" aria-label="${t('templates')}" aria-expanded="false">\uD83D\uDCCB ${t('templates')}</button>
             <div id="compose-templates-dropdown" hidden class="compose-templates-dropdown"></div>
           </div>
           <span class="toolbar-sep"></span>
-          <button type="button" id="compose-md-toggle" title="Toggle Rich Text / Markdown" style="font-size:12px;font-weight:600;">MD</button>
+          <button type="button" id="compose-md-toggle" title="Toggle Rich Text / Markdown" class="text-xs font-bolder">MD</button>
         </div>
         <div id="compose-body" contenteditable="true" spellcheck="true" lang="auto" class="compose-editor">${buildInitialContent(prefill)}</div>
         <textarea id="compose-body-md" class="compose-editor-md" hidden placeholder="Write in Markdown...\n\n**bold**, *italic*, \`code\`, [link](url), # headings, - lists"></textarea>
@@ -211,9 +211,9 @@ export async function openCompose(prefill = {}, onSent = null) {
         <div class="compose-attachments-label">Attachments:</div>
         <div id="compose-attachments-list" class="compose-attachments-list"></div>
       </div>
-      <div id="compose-version-panel" hidden style="border-top:1px solid var(--pane-border);padding:8px 16px;max-height:200px;overflow-y:auto;font-size:12px;">
-        <div style="font-weight:600;margin-bottom:6px;">Version History</div>
-        <div id="compose-version-list" style="color:var(--pane-text-dim);">No versions saved yet.</div>
+      <div id="compose-version-panel" hidden class="compose-version-panel">
+        <div class="compose-version-panel-title">Version History</div>
+        <div id="compose-version-list" class="text-dim">No versions saved yet.</div>
       </div>
       <div class="compose-status-bar" id="compose-status-bar">
         <span id="compose-word-count">0 words</span>
@@ -221,16 +221,15 @@ export async function openCompose(prefill = {}, onSent = null) {
       </div>
       <div class="compose-footer">
         <button class="btn btn-ghost" id="compose-discard">${t('discard')}</button>
-        <button class="btn btn-ghost" id="compose-versions-btn" title="Version history" style="font-size:12px;">\uD83D\uDD53 Versions</button>
-        <div class="compose-send-group" style="display:flex;gap:4px;align-items:center;">
+        <button class="btn btn-ghost text-xs" id="compose-versions-btn" title="Version history">\uD83D\uDD53 Versions</button>
+        <div class="compose-send-group">
           <button class="btn btn-primary" id="compose-send">\u2709 ${t('send')}</button>
-          <div style="position:relative;">
+          <div class="compose-field-relative">
             <button class="btn btn-ghost" id="compose-schedule-btn" title="Schedule send">\u23F0</button>
-            <div class="compose-schedule-dropdown" id="compose-schedule-dropdown" hidden
-                 style="position:absolute;bottom:100%;right:0;background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:6px;padding:8px;z-index:100;min-width:220px;">
-              <label style="display:block;font-size:12px;margin-bottom:4px;">Schedule send:</label>
-              <input type="datetime-local" id="compose-schedule-time" style="width:100%;padding:4px;border-radius:4px;border:1px solid var(--pane-border);background:var(--pane-bg);color:var(--pane-text);font-size:13px;" />
-              <button class="btn btn-primary btn-sm" id="compose-schedule-confirm" style="margin-top:6px;width:100%;">Schedule</button>
+            <div class="compose-schedule-dropdown" id="compose-schedule-dropdown" hidden>
+              <label>Schedule send:</label>
+              <input type="datetime-local" id="compose-schedule-time" />
+              <button class="btn btn-primary btn-sm w-full mt-6" id="compose-schedule-confirm">Schedule</button>
             </div>
           </div>
         </div>
@@ -299,14 +298,12 @@ export async function openCompose(prefill = {}, onSent = null) {
         mdEditor.value = htmlToPlainText(richEditor.innerHTML);
         richEditor.hidden = true;
         mdEditor.hidden = false;
-        mdToggle.style.background = 'var(--accent-light)';
-        mdToggle.style.color = 'var(--accent)';
+        mdToggle.classList.add('md-toggle-active');
         // Hide rich text toolbar buttons (except MD toggle)
         if (composeToolbar) {
           for (const child of composeToolbar.children) {
             if (child !== mdToggle && !child.contains(mdToggle)) {
-              child.style.opacity = '0.3';
-              child.style.pointerEvents = 'none';
+              child.classList.add('toolbar-item-disabled');
             }
           }
         }
@@ -316,12 +313,10 @@ export async function openCompose(prefill = {}, onSent = null) {
         richEditor.innerHTML = html;
         richEditor.hidden = false;
         mdEditor.hidden = true;
-        mdToggle.style.background = '';
-        mdToggle.style.color = '';
+        mdToggle.classList.remove('md-toggle-active');
         if (composeToolbar) {
           for (const child of composeToolbar.children) {
-            child.style.opacity = '';
-            child.style.pointerEvents = '';
+            child.classList.remove('toolbar-item-disabled');
           }
         }
       }
@@ -447,22 +442,22 @@ export async function openCompose(prefill = {}, onSent = null) {
       versionPanel.hidden = false;
       const versionList = overlay.querySelector('#compose-version-list');
       if (!_currentDraftId) {
-        versionList.innerHTML = '<div style="color:var(--pane-text-dim);">No versions saved yet.</div>';
+        versionList.innerHTML = '<div class="text-dim">No versions saved yet.</div>';
         return;
       }
       try {
         const versions = await api.loadDraftVersions(_currentDraftId);
         if (!versions || versions.length === 0) {
-          versionList.innerHTML = '<div style="color:var(--pane-text-dim);">No versions saved yet.</div>';
+          versionList.innerHTML = '<div class="text-dim">No versions saved yet.</div>';
           return;
         }
         versionList.innerHTML = versions.map((v) => {
           const ts = new Date(v.timestamp).toLocaleString();
           const preview = (v.subject || '').slice(0, 40) || '(no subject)';
           return `
-            <div class="compose-version-item" data-version="${v.version}" style="padding:6px 0;border-bottom:1px solid var(--pane-border);cursor:pointer;">
-              <div style="font-weight:500;">v${v.version} - ${esc(ts)}</div>
-              <div style="font-size:11px;color:var(--pane-text-dim);">${esc(preview)}</div>
+            <div class="compose-version-item" data-version="${v.version}">
+              <div class="compose-version-title">v${v.version} - ${esc(ts)}</div>
+              <div class="compose-version-preview">${esc(preview)}</div>
             </div>
           `;
         }).join('');
@@ -487,7 +482,7 @@ export async function openCompose(prefill = {}, onSent = null) {
           });
         });
       } catch {
-        versionList.innerHTML = '<div style="color:var(--danger);">Failed to load versions.</div>';
+        versionList.innerHTML = '<div class="text-danger">Failed to load versions.</div>';
       }
     });
   }
@@ -656,12 +651,12 @@ function setupTemplatesDropdown(prefill) {
 
     let html = '';
     for (const tpl of allTemplates) {
-      html += `<div class="compose-template-item" data-tpl-subject="${esc(tpl.subject)}" data-tpl-body="${esc(tpl.body)}" style="padding:6px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--pane-border,#333);display:flex;align-items:center;justify-content:space-between;">
+      html += `<div class="compose-template-item" data-tpl-subject="${esc(tpl.subject)}" data-tpl-body="${esc(tpl.body)}">
         <span>${esc(tpl.displayName)}</span>
-        ${tpl.custom ? `<button class="compose-template-delete" data-delete-tpl="${esc(tpl.name)}" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0 4px;" title="${t('delete')}">\u00D7</button>` : ''}
+        ${tpl.custom ? `<button class="compose-template-delete" data-delete-tpl="${esc(tpl.name)}" title="${t('delete')}">\u00D7</button>` : ''}
       </div>`;
     }
-    html += `<div class="compose-template-item compose-template-save" style="padding:6px 12px;cursor:pointer;font-size:13px;color:var(--accent);font-weight:500;">
+    html += `<div class="compose-template-item compose-template-save">
       \uD83D\uDCBE ${t('save_as_template')}
     </div>`;
 
@@ -1064,9 +1059,9 @@ function setupAutocomplete(inputId, dropdownId) {
         dropdown.innerHTML = contacts
           .map(
             (c) =>
-              `<div class="compose-autocomplete-item" data-email="${esc(c.email)}" data-name="${esc(c.name)}" style="padding:6px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--pane-border,#333);">
-                <span style="font-weight:500;">${esc(c.name || c.email)}</span>
-                ${c.name ? `<span style="color:var(--pane-text-dim);margin-left:6px;">&lt;${esc(c.email)}&gt;</span>` : ''}
+              `<div class="compose-autocomplete-item" data-email="${esc(c.email)}" data-name="${esc(c.name)}">
+                <span class="compose-autocomplete-name">${esc(c.name || c.email)}</span>
+                ${c.name ? `<span class="compose-autocomplete-email">&lt;${esc(c.email)}&gt;</span>` : ''}
               </div>`
           )
           .join('');

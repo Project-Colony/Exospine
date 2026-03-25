@@ -41,18 +41,18 @@ export function openOnboarding({ isFirstRun = false, onAccountAdded }) {
 
           <div id="manual-advanced" hidden>
             <span class="onboarding-input-label">IMAP server</span>
-            <input type="text" class="onboarding-input" id="ob-imap" placeholder="imap.example.com" style="margin-bottom:10px;" />
+            <input type="text" class="onboarding-input onboarding-input-mb" id="ob-imap" placeholder="imap.example.com" />
             <span class="onboarding-input-label">SMTP server</span>
-            <input type="text" class="onboarding-input" id="ob-smtp" placeholder="smtp.example.com" style="margin-bottom:10px;" />
+            <input type="text" class="onboarding-input onboarding-input-mb" id="ob-smtp" placeholder="smtp.example.com" />
           </div>
 
-          <div style="display:flex;gap:8px;margin-top:6px;">
-            <button class="btn btn-ghost" style="flex:1;" id="ob-advanced-toggle">Advanced</button>
-            <button class="btn btn-primary" style="flex:1;" id="ob-submit">Add Account</button>
+          <div class="onboarding-actions">
+            <button class="btn btn-ghost" id="ob-advanced-toggle">Advanced</button>
+            <button class="btn btn-primary" id="ob-submit">Add Account</button>
           </div>
         </div>
 
-        ${!isFirstRun ? '<button class="btn btn-ghost" id="ob-cancel" style="margin-top:14px;width:100%;">Cancel</button>' : ''}
+        ${!isFirstRun ? '<button class="btn btn-ghost w-full mt-16" id="ob-cancel">Cancel</button>' : ''}
       </div>
     </div>
   `;

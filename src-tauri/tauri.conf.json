@@ -16,7 +16,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost https://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src * data: blob:; connect-src * ipc: http://ipc.localhost https://ipc.localhost; script-src 'self' 'unsafe-eval'"
+      "csp": "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; img-src * data: blob:; connect-src *; frame-src * blob: data:;",
+      "dangerousDisableAssetCspModification": true
     }
   }
 }

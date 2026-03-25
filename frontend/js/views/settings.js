@@ -49,33 +49,33 @@ export async function openSettings(state, actions) {
               <option value="custom" ${settings.theme === 'custom' ? 'selected' : ''}>Custom</option>
             </select>
           </div>
-          <div id="s-custom-theme-section" ${settings.theme !== 'custom' ? 'hidden' : ''} style="margin-top:8px;padding:8px;border:1px solid var(--pane-border);border-radius:6px;">
+          <div id="s-custom-theme-section" ${settings.theme !== 'custom' ? 'hidden' : ''} class="settings-rule-editor">
             ${(() => {
               const ct = loadCustomThemeColors();
               return `
-              <div class="settings-row" style="margin-bottom:6px;">
+              <div class="settings-row settings-row-mb6">
                 <label>Sidebar background</label>
-                <input type="color" id="s-ct-sidebar-bg" value="${ct.sidebarBg || '#242933'}" style="width:40px;height:28px;border:1px solid var(--pane-border);border-radius:4px;cursor:pointer;" />
+                <input type="color" id="s-ct-sidebar-bg" value="${ct.sidebarBg || '#242933'}" class="settings-color-input" />
               </div>
-              <div class="settings-row" style="margin-bottom:6px;">
+              <div class="settings-row settings-row-mb6">
                 <label>Mail list background</label>
-                <input type="color" id="s-ct-list-bg" value="${ct.listBg || '#2a2f3a'}" style="width:40px;height:28px;border:1px solid var(--pane-border);border-radius:4px;cursor:pointer;" />
+                <input type="color" id="s-ct-list-bg" value="${ct.listBg || '#2a2f3a'}" class="settings-color-input" />
               </div>
-              <div class="settings-row" style="margin-bottom:6px;">
+              <div class="settings-row settings-row-mb6">
                 <label>Reading pane background</label>
-                <input type="color" id="s-ct-pane-bg" value="${ct.paneBg || '#ffffff'}" style="width:40px;height:28px;border:1px solid var(--pane-border);border-radius:4px;cursor:pointer;" />
+                <input type="color" id="s-ct-pane-bg" value="${ct.paneBg || '#ffffff'}" class="settings-color-input" />
               </div>
-              <div class="settings-row" style="margin-bottom:6px;">
+              <div class="settings-row settings-row-mb6">
                 <label>Accent color</label>
-                <input type="color" id="s-ct-accent" value="${ct.accent || '#0078d6'}" style="width:40px;height:28px;border:1px solid var(--pane-border);border-radius:4px;cursor:pointer;" />
+                <input type="color" id="s-ct-accent" value="${ct.accent || '#0078d6'}" class="settings-color-input" />
               </div>
-              <div class="settings-row" style="margin-bottom:6px;">
+              <div class="settings-row settings-row-mb6">
                 <label>Text primary</label>
-                <input type="color" id="s-ct-text-primary" value="${ct.textPrimary || '#1e1e1e'}" style="width:40px;height:28px;border:1px solid var(--pane-border);border-radius:4px;cursor:pointer;" />
+                <input type="color" id="s-ct-text-primary" value="${ct.textPrimary || '#1e1e1e'}" class="settings-color-input" />
               </div>
-              <div class="settings-row" style="margin-bottom:6px;">
+              <div class="settings-row settings-row-mb6">
                 <label>Text secondary</label>
-                <input type="color" id="s-ct-text-secondary" value="${ct.textSecondary || '#646973'}" style="width:40px;height:28px;border:1px solid var(--pane-border);border-radius:4px;cursor:pointer;" />
+                <input type="color" id="s-ct-text-secondary" value="${ct.textSecondary || '#646973'}" class="settings-color-input" />
               </div>
               `;
             })()}
@@ -139,47 +139,47 @@ export async function openSettings(state, actions) {
           <div class="settings-section-title">${t('signatures')}</div>
           <div id="s-signatures">
             ${state.accounts.map((acc) => `
-              <div class="settings-signature-item" style="margin-bottom:12px;">
-                <label style="display:block;margin-bottom:4px;font-weight:500;">${esc(acc.email || acc.name)}</label>
-                <textarea class="settings-signature-textarea" data-sig-account="${esc(acc.id)}" rows="4" placeholder="Enter your signature..." style="width:100%;resize:vertical;font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--pane-bg);color:var(--pane-text);">${esc(acc.signature || '')}</textarea>
+              <div class="settings-signature-item mb-12">
+                <label class="font-bold mb-4" style="display:block;">${esc(acc.email || acc.name)}</label>
+                <textarea class="settings-sig-textarea" data-sig-account="${esc(acc.id)}" rows="4" placeholder="Enter your signature...">${esc(acc.signature || '')}</textarea>
               </div>
             `).join('')}
-            ${state.accounts.length === 0 ? '<div style="color:var(--pane-text-dim);font-size:13px;">No accounts configured.</div>' : ''}
+            ${state.accounts.length === 0 ? '<div class="text-dim text-sm">No accounts configured.</div>' : ''}
           </div>
         </div>
 
         <div class="settings-section">
           <div class="settings-section-title">${t('email_rules')}</div>
-          <div id="s-rules-list" style="margin-bottom:8px;"></div>
+          <div id="s-rules-list" class="mb-8"></div>
           <button class="btn btn-ghost btn-sm" id="s-add-rule">+ Add Rule</button>
-          <div id="s-rule-editor" hidden style="margin-top:8px;padding:8px;border:1px solid var(--pane-border);border-radius:6px;">
+          <div id="s-rule-editor" hidden class="settings-rule-editor">
             <input type="hidden" id="s-rule-id" value="" />
-            <div class="settings-row" style="margin-bottom:6px;">
+            <div class="settings-row settings-row-mb6">
               <label>Name</label>
-              <input type="text" id="s-rule-name" placeholder="Rule name" style="width:100%;padding:4px 6px;border:1px solid var(--pane-border);border-radius:4px;background:var(--pane-bg);color:var(--pane-text);" />
+              <input type="text" id="s-rule-name" placeholder="Rule name" class="settings-text-input w-full" />
             </div>
-            <div class="settings-row" style="margin-bottom:6px;">
+            <div class="settings-row settings-row-mb6">
               <label>Condition</label>
-              <select id="s-rule-cond-type" style="padding:4px;border-radius:4px;border:1px solid var(--pane-border);background:var(--pane-bg);color:var(--pane-text);">
+              <select id="s-rule-cond-type" class="settings-select">
                 <option value="FromContains">From contains</option>
                 <option value="SubjectContains">Subject contains</option>
                 <option value="ToContains">To contains</option>
                 <option value="HasAttachment">Has attachment</option>
               </select>
-              <input type="text" id="s-rule-cond-value" placeholder="value" style="margin-left:4px;padding:4px 6px;border:1px solid var(--pane-border);border-radius:4px;background:var(--pane-bg);color:var(--pane-text);" />
+              <input type="text" id="s-rule-cond-value" placeholder="value" class="settings-text-input ml-4" />
             </div>
-            <div class="settings-row" style="margin-bottom:6px;">
+            <div class="settings-row settings-row-mb6">
               <label>Action</label>
-              <select id="s-rule-action-type" style="padding:4px;border-radius:4px;border:1px solid var(--pane-border);background:var(--pane-bg);color:var(--pane-text);">
+              <select id="s-rule-action-type" class="settings-select">
                 <option value="MarkAsRead">Mark as read</option>
                 <option value="Star">Star</option>
                 <option value="MoveToFolder">Move to folder</option>
                 <option value="Delete">Delete</option>
                 <option value="AddCategory">Add category</option>
               </select>
-              <input type="text" id="s-rule-action-value" placeholder="folder/category" style="margin-left:4px;padding:4px 6px;border:1px solid var(--pane-border);border-radius:4px;background:var(--pane-bg);color:var(--pane-text);" />
+              <input type="text" id="s-rule-action-value" placeholder="folder/category" class="settings-text-input ml-4" />
             </div>
-            <div style="display:flex;gap:6px;">
+            <div class="flex-row gap-6">
               <button class="btn btn-primary btn-sm" id="s-rule-save">Save Rule</button>
               <button class="btn btn-ghost btn-sm" id="s-rule-cancel">Cancel</button>
             </div>
@@ -188,30 +188,30 @@ export async function openSettings(state, actions) {
 
         <div class="settings-section">
           <div class="settings-section-title">Display Rules</div>
-          <div id="s-display-rules-list" style="margin-bottom:8px;"></div>
+          <div id="s-display-rules-list" class="mb-8"></div>
           <button class="btn btn-ghost btn-sm" id="s-add-display-rule">+ Add Display Rule</button>
-          <div id="s-display-rule-editor" hidden style="margin-top:8px;padding:8px;border:1px solid var(--pane-border);border-radius:6px;">
-            <div class="settings-row" style="margin-bottom:6px;">
+          <div id="s-display-rule-editor" hidden class="settings-rule-editor">
+            <div class="settings-row settings-row-mb6">
               <label>Field</label>
-              <select id="s-dr-field" style="padding:4px;border-radius:4px;border:1px solid var(--pane-border);background:var(--pane-bg);color:var(--pane-text);">
+              <select id="s-dr-field" class="settings-select">
                 <option value="from">From</option>
                 <option value="subject">Subject</option>
               </select>
             </div>
-            <div class="settings-row" style="margin-bottom:6px;">
+            <div class="settings-row settings-row-mb6">
               <label>Contains</label>
-              <input type="text" id="s-dr-value" placeholder="text to match" style="width:100%;padding:4px 6px;border:1px solid var(--pane-border);border-radius:4px;background:var(--pane-bg);color:var(--pane-text);" />
+              <input type="text" id="s-dr-value" placeholder="text to match" class="settings-text-input w-full" />
             </div>
-            <div class="settings-row" style="margin-bottom:6px;">
+            <div class="settings-row settings-row-mb6">
               <label>Style</label>
-              <select id="s-dr-style" style="padding:4px;border-radius:4px;border:1px solid var(--pane-border);background:var(--pane-bg);color:var(--pane-text);">
+              <select id="s-dr-style" class="settings-select">
                 <option value="highlight">Highlight row</option>
                 <option value="bold">Bold text</option>
                 <option value="italic">Italic text</option>
               </select>
-              <input type="color" id="s-dr-color" value="#ff6b6b" style="margin-left:6px;width:40px;height:28px;border:1px solid var(--pane-border);border-radius:4px;cursor:pointer;" title="Highlight color" />
+              <input type="color" id="s-dr-color" value="#ff6b6b" class="settings-color-input ml-6" title="Highlight color" />
             </div>
-            <div style="display:flex;gap:6px;">
+            <div class="flex-row gap-6">
               <button class="btn btn-primary btn-sm" id="s-dr-save">Save</button>
               <button class="btn btn-ghost btn-sm" id="s-dr-cancel">Cancel</button>
             </div>
@@ -223,20 +223,20 @@ export async function openSettings(state, actions) {
           <div class="settings-row">
             <label>${t('auto_delete_label')}</label>
             <input type="number" id="s-retention-days" min="0" max="3650" value="${parseInt(localStorage.getItem('exospine_retention_days') || '0', 10)}" style="width:80px;" />
-            <span style="font-size:11px;color:var(--pane-text-dim);margin-left:8px;">${t('auto_delete_hint')}</span>
+            <span class="text-xxs text-dim ml-8">${t('auto_delete_hint')}</span>
           </div>
         </div>
 
         <div class="settings-section">
           <div class="settings-section-title">Keyboard Shortcuts</div>
-          <div id="s-shortcuts-list" style="margin-bottom:8px;">
+          <div id="s-shortcuts-list" class="mb-8">
             ${renderShortcutsList()}
           </div>
         </div>
 
         <div class="settings-section">
           <div class="settings-section-title">Export / Import Settings</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="flex-row gap-8" style="flex-wrap:wrap;">
             <button class="btn btn-ghost btn-sm" id="s-export-settings">Export Settings</button>
             <button class="btn btn-ghost btn-sm" id="s-import-settings">Import Settings</button>
             <input type="file" id="s-import-file" accept=".json" hidden />
@@ -248,13 +248,13 @@ export async function openSettings(state, actions) {
           <div class="settings-row">
             <label>App PIN Lock</label>
             <button class="btn btn-ghost btn-sm" id="s-set-pin">${localStorage.getItem('exospine_pin_hash') ? 'Change PIN' : 'Set PIN'}</button>
-            ${localStorage.getItem('exospine_pin_hash') ? '<button class="btn btn-ghost btn-sm" id="s-remove-pin" style="margin-left:6px;color:var(--danger);">Remove PIN</button>' : ''}
+            ${localStorage.getItem('exospine_pin_hash') ? '<button class="btn btn-ghost btn-sm text-danger ml-6" id="s-remove-pin">Remove PIN</button>' : ''}
           </div>
-          <div class="settings-row" style="margin-top:8px;">
+          <div class="settings-row mt-8">
             <label>Secure Wipe</label>
-            <button class="btn btn-sm" id="s-secure-wipe" style="background:var(--danger);color:#fff;border:none;font-weight:600;">Wipe All Data</button>
+            <button class="btn btn-sm btn-danger" id="s-secure-wipe" style="font-weight:600;">Wipe All Data</button>
           </div>
-          <div style="font-size:11px;color:var(--pane-text-dim);margin-top:4px;">
+          <div class="text-xxs text-dim mt-4">
             Permanently deletes all messages, accounts, and credentials. This cannot be undone.
           </div>
         </div>
@@ -268,14 +268,14 @@ export async function openSettings(state, actions) {
                 <button class="btn btn-danger btn-sm" data-remove-account="${esc(acc.id || String(i))}">Remove</button>
               </div>
             `).join('')}
-            ${state.accounts.length === 0 ? '<div style="color:var(--pane-text-dim);font-size:13px;">No accounts configured.</div>' : ''}
+            ${state.accounts.length === 0 ? '<div class="text-dim text-sm">No accounts configured.</div>' : ''}
           </div>
         </div>
-        <div class="settings-section" style="text-align:center;padding-top:16px;border-top:1px solid var(--pane-border);">
-          <div style="font-size:18px;font-weight:700;margin-bottom:4px;">Exospine v0.2.0</div>
-          <div style="font-size:13px;color:var(--pane-text-dim);margin-bottom:6px;">Built with Rust + Tauri</div>
-          <div style="margin-bottom:6px;"><a href="https://github.com/MotherSphere/Exospine-Private" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;">GitHub Repository</a></div>
-          <div style="font-size:12px;color:var(--pane-text-dim);">&copy; 2026 MotherSphere</div>
+        <div class="settings-section settings-section-about">
+          <div class="font-bolder mb-4" style="font-size:18px;">Exospine v0.2.0</div>
+          <div class="text-sm text-dim mb-6">Built with Rust + Tauri</div>
+          <div class="mb-6"><a href="https://github.com/MotherSphere/Exospine-Private" target="_blank" rel="noopener" class="text-accent text-sm">GitHub Repository</a></div>
+          <div class="text-xs text-dim">&copy; 2026 MotherSphere</div>
         </div>
       </div>
       <div class="settings-footer">
@@ -316,21 +316,21 @@ export async function openSettings(state, actions) {
     try {
       const entries = await api.getSecurityLog(20);
       if (entries.length === 0) {
-        list.innerHTML = '<div style="color:var(--pane-text-dim);font-size:13px;padding:8px 0;">No security events recorded.</div>';
+        list.innerHTML = '<div class="text-dim text-sm" style="padding:8px 0;">No security events recorded.</div>';
       } else {
         list.innerHTML = entries.map((entry) => {
           const escaped = esc(entry);
           // Highlight event type
           const highlighted = escaped.replace(
             /\] (\w+) \|/,
-            '] <strong style="color:var(--accent);">$1</strong> |'
+            '] <strong class="text-accent">$1</strong> |'
           );
           return `<div class="settings-security-log-entry">${highlighted}</div>`;
         }).join('');
       }
       container.hidden = false;
     } catch (err) {
-      list.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:8px 0;">Failed to load log: ${esc(String(err))}</div>`;
+      list.innerHTML = `<div class="text-danger text-sm" style="padding:8px 0;">Failed to load log: ${esc(String(err))}</div>`;
       container.hidden = false;
     }
   });
@@ -627,19 +627,19 @@ export async function openSettings(state, actions) {
     try {
       const rules = await api.getRules();
       if (!rules || rules.length === 0) {
-        list.innerHTML = '<div style="color:var(--pane-text-dim);font-size:13px;">No rules configured.</div>';
+        list.innerHTML = '<div class="text-dim text-sm">No rules configured.</div>';
         return;
       }
       list.innerHTML = rules.map((r) => `
-        <div class="settings-rule-item" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--pane-border);">
+        <div class="settings-rule-item">
           <div>
-            <span style="font-weight:500;">${esc(r.name)}</span>
-            <span style="font-size:12px;color:var(--pane-text-dim);margin-left:8px;">
+            <span class="font-bold">${esc(r.name)}</span>
+            <span class="text-xs text-dim ml-8">
               ${r.conditions.map((c) => c.type + (c.value ? ': ' + esc(c.value) : '')).join(', ')}
               \u2192 ${r.actions.map((a) => a.type + (a.value ? ': ' + esc(a.value) : '')).join(', ')}
             </span>
           </div>
-          <button class="btn btn-danger btn-sm" data-delete-rule="${esc(r.id)}" style="margin-left:8px;">Delete</button>
+          <button class="btn btn-danger btn-sm ml-8" data-delete-rule="${esc(r.id)}">Delete</button>
         </div>
       `).join('');
 
@@ -655,7 +655,7 @@ export async function openSettings(state, actions) {
         });
       });
     } catch {
-      list.innerHTML = '<div style="color:var(--pane-text-dim);font-size:13px;">Failed to load rules.</div>';
+      list.innerHTML = '<div class="text-dim text-sm">Failed to load rules.</div>';
     }
   }
 
@@ -698,20 +698,20 @@ export async function openSettings(state, actions) {
     if (!list) return;
     const rules = loadDisplayRules();
     if (rules.length === 0) {
-      list.innerHTML = '<div style="color:var(--pane-text-dim);font-size:13px;">No display rules configured.</div>';
+      list.innerHTML = '<div class="text-dim text-sm">No display rules configured.</div>';
       return;
     }
     list.innerHTML = rules.map((r) => {
       const styleLabel = r.style === 'highlight' ? `Highlight (${r.color})` : r.style === 'bold' ? 'Bold' : 'Italic';
       const colorSwatch = r.style === 'highlight'
-        ? `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${esc(r.color)};margin-right:4px;vertical-align:middle;"></span>`
+        ? `<span class="dr-color-swatch" style="background:${esc(r.color)}"></span>`
         : '';
       return `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--pane-border);">
-          <div style="font-size:13px;">
-            ${colorSwatch}If <b>${esc(r.field)}</b> contains "<b>${esc(r.value)}</b>" → ${styleLabel}
+        <div class="settings-rule-item">
+          <div class="text-sm">
+            ${colorSwatch}If <b>${esc(r.field)}</b> contains "<b>${esc(r.value)}</b>" &rarr; ${styleLabel}
           </div>
-          <button class="btn btn-danger btn-sm" data-delete-display-rule="${esc(r.id)}" style="margin-left:8px;">Delete</button>
+          <button class="btn btn-danger btn-sm ml-8" data-delete-display-rule="${esc(r.id)}">Delete</button>
         </div>
       `;
     }).join('');
@@ -925,11 +925,11 @@ function renderShortcutsList() {
   };
 
   return Object.entries(merged).map(([action, key]) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--pane-border);">
-      <span style="font-size:13px;">${labels[action] || action}</span>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <kbd data-shortcut-key="${action}" style="font-family:var(--font-mono);font-size:12px;padding:2px 6px;background:var(--pane-header-bg);border:1px solid var(--pane-border);border-radius:3px;">${key}</kbd>
-        <button class="btn btn-ghost btn-sm" data-shortcut-change="${action}" style="font-size:11px;">Change</button>
+    <div class="shortcut-row">
+      <span class="text-sm">${labels[action] || action}</span>
+      <div class="flex-row-center gap-6">
+        <kbd data-shortcut-key="${action}" class="shortcut-key">${key}</kbd>
+        <button class="btn btn-ghost btn-sm text-xxs" data-shortcut-change="${action}">Change</button>
       </div>
     </div>
   `).join('');

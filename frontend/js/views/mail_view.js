@@ -80,7 +80,7 @@ export function renderMailView(el, state, actions) {
 
   const body = state.mailBody;
   if (body === undefined) {
-    el.innerHTML = '<div class="mail-view-body-text" style="color:var(--pane-text-dim);text-align:center;padding-top:40px;" role="status" aria-live="polite">Loading email body\u2026</div>';
+    el.innerHTML = '<div class="mail-view-body-text mail-view-status-text" role="status" aria-live="polite">Loading email body\u2026</div>';
     return;
   }
   const hasHtml = body && typeof body.html === 'string' && body.html.length > 0;
@@ -101,7 +101,7 @@ export function renderMailView(el, state, actions) {
       <div class="mail-view-meta">
         <div class="mail-view-meta-row">
           <span class="mail-view-meta-label" id="mv-from-label">From</span>
-          <span class="mail-view-meta-value" aria-labelledby="mv-from-label"><span class="mail-view-from-hover" data-from-email="${esc(mail.from || '')}">${esc(mail.from || 'Unknown')}</span> <button class="mail-view-copy-email" data-copy-email="${esc(mail.from || '')}" title="Copy email address" aria-label="Copy email address" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--accent);padding:0 4px;vertical-align:middle;">\u{1F4CB}</button></span>
+          <span class="mail-view-meta-value" aria-labelledby="mv-from-label"><span class="mail-view-from-hover" data-from-email="${esc(mail.from || '')}">${esc(mail.from || 'Unknown')}</span> <button class="mail-view-copy-email" data-copy-email="${esc(mail.from || '')}" title="Copy email address" aria-label="Copy email address">\u{1F4CB}</button></span>
         </div>
         <div class="mail-view-meta-row">
           <span class="mail-view-meta-label" id="mv-to-label">To</span>
@@ -127,7 +127,7 @@ export function renderMailView(el, state, actions) {
     html += `
       <div class="mail-view-receipt-banner" id="receipt-banner" role="alert">
         <span>\u2709 The sender requested a read receipt.</span>
-        <div style="display:flex;gap:6px;">
+        <div class="receipt-actions">
           <button id="send-receipt-btn" class="btn btn-sm btn-primary" aria-label="Send read receipt">Send receipt</button>
           <button id="ignore-receipt-btn" class="btn btn-sm btn-ghost" aria-label="Ignore read receipt request">Ignore</button>
         </div>
@@ -146,40 +146,38 @@ export function renderMailView(el, state, actions) {
       <button class="mail-view-toolbar-btn" data-action="export" title="${t('export')}" aria-label="${t('export')}">\u2B07 ${t('export')}</button>
       <button class="mail-view-toolbar-btn" data-action="view-headers" title="${t('headers')}" aria-label="${t('headers')}">\uD83D\uDD0D ${t('headers')}</button>
       <button class="mail-view-toolbar-btn" data-action="mute-thread" title="Mute thread" aria-label="Mute thread">${(() => { const tid = mail.thread_id || mail.id; const muted = getMutedThreads().includes(tid); return muted ? '\u{1F507} Unmute' : '\u{1F515} Mute'; })()}</button>
-      <div style="position:relative;display:inline-block;">
+      <div class="toolbar-dropdown-wrapper">
         <button class="mail-view-toolbar-btn" data-action="remind" title="Remind me" aria-label="Remind me" aria-expanded="false" aria-controls="remind-dropdown">\u{23F0} Remind</button>
-        <div class="remind-dropdown" id="remind-dropdown" hidden
-             style="position:absolute;top:100%;right:0;background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:6px;padding:4px 0;z-index:100;min-width:160px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-          <div class="remind-option" data-remind="30" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0">In 30 minutes</div>
-          <div class="remind-option" data-remind="60" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0">In 1 hour</div>
-          <div class="remind-option" data-remind="180" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0">In 3 hours</div>
-          <div class="remind-option" data-remind="tomorrow" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0">Tomorrow</div>
+        <div class="remind-dropdown toolbar-dropdown-panel" id="remind-dropdown" hidden>
+          <div class="remind-option dropdown-option" data-remind="30" role="button" tabindex="0">In 30 minutes</div>
+          <div class="remind-option dropdown-option" data-remind="60" role="button" tabindex="0">In 1 hour</div>
+          <div class="remind-option dropdown-option" data-remind="180" role="button" tabindex="0">In 3 hours</div>
+          <div class="remind-option dropdown-option" data-remind="tomorrow" role="button" tabindex="0">Tomorrow</div>
         </div>
       </div>
       <button class="mail-view-toolbar-btn" data-action="mark-unread" title="${t('mark_unread')}" aria-label="${t('mark_unread')}">\u2709 ${t('mark_unread')}</button>
-      <div style="position:relative;display:inline-block;">
+      <div class="toolbar-dropdown-wrapper">
         <button class="mail-view-toolbar-btn" data-action="snooze" title="Snooze email" aria-label="Snooze email" aria-expanded="false" aria-controls="snooze-dropdown">\u23F0 Snooze</button>
-        <div class="snooze-dropdown" id="snooze-dropdown" hidden
-             style="position:absolute;top:100%;right:0;background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:6px;padding:4px 0;z-index:100;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-          <div class="snooze-option" data-snooze="later-today" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0" aria-label="Snooze for 4 hours">Later today (4 hours)</div>
-          <div class="snooze-option" data-snooze="tomorrow" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0" aria-label="Snooze until tomorrow morning">Tomorrow morning</div>
-          <div class="snooze-option" data-snooze="next-week" style="padding:6px 12px;cursor:pointer;font-size:13px;" role="button" tabindex="0" aria-label="Snooze until next week">Next week</div>
-          <div style="border-top:1px solid var(--pane-border);margin:4px 0;"></div>
-          <div style="padding:6px 12px;">
-            <label for="snooze-custom-time" style="font-size:11px;display:block;margin-bottom:4px;">Pick date & time:</label>
-            <input type="datetime-local" id="snooze-custom-time" aria-label="Custom snooze date and time" style="width:100%;padding:4px;border-radius:4px;border:1px solid var(--pane-border);background:var(--pane-bg);color:var(--pane-text);font-size:12px;" />
-            <button class="snooze-option" data-snooze="custom" style="padding:4px 8px;cursor:pointer;font-size:12px;margin-top:4px;width:100%;text-align:center;border:1px solid var(--pane-border);border-radius:4px;" aria-label="Set custom snooze time">Set</button>
+        <div class="snooze-dropdown toolbar-dropdown-panel" id="snooze-dropdown" hidden>
+          <div class="snooze-option dropdown-option" data-snooze="later-today" role="button" tabindex="0" aria-label="Snooze for 4 hours">Later today (4 hours)</div>
+          <div class="snooze-option dropdown-option" data-snooze="tomorrow" role="button" tabindex="0" aria-label="Snooze until tomorrow morning">Tomorrow morning</div>
+          <div class="snooze-option dropdown-option" data-snooze="next-week" role="button" tabindex="0" aria-label="Snooze until next week">Next week</div>
+          <div class="separator-top mt-4 mb-4"></div>
+          <div class="snooze-custom-section">
+            <label for="snooze-custom-time">Pick date & time:</label>
+            <input type="datetime-local" id="snooze-custom-time" aria-label="Custom snooze date and time" />
+            <button class="snooze-option snooze-custom-btn" data-snooze="custom" aria-label="Set custom snooze time">Set</button>
           </div>
         </div>
       </div>
       <button class="mail-view-toolbar-btn" data-action="archive" title="${t('archive')}" aria-label="${t('archive')}">\uD83D\uDCE6 ${t('archive')}</button>
       <button class="mail-view-toolbar-btn danger" data-action="delete" title="${t('delete')}" aria-label="${t('delete')}">\uD83D\uDDD1 ${t('delete')}</button>
-      <span class="toolbar-sep" style="width:1px;height:18px;background:var(--pane-border);margin:0 4px;" aria-hidden="true"></span>
-      <div class="zoom-controls" style="display:flex;align-items:center;gap:2px;">
-        <button class="mail-view-toolbar-btn" data-action="zoom-out" aria-label="Zoom out" title="Zoom out" style="padding:4px 8px;font-size:14px;">\u2212</button>
-        <span id="zoom-level-display" style="font-size:11px;color:var(--pane-text-dim);min-width:36px;text-align:center;" aria-live="polite">${Math.round(_zoomLevel)}%</span>
-        <button class="mail-view-toolbar-btn" data-action="zoom-in" aria-label="Zoom in" title="Zoom in" style="padding:4px 8px;font-size:14px;">+</button>
-        <button class="mail-view-toolbar-btn" data-action="zoom-reset" aria-label="Reset zoom" title="Reset zoom" style="padding:4px 8px;font-size:11px;">100%</button>
+      <span class="toolbar-sep" aria-hidden="true"></span>
+      <div class="zoom-controls">
+        <button class="mail-view-toolbar-btn" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">\u2212</button>
+        <span id="zoom-level-display" aria-live="polite">${Math.round(_zoomLevel)}%</span>
+        <button class="mail-view-toolbar-btn" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+        <button class="mail-view-toolbar-btn" data-action="zoom-reset" aria-label="Reset zoom" title="Reset zoom">100%</button>
       </div>
     </div>
   `;
@@ -262,9 +260,9 @@ export function renderMailView(el, state, actions) {
   } else if (hasText) {
     html += `<div class="mail-view-body-text">${collapseQuotedText(esc(body.text))}</div>`;
   } else if (body === null) {
-    html += '<div class="mail-view-body-text" style="color:var(--pane-text-dim);text-align:center;padding-top:40px;" role="status">Loading email body\u2026</div>';
+    html += '<div class="mail-view-body-text mail-view-status-text" role="status">Loading email body\u2026</div>';
   } else {
-    html += '<div class="mail-view-body-text" style="color:var(--pane-text-dim);text-align:center;padding-top:40px;" role="status">No content available</div>';
+    html += '<div class="mail-view-body-text mail-view-status-text" role="status">No content available</div>';
   }
   html += '</div>';
 
@@ -287,19 +285,19 @@ export function renderMailView(el, state, actions) {
       // GitHub / Jira link preview cards
       const devLinks = extractDevLinks(links);
       if (devLinks.length > 0) {
-        html += '<div class="mail-view-dev-links" style="margin-top:8px;">';
+        html += '<div class="mail-view-dev-links mt-8">';
         for (const dl of devLinks) {
           const typeIcon = dl.type === 'pull' ? '\uD83D\uDD00' : (dl.type === 'issue' ? '\uD83D\uDCDD' : '\uD83D\uDCCB');
           const typeLabel = dl.type === 'pull' ? 'Pull Request' : (dl.type === 'issue' ? 'Issue' : 'Ticket');
           const platformLabel = dl.platform === 'github' ? 'GitHub' : 'Jira';
           html += `
-            <a href="${esc(dl.url)}" target="_blank" rel="noopener noreferrer" class="dev-link-card" style="display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:6px;border:1px solid var(--pane-border);border-radius:6px;text-decoration:none;color:var(--pane-text);background:var(--pane-header-bg);transition:background 150ms ease;" onmouseenter="this.style.background='var(--accent-light)'" onmouseleave="this.style.background='var(--pane-header-bg)'">
-              <span style="font-size:18px;" aria-hidden="true">${typeIcon}</span>
-              <div style="flex:1;min-width:0;">
-                <div style="font-weight:500;font-size:13px;">${esc(dl.repo)}${dl.number ? ' #' + esc(String(dl.number)) : ''}</div>
-                <div style="font-size:11px;color:var(--pane-text-dim);">${platformLabel} ${typeLabel}</div>
+            <a href="${esc(dl.url)}" target="_blank" rel="noopener noreferrer" class="dev-link-card">
+              <span class="dev-link-card-icon" aria-hidden="true">${typeIcon}</span>
+              <div class="dev-link-card-body">
+                <div class="dev-link-card-title">${esc(dl.repo)}${dl.number ? ' #' + esc(String(dl.number)) : ''}</div>
+                <div class="dev-link-card-meta">${platformLabel} ${typeLabel}</div>
               </div>
-              <span style="font-size:11px;color:var(--accent);">Open &rarr;</span>
+              <span class="dev-link-card-arrow">Open &rarr;</span>
             </a>
           `;
         }
@@ -775,7 +773,7 @@ async function openAttachmentPreview(el, mail, partIndex, previewType, contentTy
 
   section.hidden = false;
   section.setAttribute('aria-expanded', 'true');
-  content.innerHTML = '<div style="padding:16px;color:var(--pane-text-dim);">Loading preview...</div>';
+  content.innerHTML = '<div class="preview-loading">Loading preview...</div>';
 
   const cacheKey = `${mail.account_id}:${mail.folder}:${mail.uid}:${partIndex}`;
 
@@ -819,7 +817,7 @@ async function openAttachmentPreview(el, mail, partIndex, previewType, contentTy
       `;
     }
   } catch (err) {
-    content.innerHTML = `<div style="padding:16px;color:var(--danger);">Failed to load preview: ${esc(String(err))}</div>`;
+    content.innerHTML = `<div class="preview-error">Failed to load preview: ${esc(String(err))}</div>`;
   }
 }
 

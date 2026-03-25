@@ -94,6 +94,14 @@ function getAccountColor(accountEmail, accounts) {
   return ACCOUNT_COLORS[idx % ACCOUNT_COLORS.length];
 }
 
+/** Return a CSS class name for the account color border (CSP-safe). */
+function getAccountColorClass(accountEmail, accounts) {
+  if (!accountEmail || !accounts || accounts.length <= 1) return '';
+  const idx = accounts.findIndex(a => a.email === accountEmail);
+  if (idx < 0) return '';
+  return 'acct-color-' + (idx % ACCOUNT_COLORS.length);
+}
+
 // ── Thread grouping (cached) ──────────────────────────────────────
 
 let _cachedThreadMails = null; // reference to the mails array used for caching
@@ -226,9 +234,9 @@ export function renderMailList(el, state, actions) {
     for (let i = 0; i < 8; i++) {
       html += `
         <div class="mail-item skeleton" aria-hidden="true">
-          <div class="skeleton-line" style="width:60%"></div>
-          <div class="skeleton-line" style="width:80%"></div>
-          <div class="skeleton-line" style="width:40%"></div>
+          <div class="skeleton-line skeleton-line-60"></div>
+          <div class="skeleton-line skeleton-line-80"></div>
+          <div class="skeleton-line skeleton-line-40"></div>
         </div>
       `;
     }
@@ -240,7 +248,7 @@ export function renderMailList(el, state, actions) {
     </div>`;
   } else {
     // Virtual scroll container
-    html += '<div class="mail-list-items" id="ml-virtual-container" role="listbox" aria-label="Email list" style="overflow-y:auto;position:relative;">';
+    html += '<div class="mail-list-items" id="ml-virtual-container" role="listbox" aria-label="Email list">';
     html += '<div id="ml-virtual-content"></div>';
     html += '</div>';
 
@@ -556,7 +564,7 @@ function renderThreadHeader(thread, expanded) {
   const spamInd = renderSpamIndicator(lastMail);
 
   return `
-    <div class="thread-header mail-item${hasUnread ? ' unread' : ''}" data-thread-id="${esc(thread.thread_id)}" role="option" tabindex="0" aria-expanded="${expanded}" aria-label="${esc(thread.subject)}, ${count} messages${hasUnread ? ', ' + thread.unread_count + ' unread' : ''}" style="height:${ITEM_HEIGHT}px;box-sizing:border-box;">
+    <div class="thread-header mail-item${hasUnread ? ' unread' : ''}" data-thread-id="${esc(thread.thread_id)}" role="option" tabindex="0" aria-expanded="${expanded}" aria-label="${esc(thread.subject)}, ${count} messages${hasUnread ? ', ' + thread.unread_count + ' unread' : ''}">
       <div class="thread-expand-icon" aria-hidden="true">${expanded ? '\u25BC' : '\u25B6'}</div>
       <div class="mail-item-body">
         <div class="mail-item-top">
@@ -594,14 +602,14 @@ function renderImportanceIcon(mail) {
 
 function renderFlagIcon(mail) {
   const flagged = !!mail.flag_due_date;
-  if (!flagged) return `<div class="mail-item-flag" data-flag-id="${esc(mail.id)}" title="Flag for follow-up" role="button" tabindex="0" style="cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.25;">\u2691</div>`;
-  // Color: red if overdue, orange if due today, default blue
+  if (!flagged) return `<div class="mail-item-flag" data-flag-id="${esc(mail.id)}" title="Flag for follow-up" role="button" tabindex="0">\u2691</div>`;
+  // Color class: red if overdue, orange if due today, default blue
   const now = new Date().toISOString().slice(0, 10);
   const due = mail.flag_due_date.slice(0, 10);
-  let color = 'var(--accent)';
-  if (due < now) color = 'var(--danger)';
-  else if (due === now) color = 'var(--warning)';
-  return `<div class="mail-item-flag flagged" data-flag-id="${esc(mail.id)}" title="Flagged: due ${esc(mail.flag_due_date)}" role="button" tabindex="0" style="cursor:pointer;font-size:13px;padding:2px 4px;color:${color};">\u2691</div>`;
+  let colorClass = 'flag-default';
+  if (due < now) colorClass = 'flag-overdue';
+  else if (due === now) colorClass = 'flag-due-today';
+  return `<div class="mail-item-flag flagged ${colorClass}" data-flag-id="${esc(mail.id)}" title="Flagged: due ${esc(mail.flag_due_date)}" role="button" tabindex="0">\u2691</div>`;
 }
 
 function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) {
@@ -620,20 +628,17 @@ function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) 
     ? `<span class="mail-item-account-badge" title="${esc(mail._accountEmail)}">${esc((mail._accountName || mail._accountEmail || '')[0] || '?')}</span>`
     : '';
 
-  // Apply conditional display rules (use pre-cached rules if provided)
-  const displayStyle = cachedRules !== null ? getDisplayRuleStyleWith(mail, cachedRules) : getDisplayRuleStyle(mail);
-
   // Multi-select checkbox (visible when multi-select is active or on hover via CSS)
   const checkboxVisible = _selectedIds.size > 0;
   const checkbox = `<input type="checkbox" class="mail-item-checkbox${checkboxVisible ? ' visible' : ''}" data-check-id="${esc(mail.id)}" ${isMultiSelected ? 'checked' : ''} tabindex="-1" aria-label="Select email" />`;
 
   return `
-    <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${isMultiSelected ? ' multi-selected' : ''}${indent}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0" style="height:${ITEM_HEIGHT}px;box-sizing:border-box;${displayStyle}${mail._accountEmail ? 'border-left:3px solid ' + getAccountColor(mail._accountEmail, (typeof state !== 'undefined' && state.accounts) || []) + ';' : ''}">
+    <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${isMultiSelected ? ' multi-selected' : ''}${indent}${getDisplayRuleClasses(mail, cachedRules)}${mail._accountEmail ? ' ' + getAccountColorClass(mail._accountEmail, (typeof state !== 'undefined' && state.accounts) || []) : ''}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0">
       ${checkbox}
       ${senderAvatar(mail.from_name || mail.from || 'Unknown')}
       ${isUnread ? '<div class="mail-item-unread-dot" aria-hidden="true"></div>' : ''}
       ${importanceInd}
-      <div class="mail-item-pin${isPinned ? ' pinned' : ''}" data-pin-id="${esc(mail.id)}" title="${isPinned ? 'Unpin' : 'Pin to top'}" role="button" aria-label="${isPinned ? 'Unpin' : 'Pin'} email" tabindex="0" style="cursor:pointer;font-size:14px;padding:2px 4px;opacity:${isPinned ? '1' : '0.3'};">
+      <div class="mail-item-pin${isPinned ? ' pinned' : ''}" data-pin-id="${esc(mail.id)}" title="${isPinned ? 'Unpin' : 'Pin to top'}" role="button" aria-label="${isPinned ? 'Unpin' : 'Pin'} email" tabindex="0">
         \uD83D\uDCCC
       </div>
       <div class="mail-item-star${isStarred ? ' starred' : ''}" data-star-id="${esc(mail.id)}" title="Toggle star" role="button" aria-label="${isStarred ? 'Unstar' : 'Star'} email" tabindex="0">
@@ -870,7 +875,7 @@ function showCategoryMenu(x, y, mail, actions) {
   const menuItems = CATEGORIES.map((cat) => {
     const has = currentCats.includes(cat.name);
     return {
-      label: `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cat.color};margin-right:6px;"></span>${has ? '\u2714 ' : ''}${cat.name}`,
+      label: `<span class="category-dot" style="background:${cat.color}"></span>${has ? '\u2714 ' : ''}${cat.name}`,
       html: true,
       action: () => {
         if (has) {
@@ -955,6 +960,67 @@ function getDisplayRuleStyleWith(mail, rules) {
   }
 
   return styles.join(';');
+}
+
+/**
+ * Return CSS class names for display rules (CSP-safe replacement for inline styles).
+ * For highlight rules with dynamic colors, uses data-attributes + CSS custom properties
+ * applied via a <style> element injected in ensureDisplayRuleStyles().
+ */
+function getDisplayRuleClasses(mail, cachedRules) {
+  const rules = cachedRules !== null ? cachedRules : (() => {
+    const now = Date.now();
+    if (!_displayRulesCache || now - _displayRulesCacheTime > 5000) {
+      _displayRulesCache = loadDisplayRules();
+      _displayRulesCacheTime = now;
+    }
+    return _displayRulesCache;
+  })();
+  if (!rules || rules.length === 0) return '';
+
+  const classes = [];
+  for (const rule of rules) {
+    let fieldValue = '';
+    if (rule.field === 'from') {
+      fieldValue = (mail.from_name || mail.from || '').toLowerCase();
+    } else if (rule.field === 'subject') {
+      fieldValue = (mail.subject || '').toLowerCase();
+    }
+
+    if (fieldValue.includes((rule.value || '').toLowerCase())) {
+      if (rule.style === 'highlight') {
+        // Use a rule-specific class; ensureDisplayRuleStyles() creates the CSS
+        const ruleClass = 'dr-hl-' + (rule.id || rule.value || '').replace(/[^a-zA-Z0-9]/g, '_');
+        classes.push(ruleClass);
+        _ensureDisplayRuleStyle(ruleClass, rule.color);
+      } else if (rule.style === 'bold') {
+        classes.push('dr-bold');
+      } else if (rule.style === 'italic') {
+        classes.push('dr-italic');
+      }
+    }
+  }
+
+  return classes.length > 0 ? ' ' + classes.join(' ') : '';
+}
+
+/** Cache of injected display rule highlight styles to avoid duplicates. */
+const _drStyleCache = new Set();
+
+/** Inject a <style> rule for a highlight display rule (once per rule). */
+function _ensureDisplayRuleStyle(className, color) {
+  if (_drStyleCache.has(className)) return;
+  _drStyleCache.add(className);
+  let styleEl = document.getElementById('exospine-dr-styles');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'exospine-dr-styles';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.sheet.insertRule(
+    `.${className} { background-color: ${color}22; border-left: 3px solid ${color}; }`,
+    styleEl.sheet.cssRules.length
+  );
 }
 
 function esc(str) {

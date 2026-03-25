@@ -143,7 +143,7 @@ export function renderSidebar(el, state, actions) {
       const isActive = i === state.activeAccount;
       html += `
         <div class="sidebar-account-item${isActive ? ' active' : ''}" data-account-index="${i}" role="option" aria-selected="${isActive}" tabindex="0">
-          <div class="sidebar-account-icon" style="background:${accColor}" aria-hidden="true">${accInitial}</div>
+          <div class="sidebar-account-icon acct-color-${i % ACCOUNT_COLORS.length}" aria-hidden="true">${accInitial}</div>
           <div class="sidebar-account-item-info">
             <div class="sidebar-account-name">${esc(acc.name || acc.email)}</div>
             <div class="sidebar-account-email">${esc(acc.email || '')}</div>
@@ -156,7 +156,7 @@ export function renderSidebar(el, state, actions) {
     // Single account header
     html += `
       <div class="sidebar-account" role="banner" aria-label="Current account">
-        <div class="sidebar-account-icon" style="background:${color}" aria-hidden="true">${initial}</div>
+        <div class="sidebar-account-icon acct-color-${state.activeAccount % ACCOUNT_COLORS.length}" aria-hidden="true">${initial}</div>
         <div>
           <div class="sidebar-account-name">${esc(account.name || account.email)}</div>
           <div class="sidebar-account-email">${esc(account.email || '')}</div>

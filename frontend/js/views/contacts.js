@@ -96,7 +96,7 @@ export async function openContacts() {
             </div>
             <div class="settings-row">
               <label>Email</label>
-              <input type="email" id="contact-edit-email" value="${esc(c.email)}" class="calendar-input" disabled style="opacity:0.6" />
+              <input type="email" id="contact-edit-email" value="${esc(c.email)}" class="calendar-input contact-edit-email-disabled" disabled />
             </div>
             <div class="settings-row">
               <label>Phone</label>
@@ -110,7 +110,7 @@ export async function openContacts() {
               <label>Notes</label>
               <textarea id="contact-edit-notes" rows="4" class="calendar-input">${esc(c.notes || '')}</textarea>
             </div>
-            <div style="display:flex;gap:6px;margin-top:12px;">
+            <div class="contacts-actions mt-12">
               <button class="btn btn-primary btn-sm" id="contact-save-btn">Save</button>
               <button class="btn btn-ghost btn-sm" id="contact-cancel-edit-btn">Cancel</button>
             </div>
@@ -130,10 +130,10 @@ export async function openContacts() {
             <div class="contacts-detail-fields">
               ${c.phone ? `<div class="contacts-detail-field"><span class="contacts-field-label">Phone</span><span>${esc(c.phone)}</span></div>` : ''}
               ${c.company ? `<div class="contacts-detail-field"><span class="contacts-field-label">Company</span><span>${esc(c.company)}</span></div>` : ''}
-              ${c.notes ? `<div class="contacts-detail-field"><span class="contacts-field-label">Notes</span><span style="white-space:pre-wrap;">${esc(c.notes)}</span></div>` : ''}
+              ${c.notes ? `<div class="contacts-detail-field"><span class="contacts-field-label">Notes</span><span class="whitespace-prewrap">${esc(c.notes)}</span></div>` : ''}
               <div class="contacts-detail-field"><span class="contacts-field-label">Emails exchanged</span><span>${c.frequency || 0}</span></div>
             </div>
-            <div style="display:flex;gap:6px;margin-top:16px;">
+            <div class="contacts-actions mt-16">
               <button class="btn btn-ghost btn-sm" id="contact-edit-btn">Edit</button>
               <button class="btn btn-danger btn-sm" id="contact-delete-btn">Delete</button>
             </div>

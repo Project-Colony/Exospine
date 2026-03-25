@@ -20,35 +20,35 @@ export function openRss() {
 
   function render() {
     overlay.innerHTML = `
-      <div class="settings-panel" style="max-width:800px;">
+      <div class="settings-panel rss-panel">
         <div class="settings-header">
           <h2>RSS Reader</h2>
           <button class="settings-close" id="rss-close" aria-label="Close">&times;</button>
         </div>
-        <div style="display:flex;gap:16px;padding:16px;min-height:400px;">
-          <div style="width:220px;flex-shrink:0;">
-            <h3 style="margin:0 0 8px;">Feeds</h3>
-            <div id="rss-feed-list" style="margin-bottom:12px;">
-              ${feeds.length === 0 ? '<div style="color:var(--pane-text-dim);font-size:13px;">No feeds added</div>' : ''}
+        <div class="rss-layout">
+          <div class="rss-sidebar">
+            <h3 class="rss-sidebar h3">Feeds</h3>
+            <div id="rss-feed-list" class="rss-feed-list">
+              ${feeds.length === 0 ? '<div class="text-dim text-sm">No feeds added</div>' : ''}
               ${feeds.map((f, i) => `
-                <div class="rss-feed-item ${selectedFeed === i ? 'active' : ''}" data-idx="${i}" style="padding:6px 8px;cursor:pointer;border-radius:4px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center;">
-                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(f.title || f.url)}</span>
-                  <button data-del="${i}" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;" title="Remove">&times;</button>
+                <div class="rss-feed-item ${selectedFeed === i ? 'active' : ''}" data-idx="${i}">
+                  <span class="rss-feed-item-title">${esc(f.title || f.url)}</span>
+                  <button data-del="${i}" class="rss-feed-del" title="Remove">&times;</button>
                 </div>
               `).join('')}
             </div>
-            <div style="display:flex;gap:4px;">
-              <input id="rss-url" placeholder="Feed URL..." style="flex:1;padding:4px 8px;border:1px solid var(--separator);border-radius:4px;font-size:12px;background:var(--pane-bg);color:var(--pane-text);">
-              <button id="rss-add" style="padding:4px 10px;border-radius:4px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;">Add</button>
+            <div class="rss-add-row">
+              <input id="rss-url" placeholder="Feed URL..." class="rss-url-input">
+              <button id="rss-add" class="rss-add-btn">Add</button>
             </div>
           </div>
-          <div style="flex:1;overflow-y:auto;" id="rss-items">
-            ${items.length === 0 ? '<div style="color:var(--pane-text-dim);text-align:center;padding-top:60px;">Select a feed to view items</div>' : ''}
+          <div class="rss-content" id="rss-items">
+            ${items.length === 0 ? '<div class="mail-view-status-text">Select a feed to view items</div>' : ''}
             ${items.map(item => `
-              <div style="padding:8px 0;border-bottom:1px solid var(--separator);">
-                <a href="${esc(item.link)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600;font-size:14px;">${esc(item.title)}</a>
-                ${item.pubDate ? `<div style="font-size:11px;color:var(--pane-text-dim);margin-top:2px;">${esc(item.pubDate)}</div>` : ''}
-                ${item.description ? `<div style="font-size:13px;margin-top:4px;color:var(--pane-text);">${esc(item.description.substring(0, 200))}${item.description.length > 200 ? '...' : ''}</div>` : ''}
+              <div class="rss-item">
+                <a href="${esc(item.link)}" target="_blank" rel="noopener" class="rss-item-link">${esc(item.title)}</a>
+                ${item.pubDate ? `<div class="rss-item-date">${esc(item.pubDate)}</div>` : ''}
+                ${item.description ? `<div class="rss-item-desc">${esc(item.description.substring(0, 200))}${item.description.length > 200 ? '...' : ''}</div>` : ''}
               </div>
             `).join('')}
           </div>

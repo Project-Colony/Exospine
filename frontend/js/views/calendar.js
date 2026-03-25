@@ -186,7 +186,7 @@ export function openCalendar() {
           <label>Description</label>
           <textarea id="cal-ev-desc" rows="3" class="calendar-input" placeholder="Optional description"></textarea>
         </div>
-        <div style="display:flex;gap:6px;margin-top:8px;">
+        <div class="cal-actions">
           <button class="btn btn-primary btn-sm" id="cal-ev-save">Save</button>
           <button class="btn btn-ghost btn-sm" id="cal-ev-cancel">Cancel</button>
         </div>
@@ -199,12 +199,12 @@ export function openCalendar() {
           <span class="settings-title">Calendar</span>
           <button class="compose-close" id="calendar-close" title="Close">\u00D7</button>
         </div>
-        <div class="settings-body" style="padding:16px;overflow-y:auto;">
+        <div class="settings-body cal-body">
           <div class="calendar-nav">
             <button class="btn btn-ghost btn-sm" id="cal-prev">\u276E</button>
             <span class="calendar-month-title">${esc(monthName)}</span>
             <button class="btn btn-ghost btn-sm" id="cal-next">\u276F</button>
-            <button class="btn btn-ghost btn-sm" id="cal-today" style="margin-left:auto;">Today</button>
+            <button class="btn btn-ghost btn-sm ml-auto" id="cal-today">Today</button>
             <button class="btn btn-ghost btn-sm" id="cal-import-ics" title="Import ICS file">Import ICS</button>
           </div>
           <div class="calendar-grid">

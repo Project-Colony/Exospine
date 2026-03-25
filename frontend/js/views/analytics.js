@@ -19,7 +19,7 @@ export async function openAnalytics(accountId) {
         <button class="compose-close" id="analytics-close" title="Close">\u00D7</button>
       </div>
       <div class="settings-body" id="analytics-body" style="padding:16px;">
-        <div style="text-align:center;padding:40px 0;color:var(--pane-text-dim);">Loading analytics...</div>
+        <div class="mail-view-status-text">Loading analytics...</div>
       </div>
       <div class="settings-footer">
         <button class="btn btn-ghost" id="analytics-done">Close</button>
@@ -51,7 +51,7 @@ export async function openAnalytics(accountId) {
   } catch (err) {
     const body = overlay.querySelector('#analytics-body');
     if (body) {
-      body.innerHTML = `<div style="color:var(--danger);padding:20px;">Failed to load analytics: ${esc(String(err))}</div>`;
+      body.innerHTML = `<div class="preview-error" style="padding:20px;">Failed to load analytics: ${esc(String(err))}</div>`;
     }
   }
 }
@@ -68,18 +68,18 @@ function renderAnalytics(data) {
 
   // Summary cards
   html += `
-    <div class="analytics-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;">
-      <div class="analytics-card" style="background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:8px;padding:16px;text-align:center;">
-        <div style="font-size:28px;font-weight:700;color:var(--accent);">${data.total_received}</div>
-        <div style="font-size:12px;color:var(--pane-text-dim);margin-top:4px;">Received</div>
+    <div class="analytics-summary">
+      <div class="analytics-card">
+        <div class="analytics-stat-value">${data.total_received}</div>
+        <div class="analytics-stat-label">Received</div>
       </div>
-      <div class="analytics-card" style="background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:8px;padding:16px;text-align:center;">
-        <div style="font-size:28px;font-weight:700;color:var(--accent);">${data.total_sent}</div>
-        <div style="font-size:12px;color:var(--pane-text-dim);margin-top:4px;">Sent</div>
+      <div class="analytics-card">
+        <div class="analytics-stat-value">${data.total_sent}</div>
+        <div class="analytics-stat-label">Sent</div>
       </div>
-      <div class="analytics-card" style="background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:8px;padding:16px;text-align:center;">
-        <div style="font-size:28px;font-weight:700;color:var(--accent);">${data.total_received + data.total_sent}</div>
-        <div style="font-size:12px;color:var(--pane-text-dim);margin-top:4px;">Total</div>
+      <div class="analytics-card">
+        <div class="analytics-stat-value">${data.total_received + data.total_sent}</div>
+        <div class="analytics-stat-label">Total</div>
       </div>
     </div>
   `;
@@ -87,22 +87,21 @@ function renderAnalytics(data) {
   // Emails by day (last 30 days) — CSS bar chart
   if (data.by_day.length > 0) {
     html += `
-      <div class="analytics-section" style="margin-bottom:24px;">
-        <div style="font-weight:600;margin-bottom:8px;">Emails by Day (last 30 days)</div>
-        <div class="analytics-chart" style="display:flex;align-items:flex-end;gap:2px;height:100px;border-bottom:1px solid var(--pane-border);">
+      <div class="analytics-section">
+        <div class="analytics-section-title">Emails by Day (last 30 days)</div>
+        <div class="analytics-chart" style="gap:2px;height:100px;">
     `;
     for (const [day, count] of data.by_day) {
       const pct = (count / maxByDay) * 100;
-      const shortDay = day.slice(5); // MM-DD
       html += `
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;" title="${day}: ${count} emails">
+        <div class="analytics-chart-bar-wrapper" title="${day}: ${count} emails">
           <div style="width:100%;max-width:20px;background:var(--accent);border-radius:2px 2px 0 0;height:${pct}%;min-height:${count > 0 ? 2 : 0}px;transition:height 0.2s;"></div>
         </div>
       `;
     }
     html += `
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--pane-text-dim);margin-top:4px;">
+        <div class="analytics-chart-labels">
           <span>${data.by_day.length > 0 ? data.by_day[0][0].slice(5) : ''}</span>
           <span>${data.by_day.length > 0 ? data.by_day[data.by_day.length - 1][0].slice(5) : ''}</span>
         </div>
@@ -112,22 +111,22 @@ function renderAnalytics(data) {
 
   // Busiest hours — CSS bar chart
   html += `
-    <div class="analytics-section" style="margin-bottom:24px;">
-      <div style="font-weight:600;margin-bottom:8px;">Busiest Hours</div>
-      <div class="analytics-chart" style="display:flex;align-items:flex-end;gap:1px;height:80px;border-bottom:1px solid var(--pane-border);">
+    <div class="analytics-section">
+      <div class="analytics-section-title">Busiest Hours</div>
+      <div class="analytics-chart" style="gap:1px;height:80px;">
   `;
   for (let h = 0; h < 24; h++) {
     const count = data.by_hour[h] || 0;
     const pct = (count / maxByHour) * 100;
     html += `
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;" title="${h}:00 - ${count} emails">
+      <div class="analytics-chart-bar-wrapper" title="${h}:00 - ${count} emails">
         <div style="width:100%;max-width:16px;background:rgb(0,180,160);border-radius:2px 2px 0 0;height:${pct}%;min-height:${count > 0 ? 2 : 0}px;"></div>
       </div>
     `;
   }
   html += `
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--pane-text-dim);margin-top:4px;">
+      <div class="analytics-chart-labels">
         <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span>
       </div>
     </div>
@@ -136,19 +135,19 @@ function renderAnalytics(data) {
   // Top senders — horizontal bars
   if (data.top_senders.length > 0) {
     html += `
-      <div class="analytics-section" style="margin-bottom:24px;">
-        <div style="font-weight:600;margin-bottom:8px;">Top Senders</div>
+      <div class="analytics-section">
+        <div class="analytics-section-title">Top Senders</div>
     `;
     for (const [sender, count] of data.top_senders) {
       const pct = (count / maxSender) * 100;
       const displaySender = sender.length > 40 ? sender.slice(0, 40) + '...' : sender;
       html += `
-        <div style="margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%;" title="${esc(sender)}">${esc(displaySender)}</span>
-            <span style="color:var(--pane-text-dim);flex-shrink:0;margin-left:8px;">${count}</span>
+        <div class="analytics-sender-row">
+          <div class="analytics-sender-header">
+            <span class="analytics-sender-name" title="${esc(sender)}">${esc(displaySender)}</span>
+            <span class="analytics-sender-count">${count}</span>
           </div>
-          <div style="height:6px;background:var(--pane-border);border-radius:3px;overflow:hidden;">
+          <div class="analytics-bar-track">
             <div style="width:${pct}%;height:100%;background:rgb(160,90,220);border-radius:3px;"></div>
           </div>
         </div>
@@ -204,18 +203,18 @@ function renderWeeklyHeatmap(data) {
   }
 
   let html = `
-    <div class="analytics-section" style="margin-bottom:24px;">
-      <div style="font-weight:600;margin-bottom:8px;">Weekly Email Heatmap</div>
-      <div class="analytics-heatmap" style="display:grid;grid-template-columns:40px repeat(24,1fr);gap:1px;font-size:10px;">
+    <div class="analytics-section">
+      <div class="analytics-section-title">Weekly Email Heatmap</div>
+      <div class="analytics-heatmap">
         <div></div>
   `;
   // Hour headers
   for (let h = 0; h < 24; h++) {
-    html += `<div style="text-align:center;color:var(--pane-text-dim);${h % 3 === 0 ? '' : 'visibility:hidden;'}">${h}h</div>`;
+    html += `<div class="text-dim" style="text-align:center;${h % 3 === 0 ? '' : 'visibility:hidden;'}">${h}h</div>`;
   }
   // Rows
   for (let d = 0; d < 7; d++) {
-    html += `<div style="display:flex;align-items:center;color:var(--pane-text-dim);font-weight:500;">${dayNames[d]}</div>`;
+    html += `<div class="flex-row-center text-dim font-bold">${dayNames[d]}</div>`;
     for (let h = 0; h < 24; h++) {
       const val = grid[d][h];
       const intensity = maxCell > 0 ? val / maxCell : 0;
@@ -238,10 +237,10 @@ function renderAvgResponseTime(data) {
     const mins = data.avg_response_minutes;
     const display = formatDuration(mins);
     return `
-      <div class="analytics-section" style="margin-bottom:24px;">
-        <div class="analytics-card" style="background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:8px;padding:16px;text-align:center;">
-          <div style="font-size:28px;font-weight:700;color:var(--accent);">${esc(display)}</div>
-          <div style="font-size:12px;color:var(--pane-text-dim);margin-top:4px;">Average response time</div>
+      <div class="analytics-section">
+        <div class="analytics-card">
+          <div class="analytics-stat-value">${esc(display)}</div>
+          <div class="analytics-stat-label">Average response time</div>
         </div>
       </div>
     `;
@@ -262,10 +261,10 @@ function renderAvgResponseTime(data) {
   const display = formatDuration(estimatedHours * 60);
 
   return `
-    <div class="analytics-section" style="margin-bottom:24px;">
-      <div class="analytics-card" style="background:var(--pane-bg);border:1px solid var(--pane-border);border-radius:8px;padding:16px;text-align:center;">
-        <div style="font-size:28px;font-weight:700;color:var(--accent);">~${esc(display)}</div>
-        <div style="font-size:12px;color:var(--pane-text-dim);margin-top:4px;">Estimated average response time</div>
+    <div class="analytics-section">
+      <div class="analytics-card">
+        <div class="analytics-stat-value">~${esc(display)}</div>
+        <div class="analytics-stat-label">Estimated average response time</div>
       </div>
     </div>
   `;

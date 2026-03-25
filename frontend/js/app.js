@@ -1574,16 +1574,14 @@ function setupResizablePanels() {
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.body.classList.remove('col-resizing');
       lsSetItem(storageKey, String(parseInt(targetEl.style.width, 10)));
     };
     splitter.addEventListener('mousedown', (e) => {
       e.preventDefault();
       startX = e.clientX;
       startW = targetEl.getBoundingClientRect().width;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
+      document.body.classList.add('col-resizing');
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     });
@@ -1832,6 +1830,11 @@ async function showPinLockScreen() {
 }
 
 async function init() {
+  // Register service worker for offline caching
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
   // PIN lock screen — block until unlocked
   const pinOk = await showPinLockScreen();
   if (!pinOk) return;
