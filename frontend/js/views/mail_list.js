@@ -7,6 +7,7 @@ import { loadDisplayRules } from './settings.js';
 import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 
+// ===== SECTION: Constants & State =====
 const ITEM_HEIGHT = 80; // px per mail item
 const THREAD_HEADER_HEIGHT = 80; // px for a collapsed thread header
 let _scrollRAF = null;
@@ -37,6 +38,7 @@ let _repliedToSenders = null;
 let _repliedToSendersTime = 0;
 
 /** Build a Set of sender emails you have replied to (from sent folders). */
+// ===== SECTION: Priority Sorting & Smart Inbox =====
 function getRepliedToSenders(mails) {
   const now = Date.now();
   // Cache for 30 seconds to avoid repeated scans
@@ -140,6 +142,7 @@ function sortMails(mails, sortKey) {
 }
 
 /** Clear multi-select state */
+// ===== SECTION: Multi-Select =====
 export function clearMultiSelect() {
   _selectedIds.clear();
 }
@@ -167,6 +170,7 @@ const CATEGORY_COLORS = {};
 CATEGORIES.forEach((c) => { CATEGORY_COLORS[c.name] = c.color; });
 CATEGORY_COLORS['Spam'] = '#95a5a6';
 
+// ===== SECTION: Category & Account Colors =====
 function getCategoryColor(name) {
   return CATEGORY_COLORS[name] || '#7f8c8d';
 }
@@ -203,6 +207,7 @@ let _cachedThreadKey = null; // content-based cache key: "length:firstId:lastId"
 let _cachedThreads = null;
 
 /** Compute a lightweight cache key based on array content. */
+// ===== SECTION: Thread Grouping =====
 function _threadCacheKey(mails) {
   if (!mails || mails.length === 0) return '0::';
   return `${mails.length}:${mails[0].id}:${mails[mails.length - 1].id}`;
@@ -269,6 +274,7 @@ let _threadViewEnabled = false;
  * @param {object} state    app state
  * @param {object} actions  callback handlers
  */
+// ===== SECTION: Main Render =====
 export function renderMailList(el, state, actions) {
   _lastState = state;
   _lastActions = actions;
@@ -598,6 +604,7 @@ export function renderMailList(el, state, actions) {
 
 // ── Render helpers: category badges + spam indicator ───────────────
 
+// ===== SECTION: Badge & Icon Renderers =====
 function renderCategoryBadges(mail) {
   const cats = mail.categories || [];
   if (cats.length === 0) return '';
@@ -622,6 +629,7 @@ function renderSpamIndicator(mail) {
 
 // ── Flat list rendering (original) ─────────────────────────────────
 
+// ===== SECTION: Virtual Scroll Rendering =====
 function renderVisibleItems(container, state, actions) {
   const contentEl = container.querySelector('#ml-virtual-content');
   if (!contentEl) return;
@@ -832,6 +840,7 @@ function renderFlagIcon(mail) {
   return `<div class="mail-item-flag flagged ${colorClass}" data-flag-id="${esc(mail.id)}" title="Flagged: due ${esc(mail.flag_due_date)}" role="button" tabindex="0">\u2691</div>`;
 }
 
+// ===== SECTION: Mail Item Rendering =====
 function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) {
   const isSelected = state.selectedMail && state.selectedMail.id === mail.id;
   const isMultiSelected = _selectedIds.has(mail.id);
@@ -889,6 +898,7 @@ function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) 
 
 // ── Event delegation for mail items (single listener on contentEl) ──
 
+// ===== SECTION: Event Handlers & Context Menus =====
 function attachItemEvents(contentEl, state, actions) {
   // Use event delegation: one click/keydown/contextmenu/dragstart/dragend listener
   // on the contentEl instead of N listeners on each item.
@@ -1149,6 +1159,7 @@ let _displayRulesCache = null;
 let _displayRulesCacheTime = 0;
 
 /** Apply display rules using the time-based cache (for backward compat / single-item calls). */
+// ===== SECTION: Display Rules =====
 function getDisplayRuleStyle(mail) {
   // Refresh cache every 5 seconds
   const now = Date.now();

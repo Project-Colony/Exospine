@@ -5,6 +5,7 @@ import { showContextMenu } from '../components/context_menu.js';
 import * as api from '../api.js';
 import { t } from '../i18n.js';
 
+// ===== SECTION: Constants & Folder Icons =====
 const FOLDER_ICONS = {
   'INBOX':                    '\uD83D\uDCE5',
   'Sent':                     '\uD83D\uDCE4',
@@ -41,6 +42,7 @@ const PREDEFINED_SEARCH_FOLDERS = [
   { name: 'this_week', query: 'date:week', icon: '\uD83D\uDCC5' },
 ];
 
+// ===== SECTION: Search Folders =====
 function loadCustomSearchFolders() {
   try {
     const raw = localStorage.getItem('exospine_search_folders');
@@ -57,6 +59,7 @@ function saveCustomSearchFolders(folders) {
 // ── Shared Labels (cross-account, localStorage) ─────────────────
 const LABEL_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e', '#d35400', '#16a085'];
 
+// ===== SECTION: Labels =====
 function loadLabels() {
   try {
     const raw = localStorage.getItem('exospine_labels');
@@ -92,6 +95,7 @@ export { loadLabels, saveLabels, getMailIdsForLabel, toggleMailLabel, LABEL_COLO
 
 
 // ── Folder order persistence (drag reorder) ─────────────────────
+// ===== SECTION: Folder Ordering & Collapsed State =====
 function loadFolderOrder(section) {
   try {
     const raw = localStorage.getItem('exospine_folder_order_' + section);
@@ -136,6 +140,7 @@ function saveCollapsedSections(collapsed) {
 let _sidebarCacheKey = null;
 
 /** Build a lightweight fingerprint of sidebar-relevant state. */
+// ===== SECTION: Render Optimization =====
 function _sidebarFingerprint(state) {
   return JSON.stringify({
     aa: state.activeAccount,
@@ -156,6 +161,7 @@ function _sidebarFingerprint(state) {
  * @param {object} state    app state
  * @param {object} actions  { onFolderSelect, onAddAccount, onOpenSettings, onUnifiedInbox, onSearchFolder }
  */
+// ===== SECTION: Main Render =====
 export function renderSidebar(el, state, actions) {
   // Skip full re-render if nothing relevant changed
   const key = _sidebarFingerprint(state);
@@ -712,6 +718,7 @@ export function renderSidebar(el, state, actions) {
  * @param {HTMLElement} el  #sidebar element
  * @param {object} state    app state (only state.folders is read)
  */
+// ===== SECTION: Badge Updates =====
 export function updateUnreadBadges(el, state) {
   for (const folder of state.folders) {
     const name = typeof folder === 'string' ? folder : folder.name;
@@ -749,6 +756,7 @@ export function updateUnreadBadges(el, state) {
  * Strips common prefixes like "[Gmail]/" for cleaner sidebar display,
  * and decodes IMAP modified UTF-7 encoded names.
  */
+// ===== SECTION: Utility Helpers =====
 function folderDisplayName(name) {
   let display = name;
   if (display.startsWith('[Gmail]/')) display = display.slice(8);

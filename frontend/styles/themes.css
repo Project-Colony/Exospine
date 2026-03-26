@@ -1,0 +1,1213 @@
+/* --- Light theme ------------------------------------------- */
+[data-theme="light"] {
+  --sidebar-bg: rgb(240, 242, 246);
+  --sidebar-hover: rgb(228, 230, 236);
+  --sidebar-active: rgb(215, 218, 228);
+  --sidebar-text: rgb(40, 45, 55);
+  --sidebar-text-dim: rgb(100, 108, 125);
+
+  --list-bg: rgb(248, 249, 252);
+  --list-hover: rgb(238, 240, 246);
+  --list-active-bg: rgba(0, 120, 214, 0.12);
+  --list-border: rgb(225, 228, 232);
+  --list-text: rgb(30, 35, 45);
+  --list-text-dim: rgb(100, 108, 125);
+
+  --pane-bg: rgb(255, 255, 255);
+  --pane-text: rgb(30, 30, 30);
+  --pane-text-dim: rgb(100, 105, 115);
+  --pane-border: rgb(225, 228, 232);
+  --pane-header-bg: rgb(248, 249, 251);
+}
+
+[data-theme="light"] html,
+[data-theme="light"] body {
+  background: var(--sidebar-bg);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.25);
+}
+
+[data-theme="light"] .mail-list-search {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.12);
+  color: var(--list-text);
+}
+[data-theme="light"] .mail-list-search::placeholder {
+  color: var(--list-text-dim);
+}
+
+[data-theme="light"] .mail-list-btn {
+  border-color: rgba(0,0,0,0.15);
+  color: var(--list-text-dim);
+}
+[data-theme="light"] .mail-list-btn:hover {
+  background: rgba(0,0,0,0.04);
+  color: var(--list-text);
+  border-color: rgba(0,0,0,0.25);
+}
+
+[data-theme="light"] .mail-item.unread .mail-item-from {
+  color: var(--list-text);
+}
+
+[data-theme="light"] .skeleton-line {
+  background: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .mail-list-loadmore button {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.12);
+  color: var(--list-text-dim);
+}
+[data-theme="light"] .mail-list-loadmore button:hover {
+  background: rgba(0,0,0,0.08);
+  color: var(--list-text);
+}
+
+[data-theme="light"] .spinner {
+  border-color: rgba(0,0,0,0.12);
+  border-top-color: var(--accent);
+}
+
+[data-theme="light"] .sidebar-folder.active {
+  color: var(--list-text);
+}
+
+[data-theme="light"] .settings-toggle-track {
+  background: rgb(200, 203, 210);
+}
+
+[data-theme="light"] .sync-progress-bar {
+  background: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .hamburger-btn {
+  background: var(--sidebar-bg);
+  border-color: rgba(0,0,0,0.12);
+  color: var(--list-text);
+}
+
+/* ============================================================
+   Attachment bar (Feature 1)
+   ============================================================ */
+.mail-view-attachments {
+  border-top: 1px solid var(--pane-border);
+  border-bottom: 1px solid var(--pane-border);
+  padding: 8px 16px;
+  background: var(--pane-header-bg);
+  flex-shrink: 0;
+}
+
+.mail-view-attachments-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pane-text-dim);
+  margin-bottom: 6px;
+}
+
+.mail-view-attachments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mail-view-attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.04);
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-size: 12px;
+  max-width: 250px;
+}
+
+.mail-view-attachment-icon {
+  flex-shrink: 0;
+}
+
+.mail-view-attachment-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pane-text);
+}
+
+.mail-view-attachment-size {
+  color: var(--pane-text-dim);
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.mail-view-attachment-download {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+.mail-view-attachment-download:hover {
+  background: var(--accent-light);
+}
+
+/* ============================================================
+   Context menu (Feature 3)
+   ============================================================ */
+.context-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 180px;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--pane-text);
+}
+
+.context-menu-item {
+  padding: 7px 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition);
+  outline: none;
+}
+.context-menu-item:hover,
+.context-menu-item:focus {
+  background: var(--accent-light);
+}
+.context-menu-item.danger:hover,
+.context-menu-item.danger:focus {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--danger);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--pane-border);
+  margin: 4px 0;
+}
+
+/* ============================================================
+   Drag & drop visual feedback (Feature 4)
+   ============================================================ */
+.mail-item.dragging {
+  opacity: 0.4;
+}
+
+.sidebar-folder.drag-over {
+  background: var(--accent-light) !important;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================
+   Light theme overrides for new features
+   ============================================================ */
+[data-theme="light"] .context-menu {
+  background: #fff;
+  border-color: rgba(0,0,0,0.12);
+}
+
+[data-theme="light"] .context-menu-separator {
+  background: rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] .mail-view-attachment-item {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.1);
+}
+
+/* ============================================================
+   Headers modal
+   ============================================================ */
+.headers-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.headers-modal {
+  background: var(--list-bg, rgb(42,47,58));
+  border: 1px solid var(--list-border, rgb(55,62,76));
+  border-radius: 8px;
+  width: min(90vw, 720px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.headers-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--list-border, rgb(55,62,76));
+}
+
+.headers-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--list-text, rgb(210,215,225));
+}
+
+.headers-modal-close {
+  background: none;
+  border: none;
+  color: var(--list-text-dim, rgb(170,178,195));
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.headers-modal-close:hover {
+  color: var(--list-text, rgb(210,215,225));
+}
+
+.headers-modal-body {
+  overflow-y: auto;
+  padding: 16px;
+  flex: 1;
+}
+
+.headers-modal-content {
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--list-text, rgb(210,215,225));
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+.headers-modal-content .header-highlight {
+  color: rgb(0, 180, 255);
+  font-weight: 600;
+}
+
+/* ============================================================
+   Security log in settings
+   ============================================================ */
+.settings-security-log {
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--list-border, rgb(55,62,76));
+  border-radius: 6px;
+  background: rgba(0,0,0,0.15);
+}
+
+.settings-security-log-entry {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  color: var(--list-text-dim, rgb(170,178,195));
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  line-height: 1.5;
+}
+.settings-security-log-entry:last-child {
+  border-bottom: none;
+}
+
+/* Light theme overrides for headers modal */
+[data-theme="light"] .headers-modal {
+  background: #fff;
+  border-color: rgba(0,0,0,0.12);
+}
+[data-theme="light"] .headers-modal-title {
+  color: #1e1e1e;
+}
+[data-theme="light"] .headers-modal-content {
+  color: #333;
+}
+[data-theme="light"] .headers-modal-content .header-highlight {
+  color: rgb(0, 100, 200);
+}
+[data-theme="light"] .settings-security-log {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.1);
+}
+[data-theme="light"] .settings-security-log-entry {
+  color: #555;
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+
+
+[data-theme="light"] .lock-screen {
+  background: rgba(240, 242, 248, 0.92);
+}
+
+[data-theme="light"] .lock-screen-content {
+  color: rgb(30, 30, 30);
+}
+
+[data-theme="light"] .lock-screen-title {
+  color: rgb(20, 20, 20);
+}
+
+[data-theme="light"] .lock-screen-subtitle {
+  color: rgb(100, 105, 115);
+}
+
+/* ============================================================
+   Thread view
+   ============================================================ */
+.thread-header {
+  cursor: pointer;
+}
+
+.thread-expand-icon {
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--list-text-dim, rgb(170,178,195));
+  align-self: center;
+  margin-left: 4px;
+  margin-right: 2px;
+}
+
+.thread-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, rgb(0,120,214));
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+.mail-item.thread-child {
+  padding-left: 32px;
+  background: rgba(255,255,255,0.02);
+}
+
+.mail-item.thread-child::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--pane-border, rgba(255,255,255,0.06));
+}
+
+[data-theme="light"] .mail-item.thread-child {
+  background: rgba(0,0,0,0.015);
+}
+
+[data-theme="light"] .mail-item.thread-child::before {
+  background: rgba(0,0,0,0.08);
+}
+
+/* ============================================================
+   Category badges
+   ============================================================ */
+.mail-category-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  color: #fff;
+  margin-left: 4px;
+  vertical-align: middle;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   Spam indicator
+   ============================================================ */
+.mail-spam-indicator {
+  color: #e74c3c;
+  font-size: 12px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.mail-spam-indicator.mild {
+  color: #f39c12;
+}
+
+/* ============================================================
+   Thread toggle button active state
+   ============================================================ */
+.mail-list-btn.active {
+  background: var(--accent-light, rgba(0,120,214,0.15));
+  color: var(--accent, rgb(0,120,214));
+  border-color: var(--accent, rgb(0,120,214));
+}
+
+/* ============================================================
+   Unified Inbox — account badge next to mail items
+   ============================================================ */
+.mail-item-account-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent, rgb(0, 120, 214));
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: 6px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ============================================================
+   Sidebar — unified inbox + search folders
+   ============================================================ */
+.sidebar-folder.unified-inbox .sidebar-folder-icon {
+  font-size: 16px;
+}
+.sidebar-section-title {
+  padding: 12px 16px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sidebar-text-dim);
+}
+.sidebar-search-folders .sidebar-folder {
+  font-size: 12px;
+  padding: 4px 16px;
+}
+.sidebar-search-folder-delete {
+  background: none;
+  border: none;
+  color: var(--sidebar-text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  opacity: 0.5;
+}
+.sidebar-search-folder-delete:hover {
+  opacity: 1;
+  color: var(--danger);
+}
+.search-folder-add {
+  opacity: 0.6;
+  font-style: italic;
+}
+.search-folder-add:hover {
+  opacity: 1;
+}
+
+/* ============================================================
+   Compose — templates dropdown
+   ============================================================ */
+.compose-templates-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 100;
+  min-width: 220px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.compose-templates-dropdown .compose-template-item:hover {
+  background: var(--list-hover, rgba(0,0,0,0.05));
+}
+
+
+/* ============================================================
+   High Contrast Theme
+   ============================================================ */
+[data-theme="high-contrast"] {
+  --sidebar-bg: #000000;
+  --sidebar-hover: #1a1a1a;
+  --sidebar-active: #333333;
+  --sidebar-text: #ffffff;
+  --sidebar-text-dim: #cccccc;
+
+  --list-bg: #000000;
+  --list-hover: #1a1a1a;
+  --list-active: #ffdd00;
+  --list-active-bg: rgba(255, 221, 0, 0.2);
+  --list-border: #ffffff;
+  --list-text: #ffffff;
+  --list-text-dim: #cccccc;
+
+  --pane-bg: #000000;
+  --pane-text: #ffffff;
+  --pane-text-dim: #cccccc;
+  --pane-border: #ffffff;
+  --pane-header-bg: #0a0a0a;
+
+  --accent: #ffdd00;
+  --accent-hover: #ffc800;
+  --accent-light: rgba(255, 221, 0, 0.2);
+  --danger: #ff4444;
+  --danger-hover: #ff2222;
+  --success: #00ff00;
+  --warning: #ffdd00;
+  --star-color: #ffdd00;
+
+  --overlay-bg: rgba(0, 0, 0, 0.85);
+}
+
+[data-theme="high-contrast"] html,
+[data-theme="high-contrast"] body {
+  background: #000000;
+  color: #ffffff;
+}
+
+[data-theme="high-contrast"] * {
+  border-color: #ffffff !important;
+}
+
+[data-theme="high-contrast"] .sidebar-folder.active {
+  background: #333333;
+  color: #ffdd00;
+  border-left: 3px solid #ffdd00;
+}
+
+[data-theme="high-contrast"] .mail-item {
+  border-bottom: 2px solid #ffffff;
+}
+
+[data-theme="high-contrast"] .mail-item.selected {
+  background: rgba(255, 221, 0, 0.15);
+  outline: 2px solid #ffdd00;
+}
+
+[data-theme="high-contrast"] .mail-item:hover {
+  background: #1a1a1a;
+}
+
+[data-theme="high-contrast"] .mail-item.unread .mail-item-from {
+  color: #ffdd00;
+  font-weight: 700;
+}
+
+[data-theme="high-contrast"] .btn-primary {
+  background: #ffdd00;
+  color: #000000;
+  border: 2px solid #ffffff;
+  font-weight: 700;
+}
+
+[data-theme="high-contrast"] .btn-primary:hover {
+  background: #ffc800;
+}
+
+[data-theme="high-contrast"] .btn-ghost {
+  color: #ffffff;
+  border: 2px solid #ffffff;
+}
+
+[data-theme="high-contrast"] .btn-ghost:hover {
+  background: #333333;
+}
+
+[data-theme="high-contrast"] a {
+  color: #ffdd00;
+  text-decoration: underline;
+}
+
+[data-theme="high-contrast"] :focus {
+  outline: 3px solid #ffdd00 !important;
+  outline-offset: 2px;
+}
+
+[data-theme="high-contrast"] .mail-view-toolbar-btn {
+  border: 2px solid #ffffff;
+  color: #ffffff;
+}
+
+[data-theme="high-contrast"] .mail-view-toolbar-btn:hover {
+  background: #333333;
+  color: #ffdd00;
+}
+
+[data-theme="high-contrast"] .mail-view-toolbar-btn.danger {
+  color: #ff4444;
+  border-color: #ff4444;
+}
+
+[data-theme="high-contrast"] .mail-list-search {
+  background: #000000;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+}
+
+[data-theme="high-contrast"] .overlay-panel {
+  background: #000000;
+  border: 2px solid #ffffff;
+}
+
+[data-theme="high-contrast"] .sidebar-folder-badge {
+  background: #ffdd00;
+  color: #000000;
+  font-weight: 700;
+}
+
+[data-theme="high-contrast"] .compose-editor {
+  background: #000000;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+}
+
+[data-theme="high-contrast"] input,
+[data-theme="high-contrast"] select,
+[data-theme="high-contrast"] textarea {
+  background: #000000;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+}
+
+[data-theme="high-contrast"] .settings-toggle-track {
+  background: #333333;
+  border: 2px solid #ffffff;
+}
+
+[data-theme="high-contrast"] ::-webkit-scrollbar-thumb {
+  background: #ffffff;
+}
+
+[data-theme="high-contrast"] ::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+[data-theme="high-contrast"] .mail-view-body iframe {
+  background: #000000;
+}
+
+
+/* ============================================================
+   Polish features: Read receipts, Importance, Flags, etc.
+   ============================================================ */
+
+/* --- Read receipt banner ----------------------------------- */
+.mail-view-receipt-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px;
+  background: rgba(0, 120, 214, 0.1);
+  border-bottom: 1px solid var(--pane-border);
+  font-size: 13px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* --- Importance icons in mail list ------------------------- */
+.mail-importance-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  align-self: center;
+}
+.mail-importance-icon.high {
+  color: #e74c3c;
+}
+.mail-importance-icon.low {
+  color: #3498db;
+}
+
+/* --- Flag icon in mail list -------------------------------- */
+.mail-item-flag {
+  flex-shrink: 0;
+  align-self: center;
+}
+.mail-item-flag.flagged {
+  opacity: 1 !important;
+}
+
+/* --- Connection status bar --------------------------------- */
+.status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: var(--sidebar-bg);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  z-index: 100;
+  font-size: 11px;
+  color: var(--sidebar-text-dim);
+}
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.connection-dot.connected {
+  background: var(--success);
+}
+.connection-dot.disconnected {
+  background: var(--danger);
+}
+
+/* --- Resizable panel splitters ----------------------------- */
+.panel-splitter {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  z-index: 10;
+}
+.panel-splitter:hover {
+  background: var(--accent);
+}
+
+/* --- Markdown editor textarea ------------------------------ */
+.compose-editor-md {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 0;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  color: var(--pane-text);
+  line-height: 1.6;
+  outline: none;
+  min-height: 120px;
+  border: none;
+  resize: none;
+  background: transparent;
+  width: 100%;
+}
+.compose-editor-md:focus {
+  outline: none;
+}
+
+/* --- Zoom controls ----------------------------------------- */
+.zoom-controls {
+  flex-shrink: 0;
+}
+
+
+/* --- Light theme overrides for new features ---------------- */
+[data-theme="light"] .status-bar {
+  background: var(--sidebar-bg);
+  border-top-color: rgba(0,0,0,0.08);
+}
+[data-theme="light"] .mail-view-receipt-banner {
+  background: rgba(0, 120, 214, 0.08);
+}
+[data-theme="light"] .panel-splitter:hover {
+  background: var(--accent);
+}
+
+/* ============================================================
+   Light theme overrides for new features
+   ============================================================ */
+[data-theme="light"] .context-menu {
+  background: #fff;
+  border-color: rgba(0,0,0,0.12);
+}
+
+[data-theme="light"] .context-menu-separator {
+  background: rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] .mail-view-attachment-item {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.1);
+}
+
+
+/* ============================================================
+   Light theme overrides for new features
+   ============================================================ */
+[data-theme="light"] .lightbox-overlay {
+  background: rgba(0,0,0,0.75);
+}
+[data-theme="light"] .attachment-preview-section {
+  background: rgba(0,0,0,0.02);
+}
+[data-theme="light"] .quoted-text-toggle {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+/* ============================================================
+   High contrast theme overrides for accessibility
+   ============================================================ */
+[data-theme="high-contrast"] .skip-link {
+  background: #000;
+  color: #ff0;
+  border: 2px solid #ff0;
+}
+[data-theme="high-contrast"] :focus-visible {
+  outline: 3px solid #ff0;
+  outline-offset: 2px;
+}
+[data-theme="high-contrast"] .quoted-text-toggle {
+  border-width: 2px;
+}
+[data-theme="high-contrast"] .lightbox-close:focus {
+  outline: 3px solid #ff0;
+}
+
+/* ============================================================
+   Drag & drop visual feedback (Feature 4)
+   ============================================================ */
+.mail-item.dragging {
+  opacity: 0.4;
+}
+
+.sidebar-folder.drag-over {
+  background: var(--accent-light) !important;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================
+   Calendar View
+   ============================================================ */
+.calendar-panel {
+  max-width: 720px;
+}
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.calendar-month-title {
+  font-weight: 600;
+  font-size: 16px;
+  min-width: 180px;
+  text-align: center;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--pane-border);
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.calendar-day-header {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text-dim);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 0;
+  text-transform: uppercase;
+}
+.calendar-day {
+  background: var(--pane-bg);
+  min-height: 70px;
+  padding: 4px;
+  cursor: pointer;
+  transition: background var(--transition);
+  position: relative;
+}
+.calendar-day:hover {
+  background: var(--accent-light);
+}
+.calendar-day.empty {
+  background: var(--sidebar-bg);
+  cursor: default;
+}
+.calendar-day.empty:hover {
+  background: var(--sidebar-bg);
+}
+.calendar-day.today {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.calendar-day.selected {
+  background: var(--accent-light);
+}
+.calendar-day-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pane-text);
+  display: block;
+  margin-bottom: 2px;
+}
+.calendar-day.today .calendar-day-num {
+  color: var(--accent);
+}
+.calendar-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.calendar-event-pill {
+  font-size: 10px;
+  color: #fff;
+  padding: 1px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+.calendar-event-more {
+  background: var(--pane-text-dim) !important;
+  font-size: 9px;
+}
+.calendar-day-detail {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+}
+.calendar-day-detail-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: var(--pane-text);
+}
+.calendar-no-events {
+  color: var(--pane-text-dim);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.calendar-event-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pane-border);
+}
+.calendar-event-item:last-of-type {
+  border-bottom: none;
+}
+.calendar-event-color {
+  width: 4px;
+  min-height: 32px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.calendar-event-info {
+  flex: 1;
+  min-width: 0;
+}
+.calendar-event-subject {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--pane-text);
+}
+.calendar-event-time {
+  font-size: 12px;
+  color: var(--pane-text-dim);
+}
+.calendar-event-desc {
+  font-size: 12px;
+  color: var(--pane-text-dim);
+  margin-top: 2px;
+  white-space: pre-wrap;
+}
+.calendar-event-delete {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.calendar-event-delete:hover {
+  opacity: 0.7;
+}
+.calendar-add-event-btn {
+  margin-top: 8px;
+}
+.calendar-new-event {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+}
+.calendar-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius-sm);
+  background: var(--pane-bg);
+  color: var(--pane-text);
+  font-family: inherit;
+  font-size: 13px;
+}
+.calendar-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ============================================================
+   Contacts View
+   ============================================================ */
+.contacts-panel {
+  max-width: 800px;
+}
+.contacts-body {
+  display: flex;
+  height: calc(100% - 110px);
+  overflow: hidden;
+}
+.contacts-list-pane {
+  width: 280px;
+  min-width: 220px;
+  border-right: 1px solid var(--pane-border);
+  display: flex;
+  flex-direction: column;
+}
+.contacts-search {
+  padding: 8px;
+  border-bottom: 1px solid var(--pane-border);
+}
+.contacts-list-scroll {
+  overflow-y: auto;
+  flex: 1;
+}
+.contacts-group-letter {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 8px 12px 4px;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  background: var(--pane-bg);
+  z-index: 1;
+}
+.contacts-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.contacts-item:hover {
+  background: var(--list-hover);
+}
+.contacts-item.active {
+  background: var(--list-active-bg);
+}
+.contacts-item-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.contacts-item-info {
+  min-width: 0;
+  flex: 1;
+}
+.contacts-item-name {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--pane-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.contacts-item-email {
+  font-size: 11px;
+  color: var(--pane-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.contacts-detail-pane {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+.contacts-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.contacts-detail-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.contacts-detail-name {
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--pane-text);
+}
+.contacts-detail-email {
+  font-size: 13px;
+  color: var(--pane-text-dim);
+}
+.contacts-detail-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.contacts-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.contacts-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pane-text-dim);
+  text-transform: uppercase;
+}
+.contacts-detail-edit .settings-row {
+  margin-bottom: 8px;
+}
+.contacts-empty {
+  color: var(--pane-text-dim);
+  font-size: 13px;
+  padding: 24px;
+  text-align: center;
+}

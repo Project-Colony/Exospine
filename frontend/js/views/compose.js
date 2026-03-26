@@ -4,6 +4,7 @@ import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { t } from '../i18n.js';
 
+// ===== SECTION: Constants & State =====
 const overlay = document.getElementById('compose-overlay');
 
 /** Fallback email signature used when no per-account signature is configured. */
@@ -26,6 +27,7 @@ function _hashContent(str) {
   return h;
 }
 
+// ===== SECTION: Auto-Save Drafts =====
 function startAutoSave(getDraft) {
   stopAutoSave();
   // Generate a unique draft ID for version tracking
@@ -95,6 +97,7 @@ const PREDEFINED_TEMPLATES = [
   },
 ];
 
+// ===== SECTION: Templates =====
 function loadCustomTemplates() {
   try {
     const raw = localStorage.getItem('exospine_templates');
@@ -113,6 +116,7 @@ function saveCustomTemplates(templates) {
  * @param {object} [prefill]  optional { to, cc, bcc, subject, body, bodyHtml, accountId } for reply/forward
  * @param {function} [onSent] callback after successful send
  */
+// ===== SECTION: Main Compose Dialog =====
 export async function openCompose(prefill = {}, onSent = null) {
   // Clean up any lingering auto-save from a previous compose session
   stopAutoSave();
@@ -590,6 +594,7 @@ export async function openCompose(prefill = {}, onSent = null) {
 
 // ── Rich text toolbar ──────────────────────────────────────────────────
 
+// ===== SECTION: Rich Text Toolbar =====
 function setupToolbar() {
   const toolbar = overlay.querySelector('#compose-toolbar');
   if (!toolbar) return;
@@ -727,6 +732,7 @@ function setupTemplatesDropdown(prefill) {
 
 // ── Inline image paste ─────────────────────────────────────────────────
 
+// ===== SECTION: Image Paste & File Drop =====
 function setupImagePaste() {
   const editor = overlay.querySelector('#compose-body');
   if (!editor) return;
@@ -856,6 +862,7 @@ function setupFileDrop(overlay, attachments) {
 // ── Helpers ────────────────────────────────────────────────────────────
 
 /** Build initial HTML content for the editor (body + signature). */
+// ===== SECTION: Content Building =====
 function buildInitialContent(prefill) {
   let content = '';
   const signature = prefill._signatureHtml || FALLBACK_SIGNATURE;
@@ -938,6 +945,7 @@ function htmlToPlainText(html) {
 /**
  * Prepare a reply prefill object.
  */
+// ===== SECTION: Reply & Forward Prefills =====
 export function makeReplyPrefill(mail, body, replyAll = false) {
   const subject = mail.subject || '';
   const reSubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
@@ -1028,6 +1036,7 @@ function escapeForText(str) {
 
 // ── Contact Auto-complete ──────────────────────────────────────────────
 
+// ===== SECTION: Autocomplete =====
 function setupAutocomplete(inputId, dropdownId) {
   const input = overlay.querySelector(`#${inputId}`);
   const dropdown = overlay.querySelector(`#${dropdownId}`);
@@ -1115,6 +1124,7 @@ function setupAutocomplete(inputId, dropdownId) {
  * Supports: **bold**, *italic*, `code`, ```code blocks```, [text](url),
  * # headings (h1-h6), - unordered lists, 1. ordered lists, > blockquotes, --- hr.
  */
+// ===== SECTION: Markdown Support =====
 function markdownToHtml(md) {
   if (!md) return '';
 

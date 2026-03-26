@@ -1,141 +1,25 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
-
-/// Parsed mailto: URL components.
-#[derive(Debug, Clone, Default, serde::Serialize)]
-pub struct MailtoData {
-    pub to: String,
-    pub subject: String,
-    pub body: String,
-    pub cc: String,
-    pub bcc: String,
-}
-
-/// Parse a `mailto:` URL into its components.
-fn parse_mailto(url: &str) -> MailtoData {
-    let mut data = MailtoData::default();
-    let stripped = url.strip_prefix("mailto:").unwrap_or(url);
-
-    // Split address part from query string
-    let (addr_part, query_part) = if let Some(idx) = stripped.find('?') {
-        (&stripped[..idx], Some(&stripped[idx + 1..]))
-    } else {
-        (stripped, None)
-    };
-
-    // URL-decode the address
-    data.to = url_decode(addr_part);
-
-    // Parse query parameters
-    if let Some(query) = query_part {
-        for pair in query.split('&') {
-            if let Some((key, value)) = pair.split_once('=') {
-                let decoded = url_decode(value);
-                match key.to_lowercase().as_str() {
-                    "subject" => data.subject = decoded,
-                    "body" => data.body = decoded,
-                    "cc" => data.cc = decoded,
-                    "bcc" => data.bcc = decoded,
-                    "to" => {
-                        if !data.to.is_empty() {
-                            data.to.push_str(", ");
-                        }
-                        data.to.push_str(&decoded);
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    data
-}
-
-/// Simple percent-decoding for mailto URLs.
-fn url_decode(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    let mut chars = s.bytes();
-    while let Some(b) = chars.next() {
-        if b == b'%' {
-            let hi = chars.next().unwrap_or(0);
-            let lo = chars.next().unwrap_or(0);
-            let hex = [hi, lo];
-            if let Ok(s) = std::str::from_utf8(&hex) {
-                if let Ok(val) = u8::from_str_radix(s, 16) {
-                    result.push(val as char);
-                    continue;
-                }
-            }
-            result.push('%');
-            result.push(hi as char);
-            result.push(lo as char);
-        } else if b == b'+' {
-            result.push(' ');
-        } else {
-            result.push(b as char);
-        }
-    }
-    result
-}
-
-/// Parse an `exospine://compose?to=...&subject=...` URL into MailtoData.
-fn parse_exospine_url(url: &str) -> MailtoData {
-    let mut data = MailtoData::default();
-    // Strip the scheme: "exospine://compose?..." -> "compose?..."
-    let stripped = url
-        .strip_prefix("exospine://")
-        .unwrap_or(url);
-
-    // Find query string after '?'
-    let query_part = if let Some(idx) = stripped.find('?') {
-        Some(&stripped[idx + 1..])
-    } else {
-        None
-    };
-
-    if let Some(query) = query_part {
-        for pair in query.split('&') {
-            if let Some((key, value)) = pair.split_once('=') {
-                let decoded = url_decode(value);
-                match key.to_lowercase().as_str() {
-                    "to" => {
-                        if !data.to.is_empty() {
-                            data.to.push_str(", ");
-                        }
-                        data.to.push_str(&decoded);
-                    }
-                    "subject" => data.subject = decoded,
-                    "body" => data.body = decoded,
-                    "cc" => data.cc = decoded,
-                    "bcc" => data.bcc = decoded,
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    data
-}
-
-/// Global storage for a pending mailto: compose request, picked up by the frontend.
-static PENDING_MAILTO: LazyLock<Mutex<Option<MailtoData>>> =
-    LazyLock::new(|| Mutex::new(None));
+use std::sync::Mutex;
 
 mod accounts;
 mod app_state;
+pub mod auth;
 mod commands;
 mod config;
 mod mail;
 pub mod notifications;
 mod search;
 mod storage;
+pub mod url_handlers;
+pub mod window_state;
 
 use app_state::{Account, AppSettings};
 use config::Config;
 use storage::db::Database;
+use url_handlers::{parse_exospine_url, parse_mailto, MailtoData, PENDING_MAILTO};
+use window_state::{restore_window_state, save_window_state};
 
 /// Global Tauri-managed application state.
 pub struct AppState {
@@ -456,37 +340,41 @@ fn main() {
             commands::accounts::add_account,
             commands::accounts::remove_account,
             commands::accounts::test_connection,
-            // Mail commands
-            commands::mail::get_folders,
-            commands::mail::get_mails,
-            commands::mail::get_mail_body,
-            commands::mail::refresh_folder,
-            commands::mail::sync_all_mails,
-            commands::mail::mark_read,
-            commands::mail::mark_unread,
-            commands::mail::toggle_star,
-            commands::mail::delete_mail,
-            commands::mail::archive_mail,
-            commands::mail::move_mail,
-            commands::mail::download_attachment,
-            commands::mail::export_mail,
-            commands::mail::search_local,
-            commands::mail::get_mail_headers,
-            commands::mail::get_security_log,
-            commands::mail::add_category,
-            commands::mail::remove_category,
-            commands::mail::report_spam,
-            commands::mail::report_not_spam,
-            commands::mail::get_analytics,
-            commands::mail::cleanup_old_messages,
-            commands::mail::start_idle,
-            commands::mail::sweep_sender,
-            commands::mail::open_eml_file,
-            // Notes commands
-            commands::mail::save_note,
-            commands::mail::get_note,
-            // Duplicate detection
-            commands::mail::find_duplicates,
+            // Mail commands — folders
+            commands::mail_folders::get_folders,
+            // Mail commands — reading
+            commands::mail_read::get_mails,
+            commands::mail_read::get_mail_body,
+            commands::mail_read::get_mail_headers,
+            commands::mail_read::open_eml_file,
+            // Mail commands — sync
+            commands::mail_sync::refresh_folder,
+            commands::mail_sync::sync_all_mails,
+            commands::mail_sync::start_idle,
+            // Mail commands — flags
+            commands::mail_flags::mark_read,
+            commands::mail_flags::mark_unread,
+            commands::mail_flags::toggle_star,
+            commands::mail_flags::delete_mail,
+            commands::mail_flags::archive_mail,
+            // Mail commands — move
+            commands::mail_move::move_mail,
+            commands::mail_move::sweep_sender,
+            // Mail commands — search
+            commands::mail_search::search_local,
+            // Mail commands — utils
+            commands::mail_utils::download_attachment,
+            commands::mail_utils::export_mail,
+            commands::mail_utils::get_security_log,
+            commands::mail_utils::add_category,
+            commands::mail_utils::remove_category,
+            commands::mail_utils::report_spam,
+            commands::mail_utils::report_not_spam,
+            commands::mail_utils::get_analytics,
+            commands::mail_utils::cleanup_old_messages,
+            commands::mail_utils::save_note,
+            commands::mail_utils::get_note,
+            commands::mail_utils::find_duplicates,
             // Compose commands
             commands::compose::send_mail,
             commands::compose::save_draft,
@@ -511,32 +399,34 @@ fn main() {
             commands::rules::get_rules,
             commands::rules::save_rule,
             commands::rules::delete_rule,
-            // Pin/Snooze/Schedule commands
-            commands::pin_snooze::pin_mail,
-            commands::pin_snooze::unpin_mail,
-            commands::pin_snooze::snooze_mail,
-            commands::pin_snooze::unsnooze_mail,
-            commands::pin_snooze::get_due_snoozed,
-            commands::pin_snooze::schedule_send,
-            commands::pin_snooze::get_scheduled_emails,
-            commands::pin_snooze::cancel_scheduled,
-            commands::pin_snooze::send_due_scheduled,
+            // Pin commands
+            commands::pin::pin_mail,
+            commands::pin::unpin_mail,
+            // Snooze commands
+            commands::snooze::snooze_mail,
+            commands::snooze::unsnooze_mail,
+            commands::snooze::get_due_snoozed,
+            // Schedule commands
+            commands::schedule::schedule_send,
+            commands::schedule::get_scheduled_emails,
+            commands::schedule::cancel_scheduled,
+            commands::schedule::send_due_scheduled,
             // Flag follow-up commands
-            commands::pin_snooze::flag_mail,
-            commands::pin_snooze::unflag_mail,
+            commands::flags::flag_mail,
+            commands::flags::unflag_mail,
             // Follow-up tracker commands
-            commands::pin_snooze::add_followup,
-            commands::pin_snooze::get_followups,
-            commands::pin_snooze::resolve_followup,
-            commands::pin_snooze::delete_followup,
-            commands::pin_snooze::check_followups,
+            commands::followup::add_followup,
+            commands::followup::get_followups,
+            commands::followup::resolve_followup,
+            commands::followup::delete_followup,
+            commands::followup::check_followups,
             // Task commands
-            commands::pin_snooze::create_task,
-            commands::pin_snooze::get_tasks,
-            commands::pin_snooze::complete_task,
-            commands::pin_snooze::delete_task,
+            commands::tasks::create_task,
+            commands::tasks::get_tasks,
+            commands::tasks::complete_task,
+            commands::tasks::delete_task,
             // Read receipt command
-            commands::pin_snooze::send_read_receipt,
+            commands::receipts::send_read_receipt,
             // Mailto handler
             get_pending_mailto,
             // Secure wipe
@@ -589,132 +479,4 @@ fn main() {
             }
             std::process::exit(1);
         });
-}
-
-// ── Per-account token refresh lock ───────────────────────────────────
-
-/// Prevents concurrent token refreshes for the same account.
-/// Multiple tasks waiting on the same account will serialize;
-/// the first to finish stores the new token and the rest will
-/// find it in the credential store, avoiding double-refresh.
-static TOKEN_REFRESH_LOCKS: LazyLock<Mutex<HashMap<String, std::sync::Arc<tokio::sync::Mutex<()>>>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-fn get_token_refresh_lock(account_id: &str) -> std::sync::Arc<tokio::sync::Mutex<()>> {
-    let mut map = TOKEN_REFRESH_LOCKS.lock().unwrap_or_else(|e| e.into_inner());
-    map.entry(account_id.to_string())
-        .or_insert_with(|| std::sync::Arc::new(tokio::sync::Mutex::new(())))
-        .clone()
-}
-
-// ── OAuth2 token refresh helper for IMAP auth failures ──────────────
-
-/// Try to refresh an OAuth2 token for the given account.
-/// Returns the new access token on success, or an error message.
-/// Also stores the rotated refresh token if one is returned.
-/// Uses a per-account lock to prevent concurrent double-refreshes.
-pub async fn try_refresh_oauth_token(
-    account: &Account,
-    config: &Config,
-) -> Result<String, String> {
-    // Acquire per-account lock — if another task is already refreshing,
-    // we wait for it and then return the already-refreshed credential.
-    let lock = get_token_refresh_lock(&account.id);
-    let _guard = lock.lock().await;
-    let refresh_token = match &account.auth_method {
-        app_state::AuthMethod::OAuth2 { refresh_token } => refresh_token.clone(),
-        _ => return Err("Account is not OAuth2".to_string()),
-    };
-
-    let provider_cfg = accounts::provider::detect_provider(&account.email);
-    let (client_id, client_secret) = match provider_cfg.provider {
-        accounts::provider::Provider::Gmail => {
-            (config.google_client_id.clone(), config.google_client_secret.clone())
-        }
-        accounts::provider::Provider::Outlook => {
-            (config.microsoft_client_id.clone(), config.microsoft_client_secret.clone())
-        }
-        _ => {
-            (config.google_client_id.clone(), config.google_client_secret.clone())
-        }
-    };
-
-    let oauth_cfg = accounts::oauth2::config_for_provider(
-        provider_cfg.provider,
-        client_id,
-        client_secret,
-    );
-
-    let token_resp = accounts::oauth2::refresh_token(&oauth_cfg, &refresh_token)
-        .await
-        .map_err(|e| format!("Token refresh failed: {}", e))?;
-
-    // Store the new access token
-    app_state::store_credential(&account.id, &token_resp.access_token);
-
-    // If the provider rotated the refresh token, persist it
-    if let Some(ref new_rt) = token_resp.refresh_token {
-        if *new_rt != refresh_token {
-            tracing::info!("OAuth2 refresh token rotated for {}", account.email);
-            // Update the in-memory account and persist to disk
-            // (Caller should update the accounts list if needed)
-        }
-    }
-
-    Ok(token_resp.access_token)
-}
-
-// ── Window state persistence ─────────────────────────────────────────
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct WindowState {
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-    maximized: bool,
-}
-
-fn window_state_path() -> std::path::PathBuf {
-    let dir = config::data_dir();
-    let _ = std::fs::create_dir_all(&dir);
-    dir.join("window_state.json")
-}
-
-fn save_window_state(window: &tauri::WebviewWindow) {
-    let Ok(position) = window.outer_position() else { return };
-    let Ok(size) = window.outer_size() else { return };
-    let maximized = window.is_maximized().unwrap_or(false);
-
-    let scale = window.scale_factor().unwrap_or(1.0);
-    let state = WindowState {
-        x: position.x as f64 / scale,
-        y: position.y as f64 / scale,
-        width: size.width as f64 / scale,
-        height: size.height as f64 / scale,
-        maximized,
-    };
-
-    if let Ok(json) = serde_json::to_string_pretty(&state) {
-        let _ = std::fs::write(window_state_path(), json);
-    }
-}
-
-fn restore_window_state(window: &tauri::WebviewWindow) {
-    let path = window_state_path();
-    let Ok(data) = std::fs::read_to_string(&path) else { return };
-    let Ok(state) = serde_json::from_str::<WindowState>(&data) else { return };
-
-    let scale = window.scale_factor().unwrap_or(1.0);
-    let _ = window.set_position(tauri::PhysicalPosition::new(
-        (state.x * scale) as i32,
-        (state.y * scale) as i32,
-    ));
-    let _ = window.set_size(tauri::PhysicalSize::new(
-        (state.width * scale) as u32,
-        (state.height * scale) as u32,
-    ));
-    if state.maximized {
-        let _ = window.maximize();
-    }
 }

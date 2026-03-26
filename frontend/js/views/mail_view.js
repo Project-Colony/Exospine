@@ -5,6 +5,7 @@ import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { t } from '../i18n.js';
 
+// ===== SECTION: Muted Threads =====
 // -- Muted threads (persisted in localStorage, cached in memory) --
 let _mutedThreadsCache = null; // cached Set of muted thread IDs
 
@@ -33,6 +34,7 @@ const _reminderTimers = new Map();
 // ── Zoom state (persisted across mail selections) ──────────────────
 let _zoomLevel = parseFloat(localStorage.getItem('exospine_zoom') || '100');
 let _zoomSaveTimer = null;
+// ===== SECTION: Zoom & Preview Cache =====
 function _saveZoomDebounced(val) {
   clearTimeout(_zoomSaveTimer);
   _zoomSaveTimer = setTimeout(() => localStorage.setItem('exospine_zoom', String(val)), 1000);
@@ -64,6 +66,7 @@ function _previewCacheGet(key) {
   return value;
 }
 
+// ===== SECTION: Main Render =====
 /**
  * Render the reading pane.
  * @param {HTMLElement} el  #mail-view element
@@ -992,7 +995,7 @@ export function renderMailView(el, state, actions) {
   }
 }
 
-// ── Feature: Determine preview type from attachment ────────────────
+// ===== SECTION: Attachment Preview =====
 function getPreviewType(att) {
   const ct = (att.content_type || '').toLowerCase();
   const fn = (att.filename || '').toLowerCase();
@@ -1066,6 +1069,7 @@ async function openAttachmentPreview(el, mail, partIndex, previewType, contentTy
 }
 
 // ── Feature: Image lightbox ────────────────────────────────────────
+// ===== SECTION: Image Lightbox =====
 function showImageLightbox(src, filename) {
   const overlay = document.createElement('div');
   overlay.className = 'lightbox-overlay';
@@ -1099,6 +1103,7 @@ function showImageLightbox(src, filename) {
 
 // ── Feature: Collapse quoted text in plain text emails ─────────────
 let _quoteIdCounter = 0;
+// ===== SECTION: Quoted Text & Conversation Cleanup =====
 function collapseQuotedText(text) {
   _quoteIdCounter = 0;
 
@@ -1191,6 +1196,7 @@ async function handleDownloadAttachment(mail, partIndex) {
 /**
  * Print the current email.
  */
+// ===== SECTION: Print =====
 function printEmail(mail, body) {
   if (!body) return;
   const content = body.html || `<pre style="white-space:pre-wrap;font-family:sans-serif;">${esc(body.text || '')}</pre>`;
@@ -1227,6 +1233,7 @@ async function exportEmail(mail) {
 /**
  * Write HTML content into a sandboxed iframe.
  */
+// ===== SECTION: Iframe & HTML Rendering =====
 function writeToIframe(iframe, htmlContent) {
   // Strip <script> tags to prevent console spam from sandbox blocking
   const cleaned = htmlContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
@@ -1288,6 +1295,7 @@ function stripRemoteImages(html) {
   );
 }
 
+// ===== SECTION: Attachment Helpers =====
 function attachmentIcon(contentType) {
   if (!contentType) return '\uD83D\uDCC4';
   if (contentType.startsWith('image/')) return '\uD83D\uDDBC';
@@ -1369,12 +1377,14 @@ async function viewHeaders(mail) {
   }
 }
 
+// ===== SECTION: Utility Helpers =====
 function esc(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
   return d.innerHTML;
 }
 
+// ===== SECTION: Security Banners =====
 function renderSecurityBanners(authStatus, phishingWarnings, senderWarnings) {
   let out = '';
 
@@ -1443,6 +1453,7 @@ function renderSecurityBanners(authStatus, phishingWarnings, senderWarnings) {
 // Link safety helpers
 // ---------------------------------------------------------------------------
 
+// ===== SECTION: Link Safety & Dev Links =====
 function extractLinks(html) {
   const links = [];
   const re = /<a\s[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;

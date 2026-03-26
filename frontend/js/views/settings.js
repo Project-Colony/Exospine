@@ -7,6 +7,7 @@ import { t } from '../i18n.js';
 
 const overlay = document.getElementById('settings-overlay');
 
+// ===== SECTION: Main Settings Dialog =====
 /**
  * Open the settings panel.
  * @param {object} state  app state
@@ -1092,6 +1093,7 @@ export async function openSettings(state, actions) {
   });
 }
 
+// ===== SECTION: Utility Helpers =====
 function esc(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
@@ -1102,6 +1104,7 @@ function esc(str) {
 
 const DISPLAY_RULES_KEY = 'exospine_display_rules';
 
+// ===== SECTION: Display Rules =====
 export function loadDisplayRules() {
   try {
     return JSON.parse(localStorage.getItem(DISPLAY_RULES_KEY) || '[]');
@@ -1118,6 +1121,7 @@ function saveDisplayRules(rules) {
 
 const CUSTOM_THEME_KEY = 'exospine_custom_theme';
 
+// ===== SECTION: Custom Theme Colors =====
 function loadCustomThemeColors() {
   try {
     return JSON.parse(localStorage.getItem(CUSTOM_THEME_KEY) || '{}');
@@ -1149,6 +1153,7 @@ const DEFAULT_SHORTCUTS = {
   focusMode: 'Ctrl+Shift+F',
 };
 
+// ===== SECTION: Keyboard Shortcuts Configuration =====
 export function loadCustomKeybindings() {
   try {
     return JSON.parse(localStorage.getItem(KEYBINDINGS_KEY) || '{}');
@@ -1174,6 +1179,7 @@ export function getMergedShortcuts() {
  * @param {string} pin
  * @returns {Promise<string>} hex-encoded hash
  */
+// ===== SECTION: PIN Security =====
 export async function hashPin(pin) {
   const encoder = new TextEncoder();
   const data = encoder.encode('exospine_pin_salt_' + pin);
@@ -1214,6 +1220,7 @@ function renderShortcutsList() {
 
 const IMPORTED_THEME_STYLE_ID = 'exospine-imported-theme';
 
+// ===== SECTION: Theme Import/Export =====
 export function applyImportedThemeCSS(cssText) {
   removeImportedThemeCSS();
   if (!cssText) return;
@@ -1239,6 +1246,7 @@ export function restoreImportedTheme() {
 
 // ── Notification sound preview ──────────────────────────────────────
 
+// ===== SECTION: Notification Sound Preview =====
 function playNotifSoundPreview(sound) {
   if (sound === 'silent') return;
   try {

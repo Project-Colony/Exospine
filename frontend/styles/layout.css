@@ -1,0 +1,15 @@
+/* --- App layout -------------------------------------------- */
+#app {
+  display: flex;
+  height: calc(100vh - 24px);
+  width: 100vw;
+  min-width: 760px;
+}
+
+/* --- Main content ------------------------------------------ */
+#content {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+

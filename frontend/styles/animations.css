@@ -1,0 +1,446 @@
+/* --- Unread mail left-border accent ------------------------ */
+.mail-item.unread {
+  border-left: 3px solid var(--accent);
+}
+
+/* --- Skeleton loading -------------------------------------- */
+@keyframes skeleton-pulse {
+  0%   { opacity: 0.3; }
+  50%  { opacity: 0.6; }
+  100% { opacity: 0.3; }
+}
+
+.mail-item.skeleton {
+  pointer-events: none;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--list-border);
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+/* --- Error state with retry -------------------------------- */
+.mail-list-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--list-text-dim);
+  font-size: 14px;
+}
+.mail-list-error .error-icon {
+  font-size: 28px;
+  color: var(--danger);
+}
+.mail-list-error .retry-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  color: var(--list-text);
+  padding: 7px 22px;
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.mail-list-error .retry-btn:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+.sidebar-error {
+  padding: 14px;
+  text-align: center;
+  color: var(--sidebar-text-dim);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-error .retry-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  color: var(--sidebar-text);
+  padding: 5px 16px;
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.sidebar-error .retry-btn:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+/* --- Sync progress bar ------------------------------------- */
+.sync-progress-bar {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+.sync-progress-bar .sync-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.sync-progress-bar.indeterminate .sync-progress-fill {
+  width: 30% !important;
+  animation: sync-indeterminate 1.5s ease-in-out infinite;
+}
+@keyframes sync-indeterminate {
+  0%   { left: -30%; }
+  100% { left: 100%; }
+}
+
+/* ============================================================
+   Lock screen (auto-lock after inactivity)
+   ============================================================ */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 12, 18, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: lockFadeIn 0.3s ease;
+}
+
+@keyframes lockFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.lock-screen[hidden] {
+  display: none !important;
+}
+
+.lock-screen-content {
+  text-align: center;
+  color: rgb(200, 205, 215);
+}
+
+.lock-screen-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.lock-screen-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #fff;
+}
+
+.lock-screen-subtitle {
+  font-size: 14px;
+  color: rgb(140, 148, 165);
+  margin-bottom: 28px;
+}
+
+.lock-screen-btn {
+  padding: 10px 32px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  background: rgb(0, 120, 214);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.lock-screen-btn:hover {
+  background: rgb(0, 100, 190);
+}
+
+.lock-screen-btn:active {
+  background: rgb(0, 85, 170);
+}
+
+[data-theme="light"] .lock-screen {
+  background: rgba(240, 242, 248, 0.92);
+}
+
+[data-theme="light"] .lock-screen-content {
+  color: rgb(30, 30, 30);
+}
+
+[data-theme="light"] .lock-screen-title {
+  color: rgb(20, 20, 20);
+}
+
+[data-theme="light"] .lock-screen-subtitle {
+  color: rgb(100, 105, 115);
+}
+
+/* ============================================================
+   Feature: Splash screen
+   ============================================================ */
+#splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.splash-logo {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  font-family: var(--font);
+}
+
+.splash-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255,255,255,0.12);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes splash-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.splash-fade-out {
+  animation: splash-fade-out 0.3s ease forwards;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Feature: Animation transitions
+   ============================================================ */
+.mail-view-body {
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Sidebar section collapse slide */
+.sidebar-section-content {
+  overflow: hidden;
+  max-height: 1000px;
+  transition: max-height 0.25s ease, opacity 0.25s ease;
+  opacity: 1;
+}
+
+.sidebar-section-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+}
+
+/* Toast scale-in animation (overrides default slide) */
+.toast {
+  animation: toast-scale-in 0.25s ease;
+}
+
+@keyframes toast-scale-in {
+  from { opacity: 0; transform: scale(0.85) translateX(20px); }
+  to   { opacity: 1; transform: scale(1) translateX(0); }
+}
+
+/* ============================================================
+   Attachment preview (Feature: Document Preview)
+   ============================================================ */
+.mail-view-attachment-item.previewable {
+  cursor: pointer;
+  border-color: var(--accent);
+  border-style: dashed;
+}
+.mail-view-attachment-item.previewable:hover {
+  background: var(--accent-light);
+}
+
+.attachment-preview-section {
+  margin-top: 8px;
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+  background: rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+
+.attachment-preview-close {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--pane-border);
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--pane-text-dim);
+  cursor: pointer;
+  text-align: right;
+  font-family: var(--font);
+  transition: background var(--transition);
+}
+.attachment-preview-close:hover {
+  background: rgba(0,0,0,0.04);
+  color: var(--pane-text);
+}
+
+.attachment-preview-content {
+  max-height: 400px;
+  overflow: auto;
+}
+
+.attachment-preview-image-wrap {
+  padding: 12px;
+  text-align: center;
+}
+
+.attachment-preview-thumbnail {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: var(--radius);
+  cursor: zoom-in;
+  transition: transform 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.attachment-preview-thumbnail:hover {
+  transform: scale(1.02);
+}
+
+.attachment-preview-pdf {
+  width: 100%;
+  height: 400px;
+  border: none;
+}
+
+.attachment-preview-text {
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--pane-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 350px;
+  overflow-y: auto;
+  margin: 0;
+  background: rgba(0,0,0,0.02);
+
+/* ============================================================
+   Image lightbox
+   ============================================================ */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lightbox-fade-in 0.2s ease;
+}
+
+@keyframes lightbox-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  z-index: 10001;
+}
+.lightbox-close:hover {
+  background: rgba(255,255,255,0.3);
+}
+.lightbox-close:focus {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.lightbox-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+/* ============================================================
+   Quoted text collapse (Feature: Conversation Cleanup)
+   ============================================================ */
+.quoted-text-toggle {
+  display: inline-block;
+  padding: 2px 10px;
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition), color var(--transition);
+}
+.quoted-text-toggle:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.quoted-text-toggle:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.quoted-text {
+  border-left: 3px solid var(--pane-border);
+  padding-left: 12px;
+  margin: 4px 0;
+  color: var(--pane-text-dim);
+}
+
+/* ============================================================
+   Folder sync indicator (lazy folder sync)
+   ============================================================ */
+.folder-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  flex-shrink: 0;
+}

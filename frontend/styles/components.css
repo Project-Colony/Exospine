@@ -1,0 +1,1018 @@
+/* --- Buttons (shared) -------------------------------------- */
+.btn {
+  border: none;
+  border-radius: var(--radius);
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), opacity var(--transition);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--pane-text-dim);
+  border: 1px solid var(--pane-border);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(0,0,0,0.04);
+  color: var(--pane-text);
+}
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* --- Toast ------------------------------------------------- */
+#toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  animation: toast-in 0.25s ease;
+  max-width: 380px;
+}
+.toast.success { background: var(--toast-success); }
+.toast.error { background: var(--toast-error); }
+.toast.info { background: var(--toast-info); }
+
+.toast-dismiss {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 2px;
+  margin-left: 4px;
+}
+.toast-dismiss:hover {
+  color: #fff;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(30px); }
+}
+
+/* --- Dialog ------------------------------------------------ */
+#dialog-container {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+#dialog-container[hidden] {
+  display: none;
+}
+
+.dialog-box {
+  background: var(--pane-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  width: 380px;
+  max-width: 90vw;
+}
+
+.dialog-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--pane-text);
+  margin-bottom: 8px;
+}
+
+.dialog-message {
+  font-size: 14px;
+  color: var(--pane-text-dim);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* --- Utility ----------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.context-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 180px;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--pane-text);
+}
+
+.context-menu-item {
+  padding: 7px 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition);
+  outline: none;
+}
+.context-menu-item:hover,
+.context-menu-item:focus {
+  background: var(--accent-light);
+}
+.context-menu-item.danger:hover,
+.context-menu-item.danger:focus {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--danger);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--pane-border);
+  margin: 4px 0;
+}
+
+/* ============================================================
+   Drag & drop visual feedback (Feature 4)
+   ============================================================ */
+.mail-item.dragging {
+  opacity: 0.4;
+}
+
+.sidebar-folder.drag-over {
+  background: var(--accent-light) !important;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================
+   Headers modal
+   ============================================================ */
+.headers-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.headers-modal {
+  background: var(--list-bg, rgb(42,47,58));
+  border: 1px solid var(--list-border, rgb(55,62,76));
+  border-radius: 8px;
+  width: min(90vw, 720px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.headers-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--list-border, rgb(55,62,76));
+}
+
+.headers-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--list-text, rgb(210,215,225));
+}
+
+.headers-modal-close {
+  background: none;
+  border: none;
+  color: var(--list-text-dim, rgb(170,178,195));
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.headers-modal-close:hover {
+  color: var(--list-text, rgb(210,215,225));
+}
+
+.headers-modal-body {
+  overflow-y: auto;
+  padding: 16px;
+  flex: 1;
+}
+
+.headers-modal-content {
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--list-text, rgb(210,215,225));
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+.headers-modal-content .header-highlight {
+  color: rgb(0, 180, 255);
+  font-weight: 600;
+}
+
+/* ============================================================
+   Security log in settings
+   ============================================================ */
+.settings-security-log {
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--list-border, rgb(55,62,76));
+  border-radius: 6px;
+  background: rgba(0,0,0,0.15);
+}
+
+.settings-security-log-entry {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  color: var(--list-text-dim, rgb(170,178,195));
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  line-height: 1.5;
+}
+.settings-security-log-entry:last-child {
+  border-bottom: none;
+}
+
+/* Light theme overrides for headers modal */
+[data-theme="light"] .headers-modal {
+  background: #fff;
+  border-color: rgba(0,0,0,0.12);
+}
+[data-theme="light"] .headers-modal-title {
+  color: #1e1e1e;
+}
+[data-theme="light"] .headers-modal-content {
+  color: #333;
+}
+[data-theme="light"] .headers-modal-content .header-highlight {
+  color: rgb(0, 100, 200);
+}
+[data-theme="light"] .settings-security-log {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.1);
+}
+[data-theme="light"] .settings-security-log-entry {
+  color: #555;
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+
+/* ============================================================
+   Quick Reply
+   ============================================================ */
+.quick-reply {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-top: 1px solid var(--pane-border);
+  background: var(--pane-header-bg);
+}
+.quick-reply-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--pane-text);
+  background: var(--pane-bg);
+  outline: none;
+  transition: border-color var(--transition);
+}
+.quick-reply-input:focus {
+  border-color: var(--accent);
+}
+.quick-reply-send {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition);
+}
+.quick-reply-send:hover {
+  background: var(--accent-hover);
+}
+.quick-reply-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Offline Banner
+   ============================================================ */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: var(--warning);
+  color: #1e1e1e;
+  text-align: center;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+}
+
+/* ============================================================
+   Offline Banner
+   ============================================================ */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: var(--warning);
+  color: #1e1e1e;
+  text-align: center;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+}
+
+/* ============================================================
+   Compose Attachments (drag-and-drop)
+   ============================================================ */
+.compose-attachments {
+  border-top: 1px solid var(--pane-border);
+  padding: 8px 16px;
+  font-size: 12px;
+}
+.compose-attachments-label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--pane-text-dim);
+}
+.compose-attachments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.compose-attachment-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--pane-text);
+  max-width: 220px;
+}
+.compose-attachment-pill-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+.compose-attachment-pill-size {
+  color: var(--pane-text-dim);
+  flex-shrink: 0;
+}
+.compose-attachment-pill-remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.compose-body-wrap.compose-drop-active {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+  background: var(--accent-light);
+}
+
+/* ============================================================
+   Skip links (Accessibility)
+   ============================================================ */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  z-index: 10000;
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 var(--radius) 0;
+  transition: top 0.2s ease;
+}
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Focus visible styles (Accessibility)
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Remove focus ring for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ============================================================
+   Feature: Sender avatar in mail list
+   ============================================================ */
+.mail-avatar {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Feature: Compose status bar (word/char count)
+   ============================================================ */
+.compose-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 16px;
+  font-size: 11px;
+  color: var(--pane-text-dim);
+  border-top: 1px solid var(--pane-border);
+  background: var(--pane-header-bg);
+}
+
+/* ============================================================
+   Feature: Focus mode
+   ============================================================ */
+#app.focus-mode #sidebar,
+#app.focus-mode .panel-splitter:first-of-type {
+  display: none !important;
+}
+#app.focus-mode #mail-list,
+#app.focus-mode .panel-splitter:nth-of-type(2) {
+  display: none !important;
+}
+#app.focus-mode #content {
+  flex: 1;
+}
+#app.focus-mode #mail-view {
+  width: 100%;
+  max-width: 100%;
+}
+
+.exit-focus-btn {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 9999;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font);
+  box-shadow: var(--shadow);
+  transition: background var(--transition);
+}
+.exit-focus-btn:hover {
+  background: var(--accent-hover);
+}
+
+/* ============================================================
+   Feature: Quick actions on hover
+   ============================================================ */
+.mail-item-quick-actions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  background: var(--list-bg);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.mail-item:hover .mail-item-quick-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.quick-action-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--list-text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.quick-action-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--list-text);
+  border-color: rgba(255,255,255,0.15);
+}
+
+/* ============================================================
+   Feature: Multi-select checkbox
+   ============================================================ */
+.mail-item-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  accent-color: var(--accent);
+}
+
+.mail-item:hover .mail-item-checkbox,
+.mail-item-checkbox.visible,
+.mail-item-checkbox:checked {
+  opacity: 1;
+}
+
+.mail-item.multi-selected {
+  background: rgba(0, 120, 214, 0.12);
+}
+
+/* ============================================================
+   Feature: Batch action bar
+   ============================================================ */
+.batch-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+  animation: fadeIn 0.15s ease;
+}
+
+.batch-count {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.batch-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: var(--font);
+  transition: background var(--transition);
+}
+
+.batch-btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ============================================================
+   Feature: Mail list sort dropdown
+   ============================================================ */
+.mail-list-sort {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm);
+  color: var(--list-text-dim);
+  font-size: 11px;
+  font-family: var(--font);
+  padding: 4px 6px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.mail-list-sort:focus {
+  border-color: var(--accent);
+}
+
+.mail-list-sort option {
+  background: var(--list-bg);
+  color: var(--list-text);
+}
+
+/* ============================================================
+   Feature: Collapsible sidebar sections
+   ============================================================ */
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sidebar-text-dim);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition);
+}
+
+.sidebar-section-header:hover {
+  color: var(--sidebar-text);
+}
+
+.sidebar-section-arrow {
+  font-size: 8px;
+  transition: transform 0.2s ease;
+}
+
+/* ============================================================
+   Feature: Conversation timeline
+   ============================================================ */
+.conversation-timeline {
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--pane-border);
+  background: var(--pane-header-bg);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.conversation-timeline-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pane-text-dim);
+  margin-bottom: 8px;
+}
+
+.conversation-timeline-item {
+  display: flex;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+  position: relative;
+}
+
+.conversation-timeline-item:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.conversation-timeline-item.current {
+  background: var(--accent-light);
+  border-left: 3px solid var(--accent);
+}
+
+.conversation-timeline-dot {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  background: var(--pane-text-dim);
+  margin-top: 5px;
+}
+
+.conversation-timeline-item.current .conversation-timeline-dot {
+  background: var(--accent);
+}
+
+.conversation-timeline-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.conversation-timeline-from {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pane-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-timeline-date {
+  font-size: 10px;
+  color: var(--pane-text-dim);
+}
+
+.conversation-timeline-preview {
+  font-size: 11px;
+  color: var(--pane-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Feature: Empty state illustrations
+   ============================================================ */
+.empty-state-illustration {
+  color: var(--list-text-dim);
+  opacity: 0.4;
+  margin-bottom: 12px;
+}
+
+.mail-view-empty .empty-state-illustration {
+  color: var(--pane-text-dim);
+  opacity: 0.3;
+}
+
+.empty-state-text {
+  font-size: 14px;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.mail-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--list-text-dim);
+  font-size: 14px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.mail-view-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--pane-text-dim);
+  font-size: 15px;
+}
+
+/* ============================================================
+   Feature: Tooltip styles for buttons
+   ============================================================ */
+[title] {
+  position: relative;
+}
+
+button[title]:hover::after,
+.mail-list-btn[title]:hover::after,
+.mail-view-toolbar-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 20, 0.92);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10000;
+  pointer-events: none;
+  animation: fadeIn 0.1s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+
+/* ============================================================
+   Feature 3: Quick reply template pills
+   ============================================================ */
+.quick-reply-templates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 24px;
+  border-top: 1px solid var(--pane-border);
+  background: var(--pane-header-bg);
+  flex-wrap: wrap;
+}
+.quick-reply-templates-label {
+  font-size: 12px;
+  color: var(--pane-text-dim);
+  margin-right: 4px;
+}
+.quick-reply-pill {
+  padding: 4px 12px;
+  border: 1px solid var(--pane-border);
+  border-radius: 16px;
+  background: var(--pane-bg);
+  color: var(--pane-text);
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.quick-reply-pill:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+.quick-reply-pill:active {
+  background: var(--accent);
+  color: #fff;
+}
+.quick-reply-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+   Feature 5: Reading time estimate
+   ============================================================ */
+.mail-view-reading-time {
+  font-size: 11px;
+  color: var(--pane-text-dim);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   Feature 6 + 8: Sender profile card
+   ============================================================ */
+.mail-view-from-hover {
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-color var(--transition);
+}
+.mail-view-from-hover:hover {
+  border-bottom-color: var(--accent);
+}
+.sender-profile-card {
+  position: absolute;
+  z-index: 200;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+  max-width: 360px;
+  animation: fadeIn 0.15s ease;
+}
+.sender-card-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.sender-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.sender-card-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--pane-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sender-card-email {
+  font-size: 12px;
+  color: var(--pane-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sender-card-stats {
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 2px;
+}
+.sender-card-copy {
+  background: none;
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  color: var(--accent);
+  transition: background var(--transition);
+}
+.sender-card-copy:hover {
+  background: var(--accent-light);
+}
+
+/* ============================================================
+   Feature 7: Drag reorder sidebar folders
+   ============================================================ */
+.sidebar-folder.dragging {
+  opacity: 0.4;
+}
+.sidebar-folder.drag-over-reorder {
+  border-top: 2px solid var(--accent);
+}
+.sidebar-folder[draggable="true"] {
+  cursor: grab;
+}
+.sidebar-folder[draggable="true"]:active {
+  cursor: grabbing;
+}

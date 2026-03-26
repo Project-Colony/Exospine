@@ -2,12 +2,11 @@
 
 import * as api from './api.js';
 import { showToast } from './components/toast.js';
-import { showDialog } from './components/dialog.js';
 import { renderSidebar, updateUnreadBadges } from './views/sidebar.js';
 import { renderMailList } from './views/mail_list.js';
 import { renderMailView, isThreadMuted } from './views/mail_view.js';
 import { openCompose, makeReplyPrefill, makeForwardPrefill } from './views/compose.js';
-import { openSettings, getMergedShortcuts, hashPin, restoreImportedTheme } from './views/settings.js';
+import { openSettings, hashPin, restoreImportedTheme } from './views/settings.js';
 import { openOnboarding } from './views/onboarding.js';
 import { openAnalytics } from './views/analytics.js';
 import { openCalendar } from './views/calendar.js';
@@ -15,149 +14,19 @@ import { openContacts } from './views/contacts.js';
 import { openTasks, openAwaitingReply } from './views/tasks.js';
 import { setLanguage } from './i18n.js';
 
-// ---------------------------------------------------------------------------
-// Interval tracking — all intervals are stored for cleanup on beforeunload
-// ---------------------------------------------------------------------------
-const _intervals = [];
-
-// ---------------------------------------------------------------------------
-// localStorage batch debounce — coalesce writes with 1s interval
-// ---------------------------------------------------------------------------
-const _lsBatchQueue = new Map(); // key -> value
-let _lsBatchTimer = null;
-
-function lsSetItem(key, value) {
-  _lsBatchQueue.set(key, value);
-  if (!_lsBatchTimer) {
-    _lsBatchTimer = setTimeout(() => {
-      for (const [k, v] of _lsBatchQueue) {
-        localStorage.setItem(k, v);
-      }
-      _lsBatchQueue.clear();
-      _lsBatchTimer = null;
-    }, 1000);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Offline mode with action queue
-// ---------------------------------------------------------------------------
-let _isOffline = !navigator.onLine;
-const _actionQueue = JSON.parse(localStorage.getItem('exospine_action_queue') || '[]');
-
-function queueAction(action) {
-  _actionQueue.push({ ...action, timestamp: Date.now() });
-  lsSetItem('exospine_action_queue', JSON.stringify(_actionQueue));
-  showToast('Action queued. Will sync when connected.', 'info');
-}
-
-async function executeAction(action) {
-  switch (action.type) {
-    case 'send_mail':
-      await api.sendMail(action.draft);
-      break;
-    case 'delete_mail':
-      await api.deleteMail(action.accountId, action.folder, action.mailUid);
-      break;
-    case 'archive_mail':
-      await api.archiveMail(action.accountId, action.folder, action.mailUid);
-      break;
-    case 'move_mail':
-      await api.moveMail(action.accountId, action.folder, action.mailUid, action.targetFolder);
-      break;
-    case 'toggle_star':
-      await api.toggleStar(action.accountId, action.folder, action.mailUid, action.isStarred);
-      break;
-    case 'mark_read':
-      await api.markRead(action.accountId, action.folder, action.mailUid);
-      break;
-    case 'mark_unread':
-      await api.markUnread(action.accountId, action.folder, action.mailUid);
-      break;
-    case 'sweep_sender':
-      await api.sweepSender(action.accountId, action.folder, action.senderEmail);
-      break;
-    default:
-      console.warn('Unknown queued action type:', action.type);
-  }
-}
-
-async function replayQueue() {
-  if (_actionQueue.length === 0) return;
-  showToast(`Replaying ${_actionQueue.length} queued action(s)...`, 'info');
-
-  const MAX_RETRIES = 3;
-
-  // Process in batches of 5 with Promise.allSettled
-  while (_actionQueue.length > 0) {
-    const batch = _actionQueue.splice(0, 5);
-    const results = await Promise.allSettled(batch.map((a) => executeAction(a)));
-
-    // Re-queue any that failed (in order), with retry count
-    const failed = [];
-    const discarded = [];
-    for (let i = 0; i < results.length; i++) {
-      if (results[i].status === 'rejected') {
-        const action = batch[i];
-        action._retryCount = (action._retryCount || 0) + 1;
-        if (action._retryCount >= MAX_RETRIES) {
-          discarded.push(action);
-        } else {
-          failed.push(action);
-        }
-      }
-    }
-    if (discarded.length > 0) {
-      showToast(`${discarded.length} action(s) failed after ${MAX_RETRIES} retries and were discarded.`, 'error');
-    }
-    if (failed.length > 0) {
-      _actionQueue.unshift(...failed);
-      break; // stop on first batch with failures, will retry next time
-    }
-  }
-
-  lsSetItem('exospine_action_queue', JSON.stringify(_actionQueue));
-  if (_actionQueue.length === 0) {
-    showToast('All queued actions synced.', 'success');
-  }
-}
-
-function setupOfflineMode() {
-  function updateOfflineBanner(offline) {
-    _isOffline = offline;
-    let banner = document.getElementById('offline-banner');
-    if (offline) {
-      if (!banner) {
-        banner = document.createElement('div');
-        banner.id = 'offline-banner';
-        banner.className = 'offline-banner';
-        banner.textContent = 'Offline \u2014 actions will sync when connected';
-        document.body.prepend(banner);
-      }
-    } else {
-      if (banner) banner.remove();
-    }
-  }
-
-  updateOfflineBanner(!navigator.onLine);
-  window.addEventListener('online', () => {
-    updateOfflineBanner(false);
-    replayQueue();
-  });
-  window.addEventListener('offline', () => updateOfflineBanner(true));
-}
-
-// ---------------------------------------------------------------------------
-// Body cache — avoids redundant API calls for already-loaded mail bodies
-// ---------------------------------------------------------------------------
-const bodyCache = new Map(); // mailId -> { text, html }
+// Module imports
+import { state, activeAccountId, sidebarEl, mailListEl, mailViewEl, hamburgerBtn, bodyCache, _prefetchInFlight, _intervals } from './state.js';
+import { setupOfflineMode } from './offline.js';
+import { handleArchive, handleDelete, handleMarkRead, handleMarkUnread, toggleMailStar, handleFlagMail, handleUnflagMail, handleSweepSender, handleReportSpam, handleReportNotSpam, handleAddCategory, handleRemoveCategory, setMailActionCallbacks } from './mail_actions.js';
+import { handleBatchArchive, handleBatchDelete, handleBatchMarkRead, handleBatchMove, setBatchOpsCallbacks } from './batch_ops.js';
+import { applyTheme } from './theme.js';
+import { setupKeyboardShortcuts, setShortcutCallbacks } from './shortcuts.js';
+import { playNotificationSound, setSoundEnabled, updateUnreadTitle } from './notifications_ui.js';
+import { setupConnectionStatus, setupResizablePanels } from './panels.js';
 
 // ---------------------------------------------------------------------------
 // Prefetch — silently preload bodies for the first visible mails
-// Rate-limited: track in-flight requests in a Set to avoid duplicates.
 // ---------------------------------------------------------------------------
-const _prefetchInFlight = new Set();
-
 function prefetchBodies(mails) {
   const toPrefetch = mails.slice(0, 5);
   for (const mail of toPrefetch) {
@@ -169,139 +38,6 @@ function prefetchBodies(mails) {
       _prefetchInFlight.delete(mail.id);
     });
   }
-}
-
-// ---------------------------------------------------------------------------
-// Global state
-// ---------------------------------------------------------------------------
-const state = {
-  accounts: [],
-  activeAccount: 0, // index into accounts[]
-  activeFolder: 'INBOX',
-  mails: [],
-  selectedMail: null,
-  mailBody: null,
-  folders: [],
-  page: 0,
-  hasMore: true,
-  loading: false,
-  settings: {},
-  // UI state for error/sync
-  _mailsError: false,
-  _foldersError: false,
-  _syncing: false,
-  _syncProgress: 0,
-  // Unified inbox / search folder state
-  _unifiedInbox: false,
-  _activeSearchFolder: null,
-};
-
-// Helper: get the active account's UUID
-function activeAccountId() {
-  const acc = state.accounts[state.activeAccount];
-  return acc ? acc.id : '';
-}
-
-// DOM references (with null guards)
-const sidebarEl = document.getElementById('sidebar');
-const mailListEl = document.getElementById('mail-list');
-const mailViewEl = document.getElementById('mail-view');
-const hamburgerBtn = document.getElementById('hamburger-btn');
-
-if (!sidebarEl || !mailListEl || !mailViewEl) {
-  console.error('Missing required DOM elements (#sidebar, #mail-list, or #mail-view)');
-}
-
-// ---------------------------------------------------------------------------
-// Notification sound
-// ---------------------------------------------------------------------------
-let _soundEnabled = localStorage.getItem('exospine_sound_notifications') !== 'false';
-
-function playNotificationSound(accountId) {
-  if (!_soundEnabled) return;
-  // Per-account override, then global setting, then default
-  let sound;
-  if (accountId) {
-    const acctSound = localStorage.getItem('exospine_notif_sound_' + accountId);
-    sound = acctSound || localStorage.getItem('exospine_notif_sound') || 'default';
-  } else {
-    sound = localStorage.getItem('exospine_notif_sound') || 'default';
-  }
-  if (sound === 'silent') return;
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (sound === 'chime') {
-      // 660Hz then 880Hz sequence
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.frequency.value = 660;
-      osc1.type = 'sine';
-      gain1.gain.value = 0.3;
-      osc1.start();
-      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-      osc1.stop(ctx.currentTime + 0.2);
-
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.frequency.value = 880;
-      osc2.type = 'sine';
-      gain2.gain.value = 0.3;
-      osc2.start(ctx.currentTime + 0.2);
-      gain2.gain.setValueAtTime(0.3, ctx.currentTime + 0.2);
-      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc2.stop(ctx.currentTime + 0.5);
-    } else if (sound === 'bell') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 440;
-      osc.type = 'triangle';
-      gain.gain.value = 0.4;
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.stop(ctx.currentTime + 0.5);
-    } else if (sound === 'gentle') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 523;
-      osc.type = 'sine';
-      gain.gain.value = 0.15;
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      osc.stop(ctx.currentTime + 0.4);
-    } else {
-      // Default: 880Hz sine
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      osc.type = 'sine';
-      gain.gain.value = 0.3;
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.stop(ctx.currentTime + 0.3);
-    }
-  } catch {}
-}
-
-function showDesktopNotification(title, body) {
-  try {
-    if (Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '' });
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(p => {
-        if (p === 'granted') new Notification(title, { body, icon: '' });
-      });
-    }
-  } catch {}
 }
 
 // ---------------------------------------------------------------------------
@@ -329,99 +65,6 @@ function toggleFocusMode() {
     app.classList.remove('focus-mode');
     const exitBtn = document.getElementById('exit-focus-btn');
     if (exitBtn) exitBtn.remove();
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Auto dark mode based on system time
-// ---------------------------------------------------------------------------
-let _autoThemeInterval = null;
-
-function applyAutoTheme() {
-  const hour = new Date().getHours();
-  const isDark = hour < 7 || hour >= 20; // Dark between 8pm-7am
-  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  if (isDark) {
-    document.documentElement.removeAttribute('data-theme');
-  } else {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
-}
-
-function startAutoTheme() {
-  stopAutoTheme();
-  applyAutoTheme();
-  _autoThemeInterval = setInterval(applyAutoTheme, 5 * 60 * 1000);
-  _intervals.push(_autoThemeInterval);
-}
-
-function stopAutoTheme() {
-  if (_autoThemeInterval) {
-    clearInterval(_autoThemeInterval);
-    _autoThemeInterval = null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Theme
-// ---------------------------------------------------------------------------
-function applyTheme(theme) {
-  stopAutoTheme();
-  clearCustomTheme();
-  if (theme === 'auto') {
-    startAutoTheme();
-  } else if (theme === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
-  } else if (theme === 'high-contrast') {
-    document.documentElement.setAttribute('data-theme', 'high-contrast');
-  } else if (theme === 'custom') {
-    document.documentElement.removeAttribute('data-theme');
-    // Read and apply custom theme colors from localStorage
-    applyCustomTheme();
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-}
-
-/**
- * Apply custom theme colors from localStorage onto :root CSS variables.
- */
-function applyCustomTheme() {
-  try {
-    const raw = localStorage.getItem('exospine_custom_theme');
-    if (!raw) return;
-    const colors = JSON.parse(raw);
-    const root = document.documentElement;
-    if (colors.sidebarBg) root.style.setProperty('--sidebar-bg', colors.sidebarBg);
-    if (colors.listBg) root.style.setProperty('--list-bg', colors.listBg);
-    if (colors.paneBg) root.style.setProperty('--pane-bg', colors.paneBg);
-    if (colors.accent) {
-      root.style.setProperty('--accent', colors.accent);
-      root.style.setProperty('--list-active', colors.accent);
-    }
-    if (colors.textPrimary) {
-      root.style.setProperty('--pane-text', colors.textPrimary);
-      root.style.setProperty('--list-text', colors.textPrimary);
-    }
-    if (colors.textSecondary) {
-      root.style.setProperty('--pane-text-dim', colors.textSecondary);
-      root.style.setProperty('--list-text-dim', colors.textSecondary);
-      root.style.setProperty('--sidebar-text-dim', colors.textSecondary);
-    }
-  } catch {
-    // Ignore parse errors
-  }
-}
-
-/**
- * Clear custom theme CSS variable overrides from :root inline styles.
- */
-function clearCustomTheme() {
-  const root = document.documentElement;
-  const props = ['--sidebar-bg', '--list-bg', '--pane-bg', '--accent', '--list-active',
-    '--pane-text', '--list-text', '--pane-text-dim', '--list-text-dim', '--sidebar-text-dim'];
-  for (const p of props) {
-    root.style.removeProperty(p);
   }
 }
 
@@ -481,7 +124,7 @@ function sidebarActions() {
         }
         // Update sound notification setting
         if (s.sound_notifications !== undefined) {
-          _soundEnabled = s.sound_notifications;
+          setSoundEnabled(s.sound_notifications);
           localStorage.setItem('exospine_sound_notifications', String(s.sound_notifications));
         }
         renderAll();
@@ -580,6 +223,26 @@ function renderList() {
 function renderView() {
   safeRender(() => renderMailView(mailViewEl, state, mailViewActions()), mailViewEl);
 }
+
+// ---------------------------------------------------------------------------
+// Wire up callbacks for extracted modules
+// ---------------------------------------------------------------------------
+setMailActionCallbacks({ renderList, renderView, removeMail });
+setBatchOpsCallbacks({ renderList, removeMail });
+setShortcutCallbacks({
+  handleReply,
+  handleReplyAll,
+  handleForward,
+  handleDelete,
+  handleArchive,
+  toggleMailStar,
+  handleMarkUnread,
+  selectMail,
+  refreshCurrentFolder,
+  toggleFocusMode,
+  renderView,
+  updateMailItemSelection,
+});
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -836,29 +499,6 @@ async function searchMails(query) {
   renderList();
 }
 
-async function toggleMailStar(mailId) {
-  const mail = state.mails.find((m) => m.id === mailId);
-  const newStarred = !(mail?.is_starred);
-  // Optimistic update
-  if (mail) mail.is_starred = newStarred;
-  if (state.selectedMail && state.selectedMail.id === mailId) {
-    state.selectedMail.is_starred = newStarred;
-  }
-  renderList();
-
-  try {
-    await api.toggleStar(activeAccountId(), state.activeFolder, mailId, newStarred);
-  } catch (err) {
-    // Revert on failure
-    if (mail) mail.is_starred = !newStarred;
-    if (state.selectedMail && state.selectedMail.id === mailId) {
-      state.selectedMail.is_starred = !newStarred;
-    }
-    renderList();
-    showToast(`Failed to toggle star: ${err}`, 'error');
-  }
-}
-
 async function toggleMailPin(mailId) {
   const mail = state.mails.find((m) => m.id === mailId);
   if (!mail) return;
@@ -883,50 +523,6 @@ async function toggleMailPin(mailId) {
     }
     renderList();
     showToast(`Failed to toggle pin: ${err}`, 'error');
-  }
-}
-
-async function handleFlagMail(mailId, dueDate) {
-  const mail = state.mails.find((m) => m.id === mailId);
-  if (!mail) return;
-  // Optimistic update
-  mail.flag_due_date = dueDate;
-  if (state.selectedMail && state.selectedMail.id === mailId) {
-    state.selectedMail.flag_due_date = dueDate;
-  }
-  renderList();
-
-  try {
-    await api.flagMail(mailId, dueDate);
-  } catch (err) {
-    mail.flag_due_date = null;
-    if (state.selectedMail && state.selectedMail.id === mailId) {
-      state.selectedMail.flag_due_date = null;
-    }
-    renderList();
-    showToast(`Failed to flag mail: ${err}`, 'error');
-  }
-}
-
-async function handleUnflagMail(mailId) {
-  const mail = state.mails.find((m) => m.id === mailId);
-  if (!mail) return;
-  const prev = mail.flag_due_date;
-  mail.flag_due_date = null;
-  if (state.selectedMail && state.selectedMail.id === mailId) {
-    state.selectedMail.flag_due_date = null;
-  }
-  renderList();
-
-  try {
-    await api.unflagMail(mailId);
-  } catch (err) {
-    mail.flag_due_date = prev;
-    if (state.selectedMail && state.selectedMail.id === mailId) {
-      state.selectedMail.flag_due_date = prev;
-    }
-    renderList();
-    showToast(`Failed to unflag mail: ${err}`, 'error');
   }
 }
 
@@ -959,233 +555,6 @@ function handleForward(mail) {
   const prefill = makeForwardPrefill(mail, state.mailBody);
   prefill.accountId = activeAccountId();
   openCompose(prefill, () => refreshCurrentFolder());
-}
-
-async function handleArchive(mail) {
-  const originalFolder = state.activeFolder;
-  const accountId = activeAccountId();
-  const mailCopy = { ...mail };
-
-  try {
-    await api.archiveMail(accountId, originalFolder, mail.id);
-    removeMail(mail.id);
-    showToast('Email archived. [Undo]', 'success', 5000, async () => {
-      try {
-        await api.moveMail(accountId, 'Archive', mail.id, originalFolder);
-        state.mails.unshift(mailCopy);
-        renderList();
-        showToast('Archive undone.', 'info');
-      } catch (e) {
-        showToast(`Undo failed: ${e}`, 'error');
-      }
-    });
-  } catch (err) {
-    showToast(`Failed to archive: ${err}`, 'error');
-  }
-}
-
-async function handleDelete(mail) {
-  const confirmed = await showDialog({
-    title: 'Delete Email',
-    message: 'Move this email to Trash?',
-    confirmLabel: 'Delete',
-    danger: true,
-  });
-  if (!confirmed) return;
-
-  const originalFolder = state.activeFolder;
-  const accountId = activeAccountId();
-  const mailCopy = { ...mail };
-
-  try {
-    await api.deleteMail(accountId, originalFolder, mail.id);
-    removeMail(mail.id);
-    showToast('Email deleted. [Undo]', 'success', 5000, async () => {
-      try {
-        await api.moveMail(accountId, 'Trash', mail.id, originalFolder);
-        state.mails.unshift(mailCopy);
-        renderList();
-        showToast('Delete undone.', 'info');
-      } catch (e) {
-        showToast(`Undo failed: ${e}`, 'error');
-      }
-    });
-  } catch (err) {
-    showToast(`Failed to delete: ${err}`, 'error');
-  }
-}
-
-async function handleMarkUnread(mail) {
-  try {
-    await api.markUnread(activeAccountId(), state.activeFolder, mail.id);
-    mail.is_read = false;
-    renderList();
-    showToast('Marked as unread.', 'info');
-  } catch (err) {
-    showToast(`Failed to mark unread: ${err}`, 'error');
-  }
-}
-
-async function handleMarkRead(mail) {
-  try {
-    await api.markRead(activeAccountId(), state.activeFolder, mail.id);
-    mail.is_read = true;
-    renderList();
-  } catch (err) {
-    showToast(`Failed to mark as read: ${err}`, 'error');
-  }
-}
-
-async function handleReportSpam(mail) {
-  try {
-    await api.reportSpam(mail.id);
-    if (!mail.categories) mail.categories = [];
-    if (!mail.categories.includes('Spam')) mail.categories.push('Spam');
-    renderList();
-    showToast('Reported as spam.', 'info');
-  } catch (err) {
-    showToast(`Failed to report spam: ${err}`, 'error');
-  }
-}
-
-async function handleReportNotSpam(mail) {
-  try {
-    await api.reportNotSpam(mail.id);
-    if (mail.categories) {
-      mail.categories = mail.categories.filter((c) => c !== 'Spam');
-    }
-    renderList();
-    showToast('Marked as not spam.', 'info');
-  } catch (err) {
-    showToast(`Failed to unmark spam: ${err}`, 'error');
-  }
-}
-
-async function handleAddCategory(mail, category) {
-  try {
-    await api.addCategory(mail.id, category);
-    if (!mail.categories) mail.categories = [];
-    if (!mail.categories.includes(category)) mail.categories.push(category);
-    renderList();
-  } catch (err) {
-    showToast(`Failed to add category: ${err}`, 'error');
-  }
-}
-
-async function handleRemoveCategory(mail, category) {
-  try {
-    await api.removeCategory(mail.id, category);
-    if (mail.categories) {
-      mail.categories = mail.categories.filter((c) => c !== category);
-    }
-    renderList();
-  } catch (err) {
-    showToast(`Failed to remove category: ${err}`, 'error');
-  }
-}
-
-async function handleSweepSender(mail) {
-  // Extract sender email from the "from" field
-  const fromField = mail.from || '';
-  const emailMatch = fromField.match(/<([^>]+)>/) || [null, fromField];
-  const senderEmail = (emailMatch[1] || fromField).trim();
-  if (!senderEmail) {
-    showToast('Cannot determine sender email.', 'error');
-    return;
-  }
-
-  const confirmed = await showDialog({
-    title: 'Sweep Sender',
-    message: `Delete ALL emails from "${senderEmail}" in this folder?`,
-    confirmLabel: 'Delete All',
-    danger: true,
-  });
-  if (!confirmed) return;
-
-  if (_isOffline) {
-    queueAction({ type: 'sweep_sender', accountId: activeAccountId(), folder: state.activeFolder, senderEmail });
-    // Optimistic local removal
-    const toRemove = state.mails.filter(m => (m.from || '').includes(senderEmail));
-    for (const m of toRemove) removeMail(m.id);
-    return;
-  }
-
-  try {
-    const count = await api.sweepSender(activeAccountId(), state.activeFolder, senderEmail);
-    showToast(`Deleted ${count || 'all'} emails from ${senderEmail}.`, 'success');
-    // Remove matching mails from local state
-    const toRemove = state.mails.filter(m => (m.from || '').includes(senderEmail)).map(m => m.id);
-    for (const id of toRemove) removeMail(id);
-  } catch (err) {
-    showToast(`Sweep failed: ${err}`, 'error');
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Batch actions (multi-select)
-// ---------------------------------------------------------------------------
-async function handleBatchArchive(mailIds) {
-  const accountId = activeAccountId();
-  const folder = state.activeFolder;
-  let count = 0;
-  for (const id of mailIds) {
-    try {
-      await api.archiveMail(accountId, folder, id);
-      removeMail(id);
-      count++;
-    } catch {}
-  }
-  showToast(`${count} email(s) archived.`, 'success');
-}
-
-async function handleBatchDelete(mailIds) {
-  const confirmed = await showDialog({
-    title: 'Delete Emails',
-    message: `Move ${mailIds.size || mailIds.length} email(s) to Trash?`,
-    confirmLabel: 'Delete',
-    danger: true,
-  });
-  if (!confirmed) return;
-
-  const accountId = activeAccountId();
-  const folder = state.activeFolder;
-  let count = 0;
-  for (const id of mailIds) {
-    try {
-      await api.deleteMail(accountId, folder, id);
-      removeMail(id);
-      count++;
-    } catch {}
-  }
-  showToast(`${count} email(s) deleted.`, 'success');
-}
-
-async function handleBatchMarkRead(mailIds) {
-  const accountId = activeAccountId();
-  const folder = state.activeFolder;
-  for (const id of mailIds) {
-    try {
-      await api.markRead(accountId, folder, id);
-      const mail = state.mails.find((m) => m.id === id);
-      if (mail) mail.is_read = true;
-    } catch {}
-  }
-  renderList();
-  showToast(`${mailIds.size || mailIds.length} email(s) marked as read.`, 'info');
-}
-
-async function handleBatchMove(mailIds, targetFolder) {
-  const accountId = activeAccountId();
-  const folder = state.activeFolder;
-  let count = 0;
-  for (const id of mailIds) {
-    try {
-      await api.moveMail(accountId, folder, id, targetFolder);
-      removeMail(id);
-      count++;
-    } catch {}
-  }
-  showToast(`${count} email(s) moved to ${targetFolder}.`, 'success');
 }
 
 function removeMail(mailId) {
@@ -1315,141 +684,6 @@ async function selectSearchFolder(name, query) {
 }
 
 // ---------------------------------------------------------------------------
-// Keyboard shortcuts
-// ---------------------------------------------------------------------------
-function setupKeyboardShortcuts() {
-  /**
-   * Build a key descriptor string from a KeyboardEvent, matching the format
-   * stored by the shortcut editor (e.g. "Ctrl+n", "Shift+R", "F5", "Delete").
-   */
-  function eventToKeyDesc(e) {
-    let desc = '';
-    if (e.ctrlKey || e.metaKey) desc += 'Ctrl+';
-    if (e.shiftKey) desc += 'Shift+';
-    if (e.altKey) desc += 'Alt+';
-    desc += e.key;
-    return desc;
-  }
-
-  // Global keyboard shortcuts listener — intentional: registered once at
-  // app startup and needed for the entire app lifetime. No cleanup needed.
-  document.addEventListener('keydown', (e) => {
-    const shortcuts = getMergedShortcuts();
-    const keyDesc = eventToKeyDesc(e);
-
-    // Focus mode shortcut (works even in inputs)
-    if (keyDesc === shortcuts.focusMode) {
-      e.preventDefault();
-      toggleFocusMode();
-      return;
-    }
-
-    // Skip if user is typing in an input/textarea
-    const tag = e.target.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
-    // Don't intercept if overlay is open
-    const anyOverlayOpen =
-      !document.getElementById('compose-overlay').hidden ||
-      !document.getElementById('settings-overlay').hidden ||
-      !document.getElementById('onboarding-overlay').hidden ||
-      !document.getElementById('dialog-container').hidden;
-    if (anyOverlayOpen) return;
-
-    // Configurable shortcut actions
-    const shortcutActions = {
-      [shortcuts.compose]: () => {
-        openCompose({ accountId: activeAccountId() }, () => refreshCurrentFolder());
-      },
-      [shortcuts.reply]: () => { if (state.selectedMail) handleReply(state.selectedMail); },
-      [shortcuts.replyAll]: () => { if (state.selectedMail) handleReplyAll(state.selectedMail); },
-      [shortcuts.forward]: () => { if (state.selectedMail) handleForward(state.selectedMail); },
-      [shortcuts.delete]: () => { if (state.selectedMail) handleDelete(state.selectedMail); },
-      [shortcuts.archive]: () => { if (state.selectedMail) handleArchive(state.selectedMail); },
-      [shortcuts.star]: () => { if (state.selectedMail) toggleMailStar(state.selectedMail.id); },
-      [shortcuts.unread]: () => { if (state.selectedMail) handleMarkUnread(state.selectedMail); },
-      [shortcuts.next]: () => {
-        if (!state.mails.length) return;
-        const idx = state.selectedMail
-          ? state.mails.findIndex((m) => m.id === state.selectedMail.id) : -1;
-        if (idx + 1 < state.mails.length) selectMail(state.mails[idx + 1].id);
-      },
-      [shortcuts.prev]: () => {
-        if (!state.mails.length) return;
-        const idx = state.selectedMail
-          ? state.mails.findIndex((m) => m.id === state.selectedMail.id)
-          : state.mails.length;
-        if (idx - 1 >= 0) selectMail(state.mails[idx - 1].id);
-      },
-      [shortcuts.refresh]: () => { refreshCurrentFolder(); },
-    };
-
-    // Check if the current key matches any configured shortcut
-    if (shortcutActions[keyDesc]) {
-      e.preventDefault();
-      shortcutActions[keyDesc]();
-      return;
-    }
-
-    // Also check alternative keys for next/prev (ArrowDown/ArrowUp always work)
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!state.mails.length) return;
-      const idx = state.selectedMail
-        ? state.mails.findIndex((m) => m.id === state.selectedMail.id) : -1;
-      if (idx + 1 < state.mails.length) selectMail(state.mails[idx + 1].id);
-      return;
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!state.mails.length) return;
-      const idx = state.selectedMail
-        ? state.mails.findIndex((m) => m.id === state.selectedMail.id)
-        : state.mails.length;
-      if (idx - 1 >= 0) selectMail(state.mails[idx - 1].id);
-      return;
-    }
-
-    // Non-configurable shortcuts
-    switch (e.key) {
-      case 'Enter': {
-        if (!state.selectedMail && state.mails.length > 0) {
-          selectMail(state.mails[0].id);
-        }
-        break;
-      }
-
-      case 'Escape': {
-        if (state.selectedMail) {
-          e.preventDefault();
-          const prevId = state.selectedMail.id;
-          state.selectedMail = null;
-          state.mailBody = null;
-          updateMailItemSelection(prevId, null);
-          renderView();
-        }
-        break;
-      }
-
-      case 'Tab': {
-        e.preventDefault();
-        const zones = [sidebarEl, mailListEl, mailViewEl];
-        const current = zones.findIndex(z => z.contains(document.activeElement));
-        const nextZone = e.shiftKey
-          ? zones[(current - 1 + zones.length) % zones.length]
-          : zones[(current + 1) % zones.length];
-
-        const focusable = nextZone.querySelector(
-          'button:not([disabled]), [tabindex="0"], input, select, textarea, a[href]'
-        );
-        if (focusable) focusable.focus();
-        break;
-      }
-    }
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Tauri event listeners
 // ---------------------------------------------------------------------------
 function setupTauriEvents() {
@@ -1562,104 +796,6 @@ _intervals.push(setInterval(() => {
 }, 30000));
 
 // ---------------------------------------------------------------------------
-// Boot
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// Connection status indicator
-// ---------------------------------------------------------------------------
-function setupConnectionStatus() {
-  const dot = document.getElementById('connection-dot');
-  const text = document.getElementById('connection-text');
-  if (!dot || !text) return;
-
-  function updateStatus(online) {
-    if (online) {
-      dot.className = 'connection-dot connected';
-      text.textContent = 'Connected';
-    } else {
-      dot.className = 'connection-dot disconnected';
-      text.textContent = 'Disconnected';
-    }
-  }
-
-  updateStatus(navigator.onLine);
-  window.addEventListener('online', () => updateStatus(true));
-  window.addEventListener('offline', () => updateStatus(false));
-
-  // Periodic health check every 30 seconds
-  _intervals.push(setInterval(async () => {
-    try {
-      await api.getAccounts();
-      updateStatus(true);
-    } catch {
-      updateStatus(false);
-    }
-  }, 30000));
-}
-
-// ---------------------------------------------------------------------------
-// Resizable panels
-// ---------------------------------------------------------------------------
-function setupResizablePanels() {
-  const sidebar = document.getElementById('sidebar');
-  const mailList = document.getElementById('mail-list');
-  const content = document.getElementById('content');
-  if (!sidebar || !mailList || !content) return;
-
-  // Restore saved widths
-  const savedSidebarW = localStorage.getItem('exospine_sidebar_width');
-  const savedListW = localStorage.getItem('exospine_list_width');
-  if (savedSidebarW) {
-    sidebar.style.width = savedSidebarW + 'px';
-    sidebar.style.minWidth = savedSidebarW + 'px';
-  }
-  if (savedListW) {
-    mailList.style.width = savedListW + 'px';
-    mailList.style.minWidth = savedListW + 'px';
-  }
-
-  // Create splitters
-  const splitter1 = document.createElement('div');
-  splitter1.className = 'panel-splitter';
-  splitter1.setAttribute('role', 'separator');
-  splitter1.setAttribute('aria-label', 'Resize sidebar');
-  sidebar.after(splitter1);
-
-  const splitter2 = document.createElement('div');
-  splitter2.className = 'panel-splitter';
-  splitter2.setAttribute('role', 'separator');
-  splitter2.setAttribute('aria-label', 'Resize mail list');
-  mailList.after(splitter2);
-
-  function makeDraggable(splitter, targetEl, minW, maxW, storageKey) {
-    let startX, startW;
-    const onMouseMove = (e) => {
-      const delta = e.clientX - startX;
-      const newW = Math.min(maxW, Math.max(minW, startW + delta));
-      targetEl.style.width = newW + 'px';
-      targetEl.style.minWidth = newW + 'px';
-    };
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.classList.remove('col-resizing');
-      lsSetItem(storageKey, String(parseInt(targetEl.style.width, 10)));
-    };
-    splitter.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      startX = e.clientX;
-      startW = targetEl.getBoundingClientRect().width;
-      document.body.classList.add('col-resizing');
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    });
-  }
-
-  makeDraggable(splitter1, sidebar, 120, 350, 'exospine_sidebar_width');
-  makeDraggable(splitter2, mailList, 200, 600, 'exospine_list_width');
-}
-
-// ---------------------------------------------------------------------------
 // Drag-and-drop .eml file support
 // ---------------------------------------------------------------------------
 function setupEmlDragDrop() {
@@ -1749,60 +885,6 @@ async function lazyLoadFolderCounts() {
   // Reload folders to get updated counts and update sidebar badges
   await loadFolders();
   updateUnreadBadges(sidebarEl, state);
-}
-
-// ---------------------------------------------------------------------------
-// Dynamic favicon with unread badge
-// ---------------------------------------------------------------------------
-let _baseFaviconData = null;
-
-function updateFavicon(unreadCount) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 32;
-  canvas.height = 32;
-  const ctx = canvas.getContext('2d');
-
-  // Draw base icon (simple envelope shape)
-  ctx.fillStyle = '#00bcd4';
-  ctx.fillRect(2, 6, 28, 20);
-  ctx.fillStyle = '#00838f';
-  ctx.beginPath();
-  ctx.moveTo(2, 6);
-  ctx.lineTo(16, 18);
-  ctx.lineTo(30, 6);
-  ctx.closePath();
-  ctx.fill();
-
-  // Draw unread badge if count > 0
-  if (unreadCount > 0) {
-    const text = unreadCount > 99 ? '99+' : String(unreadCount);
-    const badgeRadius = text.length > 2 ? 10 : 8;
-    const badgeX = 32 - badgeRadius;
-    const badgeY = badgeRadius;
-
-    ctx.beginPath();
-    ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = '#e53935';
-    ctx.fill();
-    ctx.strokeStyle = '#1a1a2e';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold ${text.length > 2 ? 8 : 10}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, badgeX, badgeY + 1);
-  }
-
-  // Apply as favicon
-  let link = document.querySelector('link[rel="icon"]');
-  if (!link) {
-    link = document.createElement('link');
-    link.rel = 'icon';
-    document.head.appendChild(link);
-  }
-  link.href = canvas.toDataURL('image/png');
 }
 
 // ---------------------------------------------------------------------------
@@ -1897,6 +979,9 @@ async function showPinLockScreen() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
 async function init() {
   // Register service worker for offline caching
   if ('serviceWorker' in navigator) {
@@ -2033,15 +1118,6 @@ async function init() {
   }
 
   // Background task: update window title and favicon with unread count every 30 seconds
-  async function updateUnreadTitle() {
-    try {
-      const count = await api.getUnreadCount();
-      document.title = count > 0 ? `Exospine (${count} unread)` : 'Exospine';
-      updateFavicon(count);
-    } catch {
-      // Silent fail
-    }
-  }
   updateUnreadTitle();
   _intervals.push(setInterval(updateUnreadTitle, 30000));
 

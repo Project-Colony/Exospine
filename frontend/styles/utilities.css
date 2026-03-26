@@ -1,0 +1,924 @@
+/* --- Utility ----------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   CSP-safe utility classes (replaces inline styles blocked by
+   Tauri v2 CSP nonce)
+   ============================================================ */
+
+/* -- Mail list items: fixed height + box-sizing --------------- */
+.mail-item,
+.thread-header.mail-item {
+  height: 80px;
+  box-sizing: border-box;
+}
+
+/* -- Display rule classes ------------------------------------- */
+.dr-bold { font-weight: 700; }
+.dr-italic { font-style: italic; }
+/* Highlight rules are injected dynamically via <style> element */
+
+/* -- Account color border (unified inbox) --------------------- */
+.mail-item.acct-color-0 { border-left: 3px solid rgb(0, 120, 214); }
+.mail-item.acct-color-1 { border-left: 3px solid rgb(160, 90, 220); }
+.mail-item.acct-color-2 { border-left: 3px solid rgb(220, 80, 60); }
+.mail-item.acct-color-3 { border-left: 3px solid rgb(40, 167, 69); }
+.mail-item.acct-color-4 { border-left: 3px solid rgb(230, 150, 0); }
+.mail-item.acct-color-5 { border-left: 3px solid rgb(0, 180, 160); }
+
+/* -- Virtual scroll container --------------------------------- */
+#ml-virtual-container {
+  overflow-y: auto;
+  position: relative;
+}
+
+/* -- Mail item pin icon --------------------------------------- */
+.mail-item-pin {
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  opacity: 0.3;
+}
+.mail-item-pin.pinned {
+  opacity: 1;
+}
+
+/* -- Mail item flag icon -------------------------------------- */
+.mail-item-flag {
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+}
+.mail-item-flag:not(.flagged) {
+  opacity: 0.25;
+}
+.mail-item-flag.flag-overdue { color: var(--danger); }
+.mail-item-flag.flag-due-today { color: var(--warning); }
+.mail-item-flag.flag-default { color: var(--accent); }
+
+/* -- Skeleton line widths ------------------------------------- */
+.skeleton-line-60 { width: 60%; }
+.skeleton-line-80 { width: 80%; }
+.skeleton-line-40 { width: 40%; }
+
+/* -- Compose: markdown toggle active state -------------------- */
+.md-toggle-active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* -- Compose: toolbar item disabled (during markdown mode) ---- */
+.toolbar-item-disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* -- Toast: dismissing animation ------------------------------ */
+.toast-dismissing {
+  animation: toast-out 0.2s ease forwards;
+}
+
+/* -- Toast: clickable cursor ---------------------------------- */
+.toast-clickable {
+  cursor: pointer;
+}
+
+/* -- Body states during panel resize -------------------------- */
+body.col-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* -- Mail view: copy email button ----------------------------- */
+.mail-view-copy-email {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--accent);
+  padding: 0 4px;
+  vertical-align: middle;
+}
+
+/* -- Mail view: loading / empty status text ------------------- */
+.mail-view-status-text {
+  color: var(--pane-text-dim);
+  text-align: center;
+  padding-top: 40px;
+}
+
+/* -- Mail view: toolbar dropdown container -------------------- */
+.toolbar-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* -- Mail view: remind/snooze dropdown panel ------------------ */
+.toolbar-dropdown-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: 6px;
+  padding: 4px 0;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.remind-dropdown { min-width: 160px; }
+.snooze-dropdown { min-width: 180px; }
+
+/* -- Mail view: dropdown option items ------------------------- */
+.dropdown-option {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* -- Mail view: snooze custom section ------------------------- */
+.snooze-custom-section {
+  padding: 6px 12px;
+}
+.snooze-custom-section label {
+  font-size: 11px;
+  display: block;
+  margin-bottom: 4px;
+}
+.snooze-custom-section input[type="datetime-local"] {
+  width: 100%;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--pane-border);
+  background: var(--pane-bg);
+  color: var(--pane-text);
+  font-size: 12px;
+}
+.snooze-custom-btn {
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 4px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--pane-border);
+  border-radius: 4px;
+}
+
+/* -- Mail view: toolbar separator ----------------------------- */
+.toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--pane-border);
+  margin: 0 4px;
+}
+
+/* -- Mail view: zoom controls --------------------------------- */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.zoom-controls .mail-view-toolbar-btn {
+  padding: 4px 8px;
+}
+.zoom-controls .mail-view-toolbar-btn[data-action="zoom-out"],
+.zoom-controls .mail-view-toolbar-btn[data-action="zoom-in"] {
+  font-size: 14px;
+}
+.zoom-controls .mail-view-toolbar-btn[data-action="zoom-reset"] {
+  font-size: 11px;
+}
+#zoom-level-display {
+  font-size: 11px;
+  color: var(--pane-text-dim);
+  min-width: 36px;
+  text-align: center;
+}
+
+/* -- Mail view: receipt banner flex row ----------------------- */
+.receipt-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* -- Mail view: dev link cards -------------------------------- */
+.dev-link-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border: 1px solid var(--pane-border);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--pane-text);
+  background: var(--pane-header-bg);
+  transition: background 150ms ease;
+}
+.dev-link-card:hover {
+  background: var(--accent-light);
+}
+.dev-link-card-icon { font-size: 18px; }
+.dev-link-card-body { flex: 1; min-width: 0; }
+.dev-link-card-title { font-weight: 500; font-size: 13px; }
+.dev-link-card-meta { font-size: 11px; color: var(--pane-text-dim); }
+.dev-link-card-arrow { font-size: 11px; color: var(--accent); }
+
+/* -- Mail view: preview loading/error ------------------------- */
+.preview-loading {
+  padding: 16px;
+  color: var(--pane-text-dim);
+}
+.preview-error {
+  padding: 16px;
+  color: var(--danger);
+}
+
+/* -- Category dot (context menu) ------------------------------ */
+.category-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+/* -- Display rule color swatch -------------------------------- */
+.dr-color-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* -- Settings: section helpers -------------------------------- */
+.settings-row-mb6 { margin-bottom: 6px; }
+.settings-section-about {
+  text-align: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--pane-border);
+}
+
+/* -- Settings: form inputs ------------------------------------ */
+.settings-color-input {
+  width: 40px;
+  height: 28px;
+  border: 1px solid var(--pane-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.settings-text-input {
+  padding: 4px 6px;
+  border: 1px solid var(--pane-border);
+  border-radius: 4px;
+  background: var(--pane-bg);
+  color: var(--pane-text);
+}
+.settings-select {
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--pane-border);
+  background: var(--pane-bg);
+  color: var(--pane-text);
+}
+.settings-sig-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--pane-bg);
+  color: var(--pane-text);
+}
+
+/* -- Settings: rule/display-rule list items ------------------- */
+.settings-rule-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--pane-border);
+}
+
+.settings-subsection {
+  margin-bottom: 12px;
+}
+
+/* -- Settings: rule/display-rule editor section --------------- */
+.settings-rule-editor {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--pane-border);
+  border-radius: 6px;
+}
+
+/* -- Settings: shortcut row ----------------------------------- */
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--pane-border);
+}
+.shortcut-key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--pane-header-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: 3px;
+}
+
+/* -- Settings: misc text helpers ------------------------------ */
+.text-dim { color: var(--pane-text-dim); }
+.text-danger { color: var(--danger); }
+.text-accent { color: var(--accent); }
+.text-sm { font-size: 13px; }
+.text-xs { font-size: 12px; }
+.text-xxs { font-size: 11px; }
+.font-bold { font-weight: 500; }
+.font-bolder { font-weight: 700; }
+.flex-row { display: flex; }
+.flex-row-center { display: flex; align-items: center; }
+.gap-4 { gap: 4px; }
+.gap-6 { gap: 6px; }
+.gap-8 { gap: 8px; }
+.gap-16 { gap: 16px; }
+.ml-auto { margin-left: auto; }
+.ml-4 { margin-left: 4px; }
+.ml-6 { margin-left: 6px; }
+.ml-8 { margin-left: 8px; }
+.mt-4 { margin-top: 4px; }
+.mt-6 { margin-top: 6px; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mb-4 { margin-bottom: 4px; }
+.mb-6 { margin-bottom: 6px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.w-full { width: 100%; }
+.whitespace-prewrap { white-space: pre-wrap; }
+.separator-bottom { border-bottom: 1px solid var(--pane-border); }
+.separator-top { border-top: 1px solid var(--pane-border); }
+
+/* -- Analytics: card and chart helpers ------------------------ */
+.analytics-card {
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+.analytics-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.analytics-stat-label {
+  font-size: 12px;
+  color: var(--pane-text-dim);
+  margin-top: 4px;
+}
+.analytics-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.analytics-section { margin-bottom: 24px; }
+.analytics-section-title { font-weight: 600; margin-bottom: 8px; }
+.analytics-chart {
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--pane-border);
+}
+.analytics-chart-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+.analytics-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--pane-text-dim);
+  margin-top: 4px;
+}
+.analytics-heatmap {
+  display: grid;
+  grid-template-columns: 40px repeat(24, 1fr);
+  gap: 1px;
+  font-size: 10px;
+}
+.analytics-sender-row { margin-bottom: 6px; }
+.analytics-sender-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+.analytics-sender-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 80%;
+}
+.analytics-sender-count {
+  color: var(--pane-text-dim);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.analytics-bar-track {
+  height: 6px;
+  background: var(--pane-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+/* -- Onboarding helpers --------------------------------------- */
+.onboarding-input-mb { margin-bottom: 10px; }
+.onboarding-actions { display: flex; gap: 8px; margin-top: 6px; }
+.onboarding-actions .btn { flex: 1; }
+
+/* -- RSS reader helpers --------------------------------------- */
+.rss-panel { max-width: 800px; }
+.rss-layout { display: flex; gap: 16px; padding: 16px; min-height: 400px; }
+.rss-sidebar { width: 220px; flex-shrink: 0; }
+.rss-sidebar h3 { margin: 0 0 8px; }
+.rss-feed-list { margin-bottom: 12px; }
+.rss-feed-item {
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.rss-feed-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rss-feed-del {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
+}
+.rss-add-row { display: flex; gap: 4px; }
+.rss-url-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--pane-bg);
+  color: var(--pane-text);
+}
+.rss-add-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+}
+.rss-content { flex: 1; overflow-y: auto; }
+.rss-item { padding: 8px 0; border-bottom: 1px solid var(--separator); }
+.rss-item-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+.rss-item-date { font-size: 11px; color: var(--pane-text-dim); margin-top: 2px; }
+.rss-item-desc { font-size: 13px; margin-top: 4px; color: var(--pane-text); }
+
+/* -- Calendar helpers ----------------------------------------- */
+.cal-actions { display: flex; gap: 6px; margin-top: 8px; }
+.cal-body { padding: 16px; overflow-y: auto; }
+
+/* -- Contacts helpers ----------------------------------------- */
+.contacts-actions { display: flex; gap: 6px; }
+.contact-edit-email-disabled { opacity: 0.6; }
+
+/* -- Compose: autocomplete dropdown items --------------------- */
+.compose-autocomplete-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 1px solid var(--pane-border, #333);
+}
+.compose-autocomplete-name { font-weight: 500; }
+.compose-autocomplete-email { color: var(--pane-text-dim); margin-left: 6px; }
+
+/* -- Compose: template items ---------------------------------- */
+.compose-template-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 1px solid var(--pane-border, #333);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.compose-template-save {
+  color: var(--accent);
+  font-weight: 500;
+}
+.compose-template-delete {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+}
+
+/* -- Compose: version history items --------------------------- */
+.compose-version-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--pane-border);
+  cursor: pointer;
+}
+.compose-version-title { font-weight: 500; }
+.compose-version-preview { font-size: 11px; color: var(--pane-text-dim); }
+.compose-version-panel {
+  border-top: 1px solid var(--pane-border);
+  padding: 8px 16px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+.compose-version-panel-title { font-weight: 600; margin-bottom: 6px; }
+
+/* -- Compose: importance select ------------------------------- */
+.compose-importance-select {
+  flex: 0;
+  min-width: 120px;
+  padding: 4px 8px;
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--pane-bg);
+  color: var(--pane-text);
+}
+
+/* -- Compose: autosave indicator ------------------------------ */
+.compose-autosave-indicator {
+  font-size: 11px;
+  color: var(--pane-text-dim);
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+/* -- Compose: schedule send dropdown -------------------------- */
+.compose-schedule-dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: 6px;
+  padding: 8px;
+  z-index: 100;
+  min-width: 220px;
+}
+.compose-schedule-dropdown label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.compose-schedule-dropdown input[type="datetime-local"] {
+  width: 100%;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--pane-border);
+  background: var(--pane-bg);
+  color: var(--pane-text);
+  font-size: 13px;
+}
+
+/* -- Compose: send group -------------------------------------- */
+.compose-send-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* -- Compose: field with relative position -------------------- */
+.compose-field-relative { position: relative; }
+
+/* ================================================================
+   Feature: Unsubscribe banner
+   ================================================================ */
+.mail-view-unsubscribe-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 24px;
+  background: rgba(52, 152, 219, 0.08);
+  border-bottom: 1px solid var(--pane-border);
+  font-size: 13px;
+  color: #3498db;
+  flex-shrink: 0;
+}
+.unsubscribe-link {
+  color: #3498db;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 500;
+}
+.unsubscribe-link:hover {
+  color: #2980b9;
+}
+[data-theme="light"] .mail-view-unsubscribe-banner {
+  background: rgba(52, 152, 219, 0.06);
+}
+
+/* ================================================================
+   Feature: Email Notes (sticky-note style)
+   ================================================================ */
+.mail-view-notes-section {
+  margin: 8px 24px 16px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.notes-section-toggle {
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--pane-text);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.notes-section-toggle::-webkit-details-marker { display: none; }
+.notes-section-toggle::before {
+  content: '\25B6';
+  font-size: 10px;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+.mail-view-notes-section[open] .notes-section-toggle::before {
+  transform: rotate(90deg);
+}
+.notes-indicator {
+  color: #f39c12;
+  font-size: 16px;
+  line-height: 1;
+}
+.notes-section-body {
+  padding: 8px 12px 12px;
+}
+.mail-note-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fef9e7;
+  color: #7d6608;
+  border: 1px solid #f9e79f;
+  border-radius: 4px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.mail-note-textarea:focus {
+  border-color: #f39c12;
+}
+.mail-note-textarea::placeholder {
+  color: #b7950b;
+  opacity: 0.6;
+}
+[data-theme="dark"] .mail-note-textarea {
+  background: rgba(243, 156, 18, 0.08);
+  color: #f9e79f;
+  border-color: rgba(243, 156, 18, 0.2);
+}
+[data-theme="dark"] .mail-note-textarea:focus {
+  border-color: rgba(243, 156, 18, 0.5);
+}
+[data-theme="dark"] .mail-note-textarea::placeholder {
+  color: #f9e79f;
+}
+.notes-status {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  min-height: 16px;
+}
+
+/* ================================================================
+   Feature: Duplicate detection
+   ================================================================ */
+.mail-item.duplicate {
+  background: rgba(231, 76, 60, 0.06);
+  border-left: 3px solid #e74c3c;
+}
+.mail-duplicate-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(231, 76, 60, 0.12);
+  color: #e74c3c;
+  font-weight: 600;
+  flex-shrink: 0;
+  align-self: center;
+}
+.duplicate-action-bar {
+  background: rgba(231, 76, 60, 0.08);
+  border-bottom: 1px solid rgba(231, 76, 60, 0.2);
+}
+[data-theme="light"] .mail-item.duplicate {
+  background: rgba(231, 76, 60, 0.04);
+}
+
+/* ================================================================
+   Feature: Email Summary line
+   ================================================================ */
+.mail-view-summary {
+  font-style: italic;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  opacity: 0.75;
+  margin-top: 2px;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-theme="dark"] .mail-view-summary {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ================================================================
+   Feature: Internal Comments (threaded)
+   ================================================================ */
+.mail-view-comments-section .notes-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comments-timeline {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+.comments-empty {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  font-style: italic;
+  padding: 4px 0;
+}
+.comment-bubble {
+  background: rgba(52, 152, 219, 0.08);
+  border-left: 3px solid #3498db;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+[data-theme="dark"] .comment-bubble {
+  background: rgba(52, 152, 219, 0.1);
+}
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.comment-author {
+  font-weight: 600;
+  font-size: 12px;
+  color: #3498db;
+}
+.comment-time {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+}
+.comment-delete-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.comment-bubble:hover .comment-delete-btn {
+  opacity: 1;
+}
+.comment-delete-btn:hover {
+  color: #e74c3c;
+}
+.comment-text {
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comments-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+.comments-input-row .comment-input {
+  flex: 1;
+  min-height: 40px;
+}
+.comment-add-btn {
+  padding: 6px 14px;
+  background: #3498db;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  height: 36px;
+  transition: background 0.15s;
+}
+.comment-add-btn:hover {
+  background: #2980b9;
+}
+
+/* ================================================================
+   Feature: Shared Labels (sidebar)
+   ================================================================ */
+.sidebar-labels {
+  padding-bottom: 4px;
+}
+.sidebar-label-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-label-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sidebar-label-delete {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.sidebar-label-item:hover .sidebar-label-delete {
+  opacity: 1;
+}
+.sidebar-label-delete:hover {
+  color: #e74c3c;
+}
+.sidebar-label-add {
+  opacity: 0.7;
+}
+.sidebar-label-add:hover {
+  opacity: 1;
+}
