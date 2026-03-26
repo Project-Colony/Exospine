@@ -36,17 +36,17 @@
 
 .mail-security-warn {
   background: rgba(255, 193, 7, 0.15);
-  color: #d4a017;
+  color: var(--warning);
 }
 
 .mail-security-danger {
   background: rgba(220, 53, 69, 0.12);
-  color: #dc3545;
+  color: var(--danger);
 }
 
 .mail-security-info {
   background: rgba(0, 123, 255, 0.10);
-  color: #007bff;
+  color: var(--info);
 }
 
 .mail-security-icon {
@@ -184,18 +184,18 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 24px;
-  background: rgb(255, 248, 225);
-  border-bottom: 1px solid rgb(240, 230, 190);
+  background: var(--note-bg);
+  border-bottom: 1px solid var(--note-border);
   font-size: 13px;
-  color: rgb(120, 100, 30);
+  color: var(--note-text);
   flex-shrink: 0;
 }
 
 .mail-view-image-banner button {
   background: none;
-  border: 1px solid rgb(200, 185, 120);
+  border: 1px solid var(--note-border);
   border-radius: var(--radius-sm);
-  color: rgb(120, 100, 30);
+  color: var(--note-text);
   padding: 3px 10px;
   font-size: 12px;
   font-family: var(--font);

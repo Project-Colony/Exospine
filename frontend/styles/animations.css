@@ -116,7 +116,7 @@
 .lock-screen {
   position: fixed;
   inset: 0;
-  z-index: 99999;
+  z-index: var(--z-lock);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,7 +137,7 @@
 
 .lock-screen-content {
   text-align: center;
-  color: rgb(200, 205, 215);
+  color: var(--sidebar-text);
 }
 
 .lock-screen-icon {
@@ -154,7 +154,7 @@
 
 .lock-screen-subtitle {
   font-size: 14px;
-  color: rgb(140, 148, 165);
+  color: var(--sidebar-text-dim);
   margin-bottom: 28px;
 }
 
@@ -164,18 +164,18 @@
   font-weight: 500;
   border: none;
   border-radius: 6px;
-  background: rgb(0, 120, 214);
+  background: var(--accent);
   color: #fff;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .lock-screen-btn:hover {
-  background: rgb(0, 100, 190);
+  background: var(--accent-hover);
 }
 
 .lock-screen-btn:active {
-  background: rgb(0, 85, 170);
+  background: var(--accent-hover);
 }
 
 [data-theme="light"] .lock-screen {
@@ -183,15 +183,15 @@
 }
 
 [data-theme="light"] .lock-screen-content {
-  color: rgb(30, 30, 30);
+  color: var(--pane-text);
 }
 
 [data-theme="light"] .lock-screen-title {
-  color: rgb(20, 20, 20);
+  color: var(--pane-text);
 }
 
 [data-theme="light"] .lock-screen-subtitle {
-  color: rgb(100, 105, 115);
+  color: var(--pane-text-dim);
 }
 
 /* ============================================================
@@ -200,7 +200,7 @@
 #splash-screen {
   position: fixed;
   inset: 0;
-  z-index: 99999;
+  z-index: var(--z-splash);
   background: var(--sidebar-bg);
   display: flex;
   flex-direction: column;
@@ -359,7 +359,7 @@
 .lightbox-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--z-dialog);
   background: rgba(0,0,0,0.85);
   display: flex;
   align-items: center;
@@ -388,7 +388,7 @@
   align-items: center;
   justify-content: center;
   transition: background 0.15s;
-  z-index: 10001;
+  z-index: calc(var(--z-dialog) + 1);
 }
 .lightbox-close:hover {
   background: rgba(255,255,255,0.3);

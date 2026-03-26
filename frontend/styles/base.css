@@ -17,6 +17,11 @@ html, body {
   user-select: none;
 }
 
+/* --- Box-sizing for form elements -------------------------- */
+input, select, textarea, button {
+  box-sizing: border-box;
+}
+
 /* --- Scrollbars -------------------------------------------- */
 ::-webkit-scrollbar {
   width: 6px;
@@ -32,9 +37,19 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.25);
 }
-#mail-view ::-webkit-scrollbar-thumb {
+#mail-view ::-webkit-scrollbar-thumb,
+.settings-body ::-webkit-scrollbar-thumb,
+.overlay-panel ::-webkit-scrollbar-thumb,
+.compose-editor ::-webkit-scrollbar-thumb,
+.contacts-list-scroll ::-webkit-scrollbar-thumb,
+.contacts-detail-pane ::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.15);
 }
-#mail-view ::-webkit-scrollbar-thumb:hover {
+#mail-view ::-webkit-scrollbar-thumb:hover,
+.settings-body ::-webkit-scrollbar-thumb:hover,
+.overlay-panel ::-webkit-scrollbar-thumb:hover,
+.compose-editor ::-webkit-scrollbar-thumb:hover,
+.contacts-list-scroll ::-webkit-scrollbar-thumb:hover,
+.contacts-detail-pane ::-webkit-scrollbar-thumb:hover {
   background: rgba(0,0,0,0.25);
 }

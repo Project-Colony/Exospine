@@ -25,7 +25,7 @@
 /* -- Mail list items: fixed height + box-sizing --------------- */
 .mail-item,
 .thread-header.mail-item {
-  height: 80px;
+  min-height: 80px;
   box-sizing: border-box;
 }
 
@@ -143,7 +143,7 @@ body.col-resizing {
   border: 1px solid var(--pane-border);
   border-radius: 6px;
   padding: 4px 0;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 .remind-dropdown { min-width: 160px; }
@@ -613,7 +613,7 @@ body.col-resizing {
   border: 1px solid var(--pane-border);
   border-radius: 6px;
   padding: 8px;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   min-width: 220px;
 }
 .compose-schedule-dropdown label {
@@ -711,9 +711,9 @@ body.col-resizing {
   padding: 8px 10px;
   font-size: 13px;
   font-family: inherit;
-  background: #fef9e7;
-  color: #7d6608;
-  border: 1px solid #f9e79f;
+  background: var(--note-bg);
+  color: var(--note-text);
+  border: 1px solid var(--note-border);
   border-radius: 4px;
   resize: vertical;
   outline: none;
@@ -724,7 +724,7 @@ body.col-resizing {
   border-color: var(--warning);
 }
 .mail-note-textarea::placeholder {
-  color: #b7950b;
+  color: var(--note-text);
   opacity: 0.6;
 }
 [data-theme="dark"] .mail-note-textarea {
@@ -927,3 +927,30 @@ body.col-resizing {
 .sidebar-label-add:hover {
   opacity: 1;
 }
+
+/* ================================================================
+   Feature: .eml drag-and-drop hover
+   ================================================================ */
+.eml-drag-hover {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  background: rgba(0,120,214,0.05);
+}
+
+/* ================================================================
+   Task view styles
+   ================================================================ */
+.tasks-overlay-content { padding: 20px; max-width: 600px; margin: 0 auto; }
+.tasks-filters { display: flex; gap: 8px; margin-bottom: 16px; }
+.tasks-filter-btn { padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--pane-border); background: transparent; color: var(--pane-text); cursor: pointer; }
+.tasks-filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.tasks-action-btn { padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--pane-border); background: transparent; color: var(--pane-text); cursor: pointer; }
+.tasks-list { list-style: none; padding: 0; }
+.task-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid var(--pane-border); }
+.task-item.completed { opacity: 0.5; }
+.task-checkbox { width: 18px; height: 18px; cursor: pointer; }
+.task-checkbox-label { flex: 1; cursor: pointer; }
+.task-due { font-size: 12px; color: var(--pane-text-dim); }
+.task-due.overdue { color: var(--danger); }
+.task-link-btn { font-size: 12px; color: var(--accent); cursor: pointer; background: none; border: none; }
+.tasks-loading, .tasks-empty, .tasks-error { text-align: center; padding: 40px; color: var(--pane-text-dim); }
