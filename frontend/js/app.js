@@ -12,6 +12,7 @@ import { openOnboarding } from './views/onboarding.js';
 import { openAnalytics } from './views/analytics.js';
 import { openCalendar } from './views/calendar.js';
 import { openContacts } from './views/contacts.js';
+import { openTasks, openAwaitingReply } from './views/tasks.js';
 import { setLanguage } from './i18n.js';
 
 // ---------------------------------------------------------------------------
@@ -407,6 +408,8 @@ function sidebarActions() {
     onFolderSelect: selectFolder,
     onSwitchAccount: switchAccount,
     onAddAccount: () => openOnboarding({ isFirstRun: false, onAccountAdded: reloadAccounts }),
+    onOpenAwaitingReply: () => openAwaitingReply({ onSelectMail: (mailId) => selectMail(mailId) }),
+    onOpenTasks: () => openTasks({ onSelectMail: (mailId) => selectMail(mailId) }),
     onOpenAnalytics: () => openAnalytics(activeAccountId()),
     onOpenCalendar: () => openCalendar(),
     onOpenContacts: () => openContacts(),
@@ -583,9 +586,12 @@ let _loadingMailId = null;
 async function loadMailBody(mailId) {
   _loadingMailId = mailId;
 
-  // Check body cache first
+  // Check body cache first (LRU: re-insert on access to move to end)
   if (bodyCache.has(mailId)) {
-    state.mailBody = bodyCache.get(mailId);
+    const cached = bodyCache.get(mailId);
+    bodyCache.delete(mailId);
+    bodyCache.set(mailId, cached);
+    state.mailBody = cached;
     renderView();
     return;
   }
@@ -2045,6 +2051,28 @@ async function init() {
       // Silent fail
     }
   }, 60000));
+
+  // Background task: check followups every 5 minutes and show toast if overdue
+  _intervals.push(setInterval(async () => {
+    try {
+      const accountId = activeAccountId();
+      if (!accountId) return;
+      // Auto-resolve followups that have been replied to
+      const resolved = await api.checkFollowups(accountId);
+      if (resolved && resolved.length > 0) {
+        showToast(`${resolved.length} follow-up(s) resolved (reply received).`, 'success');
+      }
+      // Check for overdue followups
+      const followups = await api.getFollowups();
+      const now = new Date();
+      const overdue = (followups || []).filter(f => !f.resolved && f.due_date && new Date(f.due_date) < now);
+      if (overdue.length > 0) {
+        showToast(`${overdue.length} follow-up(s) are overdue!`, 'warning');
+      }
+    } catch {
+      // Silent fail
+    }
+  }, 5 * 60 * 1000));
 
   // Cleanup all intervals on page unload
   window.addEventListener('beforeunload', () => {

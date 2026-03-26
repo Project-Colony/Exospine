@@ -4,6 +4,8 @@ import { formatDate } from '../date_format.js';
 import { showContextMenu } from '../components/context_menu.js';
 import { t } from '../i18n.js';
 import { loadDisplayRules } from './settings.js';
+import * as api from '../api.js';
+import { showToast } from '../components/toast.js';
 
 const ITEM_HEIGHT = 80; // px per mail item
 const THREAD_HEADER_HEIGHT = 80; // px for a collapsed thread header
@@ -23,6 +25,11 @@ const SORT_OPTIONS = [
   { key: 'subject-az', label: 'Subject A-Z' },
 ];
 let _currentSort = localStorage.getItem('exospine_mail_sort') || 'date-desc';
+
+// ── Duplicate detection state ────────────────────────────────
+let _duplicateIds = new Set(); // IDs of messages that are duplicates
+let _duplicatePairs = []; // array of { original_id, duplicate_id }
+let _duplicateMode = false;
 
 function sortMails(mails, sortKey) {
   const sorted = [...mails];
@@ -102,18 +109,25 @@ function getAccountColorClass(accountEmail, accounts) {
   return 'acct-color-' + (idx % ACCOUNT_COLORS.length);
 }
 
-// ── Thread grouping (cached) ──────────────────────────────────────
+// ── Thread grouping (cached by content signature) ────────────────
 
-let _cachedThreadMails = null; // reference to the mails array used for caching
+let _cachedThreadKey = null; // content-based cache key: "length:firstId:lastId"
 let _cachedThreads = null;
+
+/** Compute a lightweight cache key based on array content. */
+function _threadCacheKey(mails) {
+  if (!mails || mails.length === 0) return '0::';
+  return `${mails.length}:${mails[0].id}:${mails[mails.length - 1].id}`;
+}
 
 /**
  * Group mails by thread_id. Returns an array of thread objects:
  * { thread_id, subject, messages: [mail], last_date, participants, unread_count, is_expanded }
- * Results are cached and only rebuilt when the mails array reference changes.
+ * Results are cached and only rebuilt when the content signature changes.
  */
 function groupByThread(mails) {
-  if (_cachedThreadMails === mails && _cachedThreads) return _cachedThreads;
+  const key = _threadCacheKey(mails);
+  if (key === _cachedThreadKey && _cachedThreads) return _cachedThreads;
   const map = new Map();
   for (const mail of mails) {
     // Only group mails that share a thread_id different from their own id.
@@ -150,7 +164,7 @@ function groupByThread(mails) {
 
   // Sort threads by most recent message date descending
   threads.sort((a, b) => new Date(b.last_date) - new Date(a.last_date));
-  _cachedThreadMails = mails;
+  _cachedThreadKey = key;
   _cachedThreads = threads;
   return threads;
 }
@@ -199,10 +213,22 @@ export function renderMailList(el, state, actions) {
         ${SORT_OPTIONS.map(s => `<option value="${s.key}"${s.key === _currentSort ? ' selected' : ''}>${s.label}</option>`).join('')}
       </select>
       <button class="mail-list-btn${_threadViewEnabled ? ' active' : ''}" id="ml-thread-toggle" title="${_threadViewEnabled ? t('list_view') : t('thread_view')}" aria-label="${t('toggle_thread_view')}" aria-pressed="${_threadViewEnabled}">${_threadViewEnabled ? '\u2261' : '\u2630'}</button>
+      <button class="mail-list-btn${_duplicateMode ? ' active' : ''}" id="ml-find-duplicates" title="Find duplicates" aria-label="Find duplicate emails">\uD83D\uDD0D Dupes</button>
       <button class="mail-list-btn" id="ml-refresh" title="${t('refresh')}" aria-label="${t('refresh_emails')}">\u21BB</button>
       <button class="mail-list-btn primary" id="ml-compose" title="${t('compose_new_email')}" aria-label="${t('compose_new_email')}">${t('new_email')}</button>
     </div>
   `;
+
+  // Duplicate action bar
+  if (_duplicateMode && _duplicatePairs.length > 0) {
+    html += `
+      <div class="batch-action-bar duplicate-action-bar" role="toolbar" aria-label="Duplicate actions">
+        <span class="batch-count">${_duplicatePairs.length} duplicate${_duplicatePairs.length !== 1 ? 's' : ''} found</span>
+        <button class="batch-btn danger" id="ml-delete-duplicates" title="Delete all duplicates (keep newest)">\uD83D\uDDD1 Delete duplicates</button>
+        <button class="batch-btn" id="ml-dismiss-duplicates" title="Dismiss">\u2717 Dismiss</button>
+      </div>
+    `;
+  }
 
   // Batch action bar (multi-select)
   if (_selectedIds.size > 0) {
@@ -368,6 +394,78 @@ export function renderMailList(el, state, actions) {
     retryBtn.addEventListener('click', actions.onRefresh);
   }
 
+  // Event: delete duplicates
+  const deleteDupesBtn = el.querySelector('#ml-delete-duplicates');
+  if (deleteDupesBtn) {
+    deleteDupesBtn.addEventListener('click', async () => {
+      if (!confirm(`Delete ${_duplicatePairs.length} duplicate email(s)? This keeps the newest copy.`)) return;
+      let deleted = 0;
+      for (const pair of _duplicatePairs) {
+        const mail = state.mails.find(m => m.id === pair.duplicate_id);
+        if (mail && actions.onDelete) {
+          try {
+            actions.onDelete(mail);
+            deleted++;
+          } catch {}
+        }
+      }
+      _duplicateMode = false;
+      _duplicateIds.clear();
+      _duplicatePairs = [];
+      showToast(`Deleted ${deleted} duplicate(s).`, 'success');
+      renderMailList(el, _lastState, _lastActions);
+    });
+  }
+  const dismissDupesBtn = el.querySelector('#ml-dismiss-duplicates');
+  if (dismissDupesBtn) {
+    dismissDupesBtn.addEventListener('click', () => {
+      _duplicateMode = false;
+      _duplicateIds.clear();
+      _duplicatePairs = [];
+      renderMailList(el, _lastState, _lastActions);
+    });
+  }
+
+  // Event: find duplicates
+  const dupeBtn = el.querySelector('#ml-find-duplicates');
+  if (dupeBtn) {
+    dupeBtn.addEventListener('click', async () => {
+      if (_duplicateMode) {
+        // Toggle off
+        _duplicateMode = false;
+        _duplicateIds.clear();
+        _duplicatePairs = [];
+        renderMailList(el, _lastState, _lastActions);
+        return;
+      }
+      const accountId = state.activeAccountId;
+      const folder = state.activeFolder;
+      if (!accountId || !folder) {
+        showToast('Select an account and folder first.', 'error');
+        return;
+      }
+      try {
+        dupeBtn.disabled = true;
+        dupeBtn.textContent = 'Scanning...';
+        const pairs = await api.findDuplicates(accountId, folder);
+        _duplicatePairs = pairs;
+        _duplicateIds = new Set();
+        for (const p of pairs) {
+          _duplicateIds.add(p.duplicate_id);
+        }
+        _duplicateMode = true;
+        if (pairs.length === 0) {
+          showToast('No duplicates found.', 'info');
+        } else {
+          showToast(`Found ${pairs.length} duplicate${pairs.length !== 1 ? 's' : ''}.`, 'info');
+        }
+      } catch (err) {
+        showToast('Failed to find duplicates: ' + err, 'error');
+      }
+      renderMailList(el, _lastState, _lastActions);
+    });
+  }
+
   // Event: sort dropdown
   const sortSelect = el.querySelector('#ml-sort');
   if (sortSelect) {
@@ -443,12 +541,10 @@ function renderVisibleItems(container, state, actions) {
   // Cache display rules once per render call
   const displayRules = loadDisplayRules();
 
-  // Apply user sort first, then pin to top
-  const userSorted = sortMails(state.mails, _currentSort);
-  const sortedMails = [...userSorted].sort((a, b) => {
-    const aPinned = a.is_pinned ? 1 : 0;
-    const bPinned = b.is_pinned ? 1 : 0;
-    return bPinned - aPinned;
+  // Sort once: pinned first, then by user sort order
+  const sortedMails = sortMails(state.mails, _currentSort).sort((a, b) => {
+    const pinDiff = (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
+    return pinDiff;
   });
 
   // Filter out snoozed emails (snoozed_until is in the future)
@@ -467,17 +563,52 @@ function renderVisibleItems(container, state, actions) {
   const topSpacer = startIdx * ITEM_HEIGHT;
   const bottomSpacer = Math.max(0, (totalCount - endIdx) * ITEM_HEIGHT);
 
-  let html = '';
-  html += `<div style="height:${topSpacer}px;" aria-hidden="true"></div>`;
+  // DOM reuse: if the visible item count matches existing children (minus 2 spacers),
+  // update content in-place instead of full innerHTML replacement.
+  const existingChildren = contentEl.children;
+  const visibleCount = endIdx - startIdx;
+  const canReuse = existingChildren.length === visibleCount + 2
+    && existingChildren[0]?.getAttribute('aria-hidden') === 'true';
 
-  for (let i = startIdx; i < endIdx; i++) {
-    html += renderMailItem(visibleMails[i], state, false, displayRules);
+  if (canReuse) {
+    // Update spacer heights
+    existingChildren[0].style.height = topSpacer + 'px';
+    existingChildren[existingChildren.length - 1].style.height = bottomSpacer + 'px';
+    // Update each item in-place
+    for (let i = 0; i < visibleCount; i++) {
+      const newHtml = renderMailItem(visibleMails[startIdx + i], state, false, displayRules);
+      const child = existingChildren[i + 1];
+      // Only update if content changed (avoid unnecessary reflow)
+      if (child._mailId !== visibleMails[startIdx + i].id) {
+        child.outerHTML = newHtml;
+      }
+    }
+    // Re-tag mail IDs for next comparison
+    for (let i = 0; i < visibleCount; i++) {
+      if (existingChildren[i + 1]) {
+        existingChildren[i + 1]._mailId = visibleMails[startIdx + i].id;
+      }
+    }
+    attachItemEvents(contentEl, state, actions);
+  } else {
+    let html = '';
+    html += `<div style="height:${topSpacer}px;" aria-hidden="true"></div>`;
+
+    for (let i = startIdx; i < endIdx; i++) {
+      html += renderMailItem(visibleMails[i], state, false, displayRules);
+    }
+
+    html += `<div style="height:${bottomSpacer}px;" aria-hidden="true"></div>`;
+
+    contentEl.innerHTML = html;
+    // Tag mail IDs for DOM reuse on next scroll
+    for (let i = 0; i < visibleCount; i++) {
+      if (contentEl.children[i + 1]) {
+        contentEl.children[i + 1]._mailId = visibleMails[startIdx + i].id;
+      }
+    }
+    attachItemEvents(contentEl, state, actions);
   }
-
-  html += `<div style="height:${bottomSpacer}px;" aria-hidden="true"></div>`;
-
-  contentEl.innerHTML = html;
-  attachItemEvents(contentEl, state, actions);
 }
 
 // ── Thread view rendering ──────────────────────────────────────────
@@ -489,7 +620,8 @@ function renderThreadedItems(container, state, actions) {
   // Cache display rules once per render call
   const displayRules = loadDisplayRules();
 
-  const threads = groupByThread(state.mails);
+  const preSorted = sortMails(state.mails, _currentSort);
+  const threads = groupByThread(preSorted);
 
   // Build a flat list of "rows" for virtual scrolling
   const rows = [];
@@ -618,6 +750,7 @@ function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) 
   const isUnread = !(mail.is_read || mail.read);
   const isStarred = mail.is_starred || mail.starred;
   const isPinned = mail.is_pinned || false;
+  const isDuplicate = _duplicateMode && _duplicateIds.has(mail.id);
   const catBadges = renderCategoryBadges(mail);
   const spamInd = renderSpamIndicator(mail);
   const importanceInd = renderImportanceIcon(mail);
@@ -632,12 +765,15 @@ function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) 
   const checkboxVisible = _selectedIds.size > 0;
   const checkbox = `<input type="checkbox" class="mail-item-checkbox${checkboxVisible ? ' visible' : ''}" data-check-id="${esc(mail.id)}" ${isMultiSelected ? 'checked' : ''} tabindex="-1" aria-label="Select email" />`;
 
+  const dupeBadge = isDuplicate ? '<span class="mail-duplicate-badge" title="Duplicate email">\u2716 Dupe</span>' : '';
+
   return `
-    <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${isMultiSelected ? ' multi-selected' : ''}${indent}${getDisplayRuleClasses(mail, cachedRules)}${mail._accountEmail ? ' ' + getAccountColorClass(mail._accountEmail, (typeof state !== 'undefined' && state.accounts) || []) : ''}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0">
+    <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${isMultiSelected ? ' multi-selected' : ''}${isDuplicate ? ' duplicate' : ''}${indent}${getDisplayRuleClasses(mail, cachedRules)}${mail._accountEmail ? ' ' + getAccountColorClass(mail._accountEmail, (typeof state !== 'undefined' && state.accounts) || []) : ''}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0">
       ${checkbox}
       ${senderAvatar(mail.from_name || mail.from || 'Unknown')}
       ${isUnread ? '<div class="mail-item-unread-dot" aria-hidden="true"></div>' : ''}
       ${importanceInd}
+      ${dupeBadge}
       <div class="mail-item-pin${isPinned ? ' pinned' : ''}" data-pin-id="${esc(mail.id)}" title="${isPinned ? 'Unpin' : 'Pin to top'}" role="button" aria-label="${isPinned ? 'Unpin' : 'Pin'} email" tabindex="0">
         \uD83D\uDCCC
       </div>

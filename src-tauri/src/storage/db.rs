@@ -7,6 +7,28 @@ use crate::app_state::{Account, ComposeDraft, MailEntry};
 /// A contact row: (email, name, frequency, phone, company, notes).
 pub type ContactRow = (String, String, u32, String, String, String);
 
+/// A follow-up tracker entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Followup {
+    pub mail_id: String,
+    pub expected_from: String,
+    pub created_at: String,
+    pub due_date: String,
+    pub resolved: bool,
+}
+
+/// A task created from an email.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Task {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub mail_id: String,
+    pub due_date: String,
+    pub completed: bool,
+    pub created_at: String,
+}
+
 /// A scheduled email waiting to be sent.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScheduledEmail {
@@ -131,13 +153,31 @@ impl Database {
             );
 
             CREATE INDEX IF NOT EXISTS idx_draft_versions_draft_id
-                ON draft_versions(draft_id, version DESC);",
+                ON draft_versions(draft_id, version DESC);
+
+            CREATE TABLE IF NOT EXISTS followups (
+                mail_id TEXT PRIMARY KEY,
+                expected_from TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                due_date TEXT NOT NULL DEFAULT '',
+                resolved INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                mail_id TEXT NOT NULL DEFAULT '',
+                due_date TEXT NOT NULL DEFAULT '',
+                completed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            );",
         )?;
         Ok(())
     }
 
     /// Current schema version. Bump this when adding new migrations.
-    const SCHEMA_VERSION: u32 = 6;
+    const SCHEMA_VERSION: u32 = 7;
 
     fn migrate(&self) -> Result<()> {
         let current_version: u32 = self
@@ -235,6 +275,32 @@ impl Database {
             }
         }
 
+        // Migration 7: add notes table and unsubscribe_url column
+        if current_version < 7 {
+            self.conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS notes (
+                    mail_id TEXT PRIMARY KEY,
+                    note TEXT NOT NULL DEFAULT '',
+                    updated_at TEXT NOT NULL DEFAULT ''
+                );
+
+                ALTER TABLE messages ADD COLUMN unsubscribe_url TEXT;",
+            ).unwrap_or_else(|e| {
+                tracing::warn!("Migration 7 partial: {}", e);
+                // Try each separately in case one already exists
+                let _ = self.conn.execute_batch(
+                    "CREATE TABLE IF NOT EXISTS notes (
+                        mail_id TEXT PRIMARY KEY,
+                        note TEXT NOT NULL DEFAULT '',
+                        updated_at TEXT NOT NULL DEFAULT ''
+                    );"
+                );
+                let _ = self.conn.execute_batch(
+                    "ALTER TABLE messages ADD COLUMN unsubscribe_url TEXT;"
+                );
+            });
+        }
+
         // Update schema version to current
         self.conn.execute_batch(&format!(
             "PRAGMA user_version = {};",
@@ -303,6 +369,9 @@ impl Database {
              DELETE FROM contacts;
              DELETE FROM scheduled_emails;
              DELETE FROM draft_versions;
+             DELETE FROM followups;
+             DELETE FROM tasks;
+             DELETE FROM notes;
              DELETE FROM _metadata;
              VACUUM;",
         )?;
@@ -385,8 +454,8 @@ impl Database {
         {
             let mut stmt = tx.prepare(
                 "INSERT OR REPLACE INTO messages
-                    (id, account_id, folder, from_addr, to_addrs, subject, date, preview, body_text, body_html, is_read, is_starred, has_attachments, uid, message_id, in_reply_to, refs, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26)",
+                    (id, account_id, folder, from_addr, to_addrs, subject, date, preview, body_text, body_html, is_read, is_starred, has_attachments, uid, message_id, in_reply_to, refs, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date, unsubscribe_url)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27)",
             )?;
 
             for m in messages {
@@ -420,6 +489,7 @@ impl Database {
                     m.read_receipt_requested as i32,
                     m.read_receipt_to,
                     m.flag_due_date,
+                    m.unsubscribe_url,
                 ])?;
             }
         }
@@ -429,7 +499,7 @@ impl Database {
 
     pub fn load_messages(&self, account_id: &str, folder: &str) -> Result<Vec<MailEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, account_id, folder, from_addr, to_addrs, subject, date, preview, body_text, body_html, is_read, is_starred, has_attachments, uid, message_id, in_reply_to, refs, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date
+            "SELECT id, account_id, folder, from_addr, to_addrs, subject, date, preview, body_text, body_html, is_read, is_starred, has_attachments, uid, message_id, in_reply_to, refs, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date, unsubscribe_url
              FROM messages
              WHERE account_id = ?1 AND folder = ?2
              ORDER BY date DESC",
@@ -488,7 +558,7 @@ impl Database {
         offset: u32,
     ) -> Result<Vec<MailEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, account_id, folder, from_addr, to_addrs, subject, date, preview, is_read, is_starred, has_attachments, uid, message_id, in_reply_to, refs, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date
+            "SELECT id, account_id, folder, from_addr, to_addrs, subject, date, preview, is_read, is_starred, has_attachments, uid, message_id, in_reply_to, refs, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date, unsubscribe_url
              FROM messages
              WHERE account_id = ?1 AND folder = ?2
              ORDER BY date DESC
@@ -604,12 +674,11 @@ impl Database {
     /// The SQL must select the same columns as `row_to_mail_entry_full`.
     pub fn search_messages_dynamic(&self, sql: &str, params: &[String]) -> Result<Vec<MailEntry>> {
         let mut stmt = self.conn.prepare(sql)?;
-        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params
-            .iter()
-            .map(|s| s as &dyn rusqlite::types::ToSql)
-            .collect();
         let entries = stmt
-            .query_map(param_refs.as_slice(), row_to_mail_entry_full)?
+            .query_map(
+                params.iter().map(|s| s as &dyn rusqlite::types::ToSql).collect::<Vec<_>>().as_slice(),
+                row_to_mail_entry_full,
+            )?
             .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(entries)
     }
@@ -670,6 +739,16 @@ impl Database {
         let mut cats: Vec<String> = serde_json::from_str(&current).unwrap_or_default();
         cats.retain(|c| c != category);
         let json = serde_json::to_string(&cats).unwrap_or_default();
+        self.conn.execute(
+            "UPDATE messages SET categories = ?1 WHERE id = ?2",
+            params![json, mail_id],
+        )?;
+        Ok(())
+    }
+
+    /// Set categories for a message directly, bypassing parse→modify→serialize overhead.
+    pub fn set_categories(&self, mail_id: &str, categories: &[String]) -> Result<()> {
+        let json = serde_json::to_string(categories).unwrap_or_else(|_| "[]".to_string());
         self.conn.execute(
             "UPDATE messages SET categories = ?1 WHERE id = ?2",
             params![json, mail_id],
@@ -917,6 +996,151 @@ impl Database {
         Ok(())
     }
 
+    // ── Follow-up Tracker ─────────────────────────────────────────
+
+    /// Add a follow-up for a mail (waiting for a reply from expected_from).
+    pub fn add_followup(&self, mail_id: &str, expected_from: &str, due_date: &str) -> Result<()> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "INSERT OR REPLACE INTO followups (mail_id, expected_from, created_at, due_date, resolved)
+             VALUES (?1, ?2, ?3, ?4, 0)",
+            params![mail_id, expected_from, now, due_date],
+        )?;
+        Ok(())
+    }
+
+    /// Get all follow-ups (unresolved first, then by due_date).
+    pub fn get_followups(&self) -> Result<Vec<Followup>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT mail_id, expected_from, created_at, due_date, resolved
+             FROM followups
+             ORDER BY resolved ASC, due_date ASC",
+        )?;
+        let results = stmt
+            .query_map([], |row| {
+                Ok(Followup {
+                    mail_id: row.get(0)?,
+                    expected_from: row.get(1)?,
+                    created_at: row.get(2)?,
+                    due_date: row.get(3)?,
+                    resolved: row.get::<_, i32>(4)? != 0,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(results)
+    }
+
+    /// Mark a follow-up as resolved.
+    pub fn resolve_followup(&self, mail_id: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE followups SET resolved = 1 WHERE mail_id = ?1",
+            params![mail_id],
+        )?;
+        Ok(())
+    }
+
+    /// Delete a follow-up.
+    pub fn delete_followup(&self, mail_id: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM followups WHERE mail_id = ?1", params![mail_id])?;
+        Ok(())
+    }
+
+    /// Check if any unresolved followups have been replied to.
+    /// Looks for messages from `expected_from` whose subject matches the original mail's subject.
+    /// Returns a list of mail_ids that have been resolved.
+    pub fn check_resolved_followups(&self, account_id: &str) -> Result<Vec<String>> {
+        // Get all unresolved followups
+        let mut stmt = self.conn.prepare(
+            "SELECT f.mail_id, f.expected_from, m.subject
+             FROM followups f
+             JOIN messages m ON m.id = f.mail_id
+             WHERE f.resolved = 0",
+        )?;
+        let pending: Vec<(String, String, String)> = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        let mut resolved = Vec::new();
+        for (mail_id, expected_from, subject) in &pending {
+            // Look for a reply: from expected_from, subject contains the original subject
+            let reply_pattern = format!("%{}%", subject);
+            let from_pattern = format!("%{}%", expected_from);
+            let found: bool = self
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM messages
+                     WHERE account_id = ?1 AND from_addr LIKE ?2 AND subject LIKE ?3",
+                    params![account_id, from_pattern, reply_pattern],
+                    |row| row.get::<_, i32>(0),
+                )
+                .unwrap_or(0)
+                > 0;
+            if found {
+                self.resolve_followup(mail_id)?;
+                resolved.push(mail_id.clone());
+            }
+        }
+        Ok(resolved)
+    }
+
+    // ── Tasks ────────────────────────────────────────────────────────
+
+    /// Create a task, optionally linked to a mail.
+    pub fn create_task(
+        &self,
+        title: &str,
+        description: &str,
+        mail_id: &str,
+        due_date: &str,
+    ) -> Result<String> {
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "INSERT INTO tasks (id, title, description, mail_id, due_date, completed, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, 0, ?6)",
+            params![id, title, description, mail_id, due_date, now],
+        )?;
+        Ok(id)
+    }
+
+    /// Get all tasks, ordered by completed ASC then due_date ASC.
+    pub fn get_tasks(&self) -> Result<Vec<Task>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, description, mail_id, due_date, completed, created_at
+             FROM tasks
+             ORDER BY completed ASC, due_date ASC, created_at DESC",
+        )?;
+        let results = stmt
+            .query_map([], |row| {
+                Ok(Task {
+                    id: row.get(0)?,
+                    title: row.get(1)?,
+                    description: row.get(2)?,
+                    mail_id: row.get(3)?,
+                    due_date: row.get(4)?,
+                    completed: row.get::<_, i32>(5)? != 0,
+                    created_at: row.get(6)?,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(results)
+    }
+
+    /// Mark a task as completed.
+    pub fn complete_task(&self, id: &str) -> Result<()> {
+        self.conn
+            .execute("UPDATE tasks SET completed = 1 WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    /// Delete a task.
+    pub fn delete_task(&self, id: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM tasks WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
     // ── Draft Versioning ────────────────────────────────────────────
 
     /// Save a draft version. Keeps only the last 5 versions per draft_id.
@@ -1070,6 +1294,96 @@ impl Database {
         }
         Ok(())
     }
+
+    // ── Unsubscribe URL ──────────────────────────────────────────
+
+    /// Get the unsubscribe URL for a message.
+    pub fn get_unsubscribe_url(&self, mail_id: &str) -> Result<Option<String>> {
+        let result: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT unsubscribe_url FROM messages WHERE id = ?1",
+                params![mail_id],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten();
+        Ok(result)
+    }
+
+    // ── Notes ─────────────────────────────────────────────────────
+
+    /// Save or update a note for a mail message.
+    pub fn save_note(&self, mail_id: &str, note: &str) -> Result<()> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "INSERT OR REPLACE INTO notes (mail_id, note, updated_at)
+             VALUES (?1, ?2, ?3)",
+            params![mail_id, note, now],
+        )?;
+        Ok(())
+    }
+
+    /// Get a note for a mail message. Returns None if no note exists.
+    pub fn get_note(&self, mail_id: &str) -> Result<Option<String>> {
+        let result: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT note FROM notes WHERE mail_id = ?1",
+                params![mail_id],
+                |row| row.get(0),
+            )
+            .ok();
+        Ok(result)
+    }
+
+    /// Delete a note for a mail message.
+    pub fn delete_note(&self, mail_id: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM notes WHERE mail_id = ?1", params![mail_id])?;
+        Ok(())
+    }
+
+    /// Check if a mail has a note.
+    pub fn has_note(&self, mail_id: &str) -> bool {
+        self.conn
+            .query_row(
+                "SELECT 1 FROM notes WHERE mail_id = ?1 AND note != ''",
+                params![mail_id],
+                |_| Ok(()),
+            )
+            .is_ok()
+    }
+
+    // ── Duplicate Detection ──────────────────────────────────────
+
+    /// Find duplicate messages within a folder. Messages are considered duplicates
+    /// if they have the same subject, sender, and date within 1 minute.
+    /// Returns pairs of (original_id, duplicate_id).
+    pub fn find_duplicates(&self, account_id: &str, folder: &str) -> Result<Vec<(String, String)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT m1.id, m2.id
+             FROM messages m1
+             INNER JOIN messages m2 ON
+                 m1.subject = m2.subject
+                 AND m1.from_addr = m2.from_addr
+                 AND m1.account_id = m2.account_id
+                 AND m1.folder = m2.folder
+                 AND m1.id < m2.id
+                 AND ABS(strftime('%s', m1.date) - strftime('%s', m2.date)) <= 60
+             WHERE m1.account_id = ?1 AND m1.folder = ?2
+             ORDER BY m1.date DESC
+             LIMIT 500",
+        )?;
+
+        let pairs = stmt
+            .query_map(params![account_id, folder], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        Ok(pairs)
+    }
 }
 
 /// A saved version of a draft for version history.
@@ -1125,6 +1439,7 @@ struct ExtraCols {
     read_receipt_requested: bool,
     read_receipt_to: Option<String>,
     flag_due_date: Option<String>,
+    unsubscribe_url: Option<String>,
 }
 
 fn parse_extra_columns(row: &rusqlite::Row, base: usize) -> ExtraCols {
@@ -1142,7 +1457,8 @@ fn parse_extra_columns(row: &rusqlite::Row, base: usize) -> ExtraCols {
     let read_receipt_requested: bool = row.get::<_, i32>(base + 9).unwrap_or(0) != 0;
     let read_receipt_to: Option<String> = row.get::<_, Option<String>>(base + 10).unwrap_or(None);
     let flag_due_date: Option<String> = row.get::<_, Option<String>>(base + 11).unwrap_or(None);
-    ExtraCols { message_id, in_reply_to, references, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date }
+    let unsubscribe_url: Option<String> = row.get::<_, Option<String>>(base + 12).unwrap_or(None);
+    ExtraCols { message_id, in_reply_to, references, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date, unsubscribe_url }
 }
 
 /// Convert a full row (with body_text, body_html) to MailEntry.
@@ -1187,6 +1503,7 @@ fn row_to_mail_entry_full(row: &rusqlite::Row) -> rusqlite::Result<MailEntry> {
         read_receipt_requested: extra.read_receipt_requested,
         read_receipt_to: extra.read_receipt_to,
         flag_due_date: extra.flag_due_date,
+        unsubscribe_url: extra.unsubscribe_url,
     })
 }
 
@@ -1232,6 +1549,7 @@ fn row_to_mail_entry_headers(row: &rusqlite::Row) -> rusqlite::Result<MailEntry>
         read_receipt_requested: extra.read_receipt_requested,
         read_receipt_to: extra.read_receipt_to,
         flag_due_date: extra.flag_due_date,
+        unsubscribe_url: extra.unsubscribe_url,
     })
 }
 

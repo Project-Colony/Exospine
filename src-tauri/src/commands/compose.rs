@@ -22,7 +22,7 @@ pub async fn send_mail(
             .ok_or_else(|| format!("Account not found: {}", draft.account_id))?
     };
 
-    let password = fetch_password(account.id.clone()).await?;
+    let password = fetch_password(&account.id).await?;
 
     let reply_to = draft.reply_to.as_deref();
 
@@ -51,7 +51,7 @@ pub async fn save_draft(
             .ok_or_else(|| format!("Account not found: {}", draft.account_id))?
     };
 
-    let password = fetch_password(account.id.clone()).await?;
+    let password = fetch_password(&account.id).await?;
 
     // Build a minimal RFC 822 message for saving as a draft.
     // If HTML body is provided, include it as the main content.

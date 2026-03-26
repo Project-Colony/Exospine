@@ -12,26 +12,6 @@ use crate::mail::spam_filter;
 
 // ── Compiled regex patterns (compiled once, reused forever) ──────────
 
-fn re_tags() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"<[^>]+>").expect("invalid built-in regex: re_tags"))
-}
-
-fn re_attrs() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(
-            r#"\b(style|class|target|href|rel|align|bgcolor|valign|cellpadding|cellspacing|width|height|border|colspan|rowspan)="[^"]{0,2000}""#,
-        )
-        .expect("invalid built-in regex: re_attrs")
-    })
-}
-
-fn re_css() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?s)\{[^}]*\}").expect("invalid built-in regex: re_css"))
-}
-
 fn re_ws() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| Regex::new(r"[ \t]+").expect("invalid built-in regex: re_ws"))
@@ -161,32 +141,43 @@ pub fn parse_email(raw: &[u8], account_id: &str, folder: &str) -> Result<MailEnt
         .and_then(|v| v.as_text().map(|s| s.to_string()));
     let read_receipt_requested = read_receipt_to.is_some();
 
+    // ── List-Unsubscribe header ─────────────────────────────────
+    let unsubscribe_url: Option<String> = message
+        .header("List-Unsubscribe")
+        .and_then(|v| v.as_text())
+        .and_then(|raw| parse_list_unsubscribe(raw));
+
     // ── Importance / priority headers ────────────────────────────
     let importance = {
         // Check Importance header first (standard), then X-Priority (de-facto)
+        // Use &str constants to avoid allocations in the common path.
         let imp_header = message
             .header("Importance")
-            .and_then(|v| v.as_text().map(|s| s.to_lowercase()));
+            .and_then(|v| v.as_text());
         let x_priority = message
             .header("X-Priority")
-            .and_then(|v| v.as_text().map(|s| s.trim().to_string()));
+            .and_then(|v| v.as_text());
 
-        if let Some(ref imp) = imp_header {
-            match imp.as_str() {
-                "high" => "high".to_string(),
-                "low" => "low".to_string(),
-                _ => "normal".to_string(),
+        let imp_str: &str = if let Some(imp) = imp_header {
+            let trimmed = imp.trim();
+            if trimmed.eq_ignore_ascii_case("high") {
+                "high"
+            } else if trimmed.eq_ignore_ascii_case("low") {
+                "low"
+            } else {
+                "normal"
             }
-        } else if let Some(ref xp) = x_priority {
+        } else if let Some(xp) = x_priority {
             // X-Priority: 1 or 2 = high, 4 or 5 = low, 3 = normal
-            match xp.chars().next() {
-                Some('1') | Some('2') => "high".to_string(),
-                Some('4') | Some('5') => "low".to_string(),
-                _ => "normal".to_string(),
+            match xp.trim().as_bytes().first() {
+                Some(b'1') | Some(b'2') => "high",
+                Some(b'4') | Some(b'5') => "low",
+                _ => "normal",
             }
         } else {
-            "normal".to_string()
-        }
+            "normal"
+        };
+        imp_str.to_string()
     };
 
     let mut entry = MailEntry {
@@ -220,6 +211,7 @@ pub fn parse_email(raw: &[u8], account_id: &str, folder: &str) -> Result<MailEnt
         read_receipt_to,
         importance,
         flag_due_date: None,
+        unsubscribe_url,
     };
 
     // Compute spam score
@@ -262,29 +254,33 @@ pub fn html_to_text(html: &str) -> String {
     clean_text(&raw)
 }
 
+fn re_tags_css_attrs() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        // Combined pattern: HTML tags, CSS blocks, and HTML attribute declarations
+        Regex::new(
+            r#"<[^>]+>|(?s)\{[^}]*\}|\b(?:style|class|target|href|rel|align|bgcolor|valign|cellpadding|cellspacing|width|height|border|colspan|rowspan)="[^"]{0,2000}""#,
+        )
+        .expect("invalid built-in regex: re_tags_css_attrs")
+    })
+}
+
 fn clean_text(text: &str) -> String {
-    let text = re_tags().replace_all(text, "");
-    let text = re_attrs().replace_all(&text, "");
-    let text = re_css().replace_all(&text, "");
+    // Pass 1: strip tags, CSS blocks, and attribute declarations in one go
+    let text = re_tags_css_attrs().replace_all(text, "");
+    // Pass 2: collapse horizontal whitespace and excessive newlines
     let text = re_ws().replace_all(&text, " ");
     re_nl().replace_all(&text, "\n\n").trim().to_string()
 }
 
 /// Strip reply/forward prefixes and normalize for thread grouping.
+/// Uses a single-pass regex that matches all chained prefixes at once.
 fn normalize_subject(subject: &str) -> String {
     static RE_PREFIX: OnceLock<Regex> = OnceLock::new();
     let re = RE_PREFIX.get_or_init(|| {
-        Regex::new(r"(?i)^(re|fwd?|tr)\s*:\s*").expect("invalid normalize_subject regex")
+        Regex::new(r"(?i)^(?:(?:re|fwd?|tr)\s*:\s*)+").expect("invalid normalize_subject regex")
     });
-    let mut s = subject.to_string();
-    loop {
-        let trimmed = re.replace(&s, "").to_string();
-        if trimmed == s {
-            break;
-        }
-        s = trimmed;
-    }
-    s.trim().to_lowercase()
+    re.replace(subject, "").trim().to_lowercase()
 }
 
 fn re_looks_like_html() -> &'static Regex {
@@ -297,6 +293,36 @@ fn re_looks_like_html() -> &'static Regex {
 
 fn looks_like_html(s: &str) -> bool {
     re_looks_like_html().is_match(s.trim())
+}
+
+/// Parse the List-Unsubscribe header value.
+/// Can contain one or more URLs in angle brackets, e.g.:
+///   `<https://example.com/unsub>, <mailto:unsub@example.com>`
+/// Prefers https URLs over mailto.
+fn parse_list_unsubscribe(raw: &str) -> Option<String> {
+    let mut https_url: Option<String> = None;
+    let mut mailto_url: Option<String> = None;
+
+    for part in raw.split(',') {
+        let trimmed = part.trim();
+        // Extract content between angle brackets
+        if let (Some(start), Some(end)) = (trimmed.find('<'), trimmed.rfind('>')) {
+            if start < end {
+                let url = trimmed[start + 1..end].trim().to_string();
+                if url.starts_with("https://") || url.starts_with("http://") {
+                    if https_url.is_none() {
+                        https_url = Some(url);
+                    }
+                } else if url.starts_with("mailto:") {
+                    if mailto_url.is_none() {
+                        mailto_url = Some(url);
+                    }
+                }
+            }
+        }
+    }
+
+    https_url.or(mailto_url)
 }
 
 #[cfg(test)]

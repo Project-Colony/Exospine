@@ -1,6 +1,8 @@
 //! Tauri commands for mail operations.
 
-use std::time::Duration;
+use std::collections::HashMap;
+use std::sync::Mutex as StdMutex;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::State;
@@ -10,6 +12,12 @@ use crate::app_state::{fetch_password, lock_or_recover, Account, Folder, MailEnt
 use crate::mail::attachments;
 use crate::mail::security::{AuthStatus, PhishingWarning};
 use crate::AppState;
+
+// ── Folder cache TTL (5 minutes) ────────────────────────────────────
+static FOLDER_CACHE_TS: std::sync::LazyLock<StdMutex<HashMap<String, Instant>>> =
+    std::sync::LazyLock::new(|| StdMutex::new(HashMap::new()));
+
+const FOLDER_CACHE_TTL: Duration = Duration::from_secs(300); // 5 minutes
 
 /// Try to connect to IMAP. If the connection fails with what looks like an
 /// authentication error on an OAuth2 account, attempt to refresh the token
@@ -69,6 +77,7 @@ pub struct MailBodyResponse {
     pub phishing_warnings: Vec<PhishingWarning>,
     pub auth_status: Option<AuthStatus>,
     pub sender_warnings: Vec<String>,
+    pub unsubscribe_url: Option<String>,
 }
 
 /// Helper: get account by ID from state.
@@ -82,7 +91,7 @@ fn get_account(state: &State<'_, AppState>, account_id: &str) -> Result<Account,
 }
 
 /// Fetch folder list for an account.
-/// Returns cached folders instantly if available; fetches from IMAP only on first run.
+/// Returns cached folders if available and less than 5 minutes old; otherwise refreshes from IMAP.
 #[tauri::command]
 pub async fn get_folders(
     state: State<'_, AppState>,
@@ -90,7 +99,7 @@ pub async fn get_folders(
 ) -> Result<Vec<Folder>, String> {
     tracing::debug!("get_folders: account_id={}", account_id);
 
-    // 1. Check if we already have cached folders for this account
+    // 1. Check if we already have cached folders for this account within TTL
     let cached_folders = {
         let accounts = lock_or_recover(&state.accounts);
         accounts
@@ -105,14 +114,24 @@ pub async fn get_folders(
             })
     };
 
-    if let Some(folders) = cached_folders {
-        tracing::debug!("get_folders: returning {} cached folders", folders.len());
-        return Ok(folders);
+    if let Some(ref folders) = cached_folders {
+        // Check TTL: if folders were fetched less than 5 min ago, return cached
+        let within_ttl = FOLDER_CACHE_TS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&account_id)
+            .map(|ts| ts.elapsed() < FOLDER_CACHE_TTL)
+            .unwrap_or(false);
+
+        if within_ttl {
+            tracing::debug!("get_folders: returning {} cached folders (within TTL)", folders.len());
+            return Ok(folders.clone());
+        }
     }
 
-    // 2. No cache — first time setup, must fetch from IMAP
+    // 2. Cache missing or TTL expired — fetch from IMAP
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session(&account_id, &account, &password)
         .await
@@ -128,7 +147,7 @@ pub async fn get_folders(
 
     crate::mail::connection::return_session(&account_id, session);
 
-    // 3. Cache folders in account state and persist to accounts.json
+    // 3. Cache folders in account state, persist, and record TTL timestamp
     {
         let mut accounts = lock_or_recover(&state.accounts);
         if let Some(acct) = accounts.iter_mut().find(|a| a.id == account_id) {
@@ -136,6 +155,10 @@ pub async fn get_folders(
         }
         crate::config::save_accounts(&accounts);
     }
+    FOLDER_CACHE_TS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(account_id.clone(), Instant::now());
 
     tracing::info!("get_folders: fetched {} folders from IMAP", folders.len());
     Ok(folders)
@@ -179,7 +202,7 @@ pub async fn get_mails(
     if cached_count == 0 && page == 0 {
         tracing::info!("get_mails: no cache, fetching from IMAP for {}/{}", account_id, folder);
         let account = get_account(&state, &account_id)?;
-        let password = fetch_password(account_id.clone()).await?;
+        let password = fetch_password(&account_id).await?;
 
         let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
             .await
@@ -239,7 +262,7 @@ pub async fn sync_all_mails(
     tracing::info!("sync_all_mails: starting for {}/{}", account_id, folder);
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -396,6 +419,15 @@ pub async fn get_mail_body(
         }
     };
 
+    // Fetch unsubscribe_url from DB (separate lightweight query)
+    let unsub_url = {
+        let db_guard = lock_or_recover(&state.db);
+        match db_guard.as_ref() {
+            Some(db) => db.get_unsubscribe_url(&mail_id).unwrap_or(None),
+            None => None,
+        }
+    };
+
     if let Some((ref text, ref html)) = db_result {
         if !text.is_empty() || html.is_some() {
             tracing::debug!("get_mail_body: returning cached body");
@@ -412,6 +444,7 @@ pub async fn get_mail_body(
                 phishing_warnings: analysis.phishing_warnings,
                 auth_status: analysis.auth_status,
                 sender_warnings: analysis.sender_warnings,
+                unsubscribe_url: unsub_url,
             });
         }
     }
@@ -429,7 +462,7 @@ pub async fn get_mail_body(
     };
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -467,6 +500,7 @@ pub async fn get_mail_body(
             phishing_warnings: mail.phishing_warnings.clone(),
             auth_status: mail.auth_status.clone(),
             sender_warnings: mail.sender_warnings.clone(),
+            unsubscribe_url: mail.unsubscribe_url.clone(),
         })
     } else {
         tracing::warn!("get_mail_body: no message found for uid={}", uid);
@@ -476,6 +510,7 @@ pub async fn get_mail_body(
             phishing_warnings: Vec::new(),
             auth_status: None,
             sender_warnings: Vec::new(),
+            unsubscribe_url: None,
         })
     }
 }
@@ -490,7 +525,7 @@ pub async fn refresh_folder(
     tracing::info!("refresh_folder: {}/{}", account_id, folder);
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     // Get max UID from DB
     let since_uid = {
@@ -605,7 +640,7 @@ pub async fn mark_read(
     tracing::debug!("mark_read: uid={} in {}/{}", mail_uid, account_id, folder);
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -641,7 +676,7 @@ pub async fn mark_unread(
     tracing::debug!("mark_unread: uid={} in {}/{}", mail_uid, account_id, folder);
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -677,7 +712,7 @@ pub async fn toggle_star(
     tracing::debug!("toggle_star: uid={}, starred={} in {}/{}", mail_uid, is_starred, account_id, folder);
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -718,7 +753,7 @@ pub async fn delete_mail(
     tracing::info!("delete_mail: uid={} in {}/{}", mail_uid, account_id, folder);
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -753,7 +788,7 @@ pub async fn archive_mail(
     tracing::info!("archive_mail: uid={} in {}/{}", mail_uid, account_id, folder);
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -878,7 +913,7 @@ pub async fn move_mail(
     tracing::info!("move_mail: uid={} from {}/{} to {}", mail_uid, account_id, folder, target_folder);
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -919,7 +954,7 @@ pub async fn download_attachment(
     );
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -953,7 +988,7 @@ pub async fn export_mail(
     );
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
@@ -995,7 +1030,7 @@ pub async fn get_mail_headers(
     );
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     let mut session = crate::mail::connection::get_session_for_folder(
         &account_id, &account, &password, &folder,
@@ -1108,7 +1143,7 @@ async fn sync_imap_keyword(
         Ok(a) => a,
         Err(_) => return,
     };
-    let password = match fetch_password(account_id.clone()).await {
+    let password = match fetch_password(&account_id).await {
         Ok(p) => p,
         Err(_) => return,
     };
@@ -1272,7 +1307,7 @@ pub async fn sweep_sender(
     // 2. Delete on IMAP
     if !uids.is_empty() {
         let account = get_account(&state, &account_id)?;
-        let password = fetch_password(account_id.clone()).await?;
+        let password = fetch_password(&account_id).await?;
 
         let mut session = crate::mail::connection::get_session_for_folder(
             &account_id, &account, &password, &folder,
@@ -1305,7 +1340,7 @@ pub async fn start_idle(
     use tauri::Emitter;
 
     let account = get_account(&state, &account_id)?;
-    let password = fetch_password(account_id.clone()).await?;
+    let password = fetch_password(&account_id).await?;
 
     // Spawn a background task for IDLE
     tauri::async_runtime::spawn(async move {
@@ -1362,4 +1397,68 @@ pub async fn open_eml_file(path: String) -> Result<MailEntry, String> {
         .map_err(|e| format!("Failed to parse .eml file: {}", e))?;
 
     Ok(entry)
+}
+
+// ── Notes commands ──────────────────────────────────────────────────
+
+/// Save a note for a mail message.
+#[tauri::command]
+pub async fn save_note(
+    state: State<'_, AppState>,
+    mail_id: String,
+    note: String,
+) -> Result<(), String> {
+    tracing::debug!("save_note: mail_id={}", mail_id);
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard.as_ref().ok_or("Database not available")?;
+    if note.trim().is_empty() {
+        db.delete_note(&mail_id)
+            .map_err(|e| format!("Failed to delete note: {}", e))
+    } else {
+        db.save_note(&mail_id, &note)
+            .map_err(|e| format!("Failed to save note: {}", e))
+    }
+}
+
+/// Get a note for a mail message.
+#[tauri::command]
+pub async fn get_note(
+    state: State<'_, AppState>,
+    mail_id: String,
+) -> Result<Option<String>, String> {
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard.as_ref().ok_or("Database not available")?;
+    db.get_note(&mail_id)
+        .map_err(|e| format!("Failed to get note: {}", e))
+}
+
+// ── Duplicate detection commands ────────────────────────────────────
+
+/// A pair of duplicate message IDs.
+#[derive(Debug, Clone, Serialize)]
+pub struct DuplicatePair {
+    pub original_id: String,
+    pub duplicate_id: String,
+}
+
+/// Find duplicate messages in a folder.
+#[tauri::command]
+pub async fn find_duplicates(
+    state: State<'_, AppState>,
+    account_id: String,
+    folder: String,
+) -> Result<Vec<DuplicatePair>, String> {
+    tracing::debug!("find_duplicates: {}/{}", account_id, folder);
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard.as_ref().ok_or("Database not available")?;
+    let pairs = db
+        .find_duplicates(&account_id, &folder)
+        .map_err(|e| format!("Failed to find duplicates: {}", e))?;
+    Ok(pairs
+        .into_iter()
+        .map(|(orig, dup)| DuplicatePair {
+            original_id: orig,
+            duplicate_id: dup,
+        })
+        .collect())
 }

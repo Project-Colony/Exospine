@@ -54,14 +54,15 @@ pub fn remove_credential(account_id: &str) {
 }
 
 /// Retrieve the password for an account: checks in-memory store first, then keyring.
-pub async fn fetch_password(account_id: String) -> Result<String, String> {
+pub async fn fetch_password(account_id: &str) -> Result<String, String> {
     // Check in-memory store first (reliable on all platforms).
-    if let Some(pw) = lock_or_recover(&CREDENTIALS).get(&account_id) {
+    if let Some(pw) = lock_or_recover(&CREDENTIALS).get(account_id) {
         return Ok(pw.clone());
     }
-    // Fall back to OS keyring.
+    // Fall back to OS keyring — clone once for the blocking closure.
+    let id_owned = account_id.to_string();
     tokio::task::spawn_blocking(move || {
-        crate::accounts::keyring_store::get_password(&account_id).map_err(|e| e.to_string())
+        crate::accounts::keyring_store::get_password(&id_owned).map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| format!("Task join error: {}", e))?
@@ -256,6 +257,9 @@ pub struct MailEntry {
     /// Flag follow-up due date (ISO 8601), if flagged.
     #[serde(default)]
     pub flag_due_date: Option<String>,
+    /// List-Unsubscribe URL extracted from headers (https preferred over mailto).
+    #[serde(default)]
+    pub unsubscribe_url: Option<String>,
 }
 
 impl Default for MailEntry {
@@ -291,6 +295,7 @@ impl Default for MailEntry {
             read_receipt_to: None,
             importance: "normal".to_string(),
             flag_due_date: None,
+            unsubscribe_url: None,
         }
     }
 }

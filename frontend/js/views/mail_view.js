@@ -5,18 +5,26 @@ import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { t } from '../i18n.js';
 
-// -- Muted threads (persisted in localStorage) --
+// -- Muted threads (persisted in localStorage, cached in memory) --
+let _mutedThreadsCache = null; // cached Set of muted thread IDs
+
 function getMutedThreads() {
+  if (_mutedThreadsCache) return _mutedThreadsCache;
   try {
     const raw = localStorage.getItem('exospine_muted_threads');
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+    _mutedThreadsCache = new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    _mutedThreadsCache = new Set();
+  }
+  return _mutedThreadsCache;
 }
 function setMutedThreads(ids) {
-  localStorage.setItem('exospine_muted_threads', JSON.stringify(ids));
+  const arr = Array.isArray(ids) ? ids : [...ids];
+  _mutedThreadsCache = new Set(arr);
+  localStorage.setItem('exospine_muted_threads', JSON.stringify(arr));
 }
 export function isThreadMuted(threadId) {
-  return getMutedThreads().includes(threadId);
+  return getMutedThreads().has(threadId);
 }
 
 // -- Reminder timers (in-memory, cleared on page reload) --
@@ -122,6 +130,18 @@ export function renderMailView(el, state, actions) {
   // Security indicators
   html += renderSecurityBanners(authStatus, phishingWarnings, senderWarnings);
 
+  // Unsubscribe banner
+  const unsubscribeUrl = (body && body.unsubscribe_url) || mail.unsubscribe_url || null;
+  if (unsubscribeUrl) {
+    const isMailto = unsubscribeUrl.startsWith('mailto:');
+    html += `
+      <div class="mail-view-unsubscribe-banner" role="status">
+        <span>\u2709 This is a mailing list.</span>
+        <a href="#" id="unsubscribe-link" class="unsubscribe-link" data-unsub-url="${esc(unsubscribeUrl)}" data-unsub-mailto="${isMailto}">Unsubscribe</a>
+      </div>
+    `;
+  }
+
   // Read receipt banner
   if (mail.read_receipt_requested && mail.read_receipt_to && !_dismissedReceipts.has(mail.id)) {
     html += `
@@ -145,7 +165,7 @@ export function renderMailView(el, state, actions) {
       <button class="mail-view-toolbar-btn" data-action="print" title="${t('print')}" aria-label="${t('print')}">\uD83D\uDDA8 ${t('print')}</button>
       <button class="mail-view-toolbar-btn" data-action="export" title="${t('export')}" aria-label="${t('export')}">\u2B07 ${t('export')}</button>
       <button class="mail-view-toolbar-btn" data-action="view-headers" title="${t('headers')}" aria-label="${t('headers')}">\uD83D\uDD0D ${t('headers')}</button>
-      <button class="mail-view-toolbar-btn" data-action="mute-thread" title="Mute thread" aria-label="Mute thread">${(() => { const tid = mail.thread_id || mail.id; const muted = getMutedThreads().includes(tid); return muted ? '\u{1F507} Unmute' : '\u{1F515} Mute'; })()}</button>
+      <button class="mail-view-toolbar-btn" data-action="mute-thread" title="Mute thread" aria-label="Mute thread">${(() => { const tid = mail.thread_id || mail.id; const muted = getMutedThreads().has(tid); return muted ? '\u{1F507} Unmute' : '\u{1F515} Mute'; })()}</button>
       <div class="toolbar-dropdown-wrapper">
         <button class="mail-view-toolbar-btn" data-action="remind" title="Remind me" aria-label="Remind me" aria-expanded="false" aria-controls="remind-dropdown">\u{23F0} Remind</button>
         <div class="remind-dropdown toolbar-dropdown-panel" id="remind-dropdown" hidden>
@@ -155,6 +175,8 @@ export function renderMailView(el, state, actions) {
           <div class="remind-option dropdown-option" data-remind="tomorrow" role="button" tabindex="0">Tomorrow</div>
         </div>
       </div>
+      <button class="mail-view-toolbar-btn" data-action="track-reply" title="Track reply" aria-label="Track reply">\u{1F552} Track reply</button>
+      <button class="mail-view-toolbar-btn" data-action="create-task" title="Create task" aria-label="Create task">\u2611 Create task</button>
       <button class="mail-view-toolbar-btn" data-action="mark-unread" title="${t('mark_unread')}" aria-label="${t('mark_unread')}">\u2709 ${t('mark_unread')}</button>
       <div class="toolbar-dropdown-wrapper">
         <button class="mail-view-toolbar-btn" data-action="snooze" title="Snooze email" aria-label="Snooze email" aria-expanded="false" aria-controls="snooze-dropdown">\u23F0 Snooze</button>
@@ -316,6 +338,17 @@ export function renderMailView(el, state, actions) {
   }
   html += '</div>';
 
+  // Notes section (collapsible sticky-note style)
+  html += `
+    <details class="mail-view-notes-section" id="notes-section">
+      <summary class="notes-section-toggle">\uD83D\uDCDD Notes <span id="notes-indicator" class="notes-indicator" hidden>\u2022</span></summary>
+      <div class="notes-section-body">
+        <textarea id="mail-note-textarea" class="mail-note-textarea" placeholder="Add a private note about this email..." rows="3" aria-label="Email note"></textarea>
+        <div class="notes-status" id="notes-status"></div>
+      </div>
+    </details>
+  `;
+
   // Sender profile card (hidden, shown on hover)
   html += '<div class="sender-profile-card" id="sender-profile-card" hidden></div>';
 
@@ -428,6 +461,81 @@ export function renderMailView(el, state, actions) {
     });
   }
 
+  // Unsubscribe link handler
+  const unsubLink = el.querySelector('#unsubscribe-link');
+  if (unsubLink) {
+    unsubLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const url = unsubLink.dataset.unsubUrl;
+      const isMailto = unsubLink.dataset.unsubMailto === 'true';
+      if (isMailto) {
+        // For mailto, attempt to open in default mail client or send empty email
+        try {
+          // Use Tauri shell plugin to open mailto link
+          if (window.__TAURI__) {
+            const { open } = await import('@tauri-apps/plugin-shell');
+            await open(url);
+          } else {
+            window.open(url);
+          }
+          showToast('Unsubscribe email client opened.', 'info');
+        } catch {
+          window.open(url);
+        }
+      } else {
+        // For https, open in browser
+        try {
+          if (window.__TAURI__) {
+            const { open } = await import('@tauri-apps/plugin-shell');
+            await open(url);
+          } else {
+            window.open(url, '_blank');
+          }
+          showToast('Unsubscribe page opened in browser.', 'info');
+        } catch {
+          window.open(url, '_blank');
+        }
+      }
+    });
+  }
+
+  // Notes: load existing note and set up auto-save
+  const noteTextarea = el.querySelector('#mail-note-textarea');
+  const notesIndicator = el.querySelector('#notes-indicator');
+  const notesStatus = el.querySelector('#notes-status');
+  if (noteTextarea && mail.id) {
+    let _noteSaveTimer = null;
+    // Load existing note
+    api.getNote(mail.id).then((note) => {
+      if (note) {
+        noteTextarea.value = note;
+        if (notesIndicator) notesIndicator.hidden = false;
+      }
+    }).catch(() => {});
+    // Auto-save on blur (debounced)
+    const saveNote = () => {
+      clearTimeout(_noteSaveTimer);
+      _noteSaveTimer = setTimeout(async () => {
+        const text = noteTextarea.value;
+        try {
+          await api.saveNote(mail.id, text);
+          if (notesIndicator) notesIndicator.hidden = !text.trim();
+          if (notesStatus) {
+            notesStatus.textContent = text.trim() ? 'Saved' : '';
+            setTimeout(() => { if (notesStatus) notesStatus.textContent = ''; }, 2000);
+          }
+        } catch (err) {
+          if (notesStatus) notesStatus.textContent = 'Save failed';
+        }
+      }, 500);
+    };
+    noteTextarea.addEventListener('blur', saveNote);
+    noteTextarea.addEventListener('input', () => {
+      clearTimeout(_noteSaveTimer);
+      _noteSaveTimer = setTimeout(saveNote, 2000);
+    });
+  }
+
   // Zoom controls
   function applyZoom() {
     const iframe = el.querySelector('#email-frame');
@@ -461,6 +569,31 @@ export function renderMailView(el, state, actions) {
     'zoom-in': () => { _zoomLevel = Math.min(200, _zoomLevel + 10); applyZoom(); },
     'zoom-out': () => { _zoomLevel = Math.max(50, _zoomLevel - 10); applyZoom(); },
     'zoom-reset': () => { _zoomLevel = 100; applyZoom(); },
+    'track-reply': async () => {
+      // Extract sender email from the "from" field
+      const fromEmail = (mail.from || '').match(/<([^>]+)>/)?.[1] || (mail.from || '').trim();
+      if (!fromEmail) { showToast('No sender to track.', 'error'); return; }
+      // Default due date: 3 days from now
+      const due = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+      try {
+        await api.addFollowup(mail.id, fromEmail, due);
+        showToast('Tracking reply from ' + fromEmail, 'success');
+      } catch (err) {
+        showToast('Failed to track: ' + err, 'error');
+      }
+    },
+    'create-task': async () => {
+      const title = mail.subject || '(No subject)';
+      const description = (mail.preview || '').slice(0, 200);
+      const dueDateInput = prompt('Due date (YYYY-MM-DD) or leave empty:');
+      const dueDate = dueDateInput || '';
+      try {
+        await api.createTask(title, description, mail.id, dueDate);
+        showToast('Task created: ' + title, 'success');
+      } catch (err) {
+        showToast('Failed to create task: ' + err, 'error');
+      }
+    },
   };
 
   el.querySelectorAll('.mail-view-toolbar-btn').forEach((btn) => {
@@ -579,16 +712,15 @@ export function renderMailView(el, state, actions) {
     muteBtn.addEventListener('click', () => {
       const tid = mail.thread_id || mail.id;
       const muted = getMutedThreads();
-      const idx = muted.indexOf(tid);
-      if (idx >= 0) {
-        muted.splice(idx, 1);
+      if (muted.has(tid)) {
+        muted.delete(tid);
         showToast('Thread unmuted.', 'info');
       } else {
-        muted.push(tid);
+        muted.add(tid);
         showToast('Thread muted. No notifications for this thread.', 'info');
       }
       setMutedThreads(muted);
-      muteBtn.textContent = muted.includes(tid) ? '\u{1F507} Unmute' : '\u{1F515} Mute';
+      muteBtn.textContent = muted.has(tid) ? '\u{1F507} Unmute' : '\u{1F515} Mute';
     });
   }
 

@@ -353,7 +353,7 @@ fn main() {
                             break;
                         }
 
-                        let password = match crate::app_state::fetch_password(acct_id.clone()).await {
+                        let password = match crate::app_state::fetch_password(&acct_id).await {
                             Ok(pw) => pw,
                             Err(e) => {
                                 tracing::error!("IDLE setup: no password for {}: {}", acct_clone.email, e);
@@ -437,6 +437,11 @@ fn main() {
             commands::mail::start_idle,
             commands::mail::sweep_sender,
             commands::mail::open_eml_file,
+            // Notes commands
+            commands::mail::save_note,
+            commands::mail::get_note,
+            // Duplicate detection
+            commands::mail::find_duplicates,
             // Compose commands
             commands::compose::send_mail,
             commands::compose::save_draft,
@@ -472,6 +477,17 @@ fn main() {
             // Flag follow-up commands
             commands::pin_snooze::flag_mail,
             commands::pin_snooze::unflag_mail,
+            // Follow-up tracker commands
+            commands::pin_snooze::add_followup,
+            commands::pin_snooze::get_followups,
+            commands::pin_snooze::resolve_followup,
+            commands::pin_snooze::delete_followup,
+            commands::pin_snooze::check_followups,
+            // Task commands
+            commands::pin_snooze::create_task,
+            commands::pin_snooze::get_tasks,
+            commands::pin_snooze::complete_task,
+            commands::pin_snooze::delete_task,
             // Read receipt command
             commands::pin_snooze::send_read_receipt,
             // Mailto handler

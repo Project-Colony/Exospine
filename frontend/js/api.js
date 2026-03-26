@@ -163,5 +163,28 @@ export const openEmlFile = (path) => invoke('open_eml_file', { path });
 // Secure wipe
 export const secureWipe = () => invoke('secure_wipe');
 
+// Follow-up tracker
+export const addFollowup = (mailId, expectedFrom, dueDate) =>
+  invoke('add_followup', { mailId, expectedFrom, dueDate });
+export const getFollowups = () => invoke('get_followups');
+export const resolveFollowup = (mailId) => invoke('resolve_followup', { mailId });
+export const deleteFollowup = (mailId) => invoke('delete_followup', { mailId });
+export const checkFollowups = (accountId) => invoke('check_followups', { accountId });
+
+// Tasks
+export const createTask = (title, description, mailId, dueDate) =>
+  invoke('create_task', { title, description, mailId: mailId || '', dueDate: dueDate || '' });
+export const getTasks = () => invoke('get_tasks');
+export const completeTask = (id) => invoke('complete_task', { id });
+export const deleteTask = (id) => invoke('delete_task', { id });
+
+// Notes
+export const saveNote = (mailId, note) => invoke('save_note', { mailId, note });
+export const getNote = (mailId) => invoke('get_note', { mailId });
+
+// Duplicate detection
+export const findDuplicates = (accountId, folder) =>
+  invoke('find_duplicates', { accountId, folder });
+
 // Mailto handler
 export const getPendingMailto = () => invoke('get_pending_mailto');

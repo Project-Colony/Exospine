@@ -133,7 +133,7 @@ pub async fn send_read_receipt(
             .ok_or_else(|| format!("Account not found: {}", account_id))?
     };
 
-    let password = fetch_password(account.id.clone()).await?;
+    let password = fetch_password(&account.id).await?;
 
     // Build a simple MDN message
     let draft = ComposeDraft {
@@ -159,6 +159,145 @@ pub async fn send_read_receipt(
         .map_err(|e| format!("Failed to send read receipt: {}", e))?;
 
     Ok(())
+}
+
+// ── Follow-up Tracker ────────────────────────────────────────────────
+
+/// Add a follow-up: track a mail waiting for a reply from expected_from.
+#[tauri::command]
+pub async fn add_followup(
+    state: State<'_, AppState>,
+    mail_id: String,
+    expected_from: String,
+    due_date: String,
+) -> Result<(), String> {
+    tracing::info!("add_followup: {} from={}", mail_id, expected_from);
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.add_followup(&mail_id, &expected_from, &due_date)
+        .map_err(|e| format!("Failed to add followup: {}", e))
+}
+
+/// Get all follow-ups.
+#[tauri::command]
+pub async fn get_followups(
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::storage::db::Followup>, String> {
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.get_followups()
+        .map_err(|e| format!("Failed to get followups: {}", e))
+}
+
+/// Resolve a follow-up (mark as replied).
+#[tauri::command]
+pub async fn resolve_followup(
+    state: State<'_, AppState>,
+    mail_id: String,
+) -> Result<(), String> {
+    tracing::debug!("resolve_followup: {}", mail_id);
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.resolve_followup(&mail_id)
+        .map_err(|e| format!("Failed to resolve followup: {}", e))
+}
+
+/// Delete a follow-up.
+#[tauri::command]
+pub async fn delete_followup(
+    state: State<'_, AppState>,
+    mail_id: String,
+) -> Result<(), String> {
+    tracing::debug!("delete_followup: {}", mail_id);
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.delete_followup(&mail_id)
+        .map_err(|e| format!("Failed to delete followup: {}", e))
+}
+
+/// Check if any unresolved followups have been replied to. Returns resolved mail IDs.
+#[tauri::command]
+pub async fn check_followups(
+    state: State<'_, AppState>,
+    account_id: String,
+) -> Result<Vec<String>, String> {
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.check_resolved_followups(&account_id)
+        .map_err(|e| format!("Failed to check followups: {}", e))
+}
+
+// ── Tasks ────────────────────────────────────────────────────────────
+
+/// Create a task (optionally linked to a mail).
+#[tauri::command]
+pub async fn create_task(
+    state: State<'_, AppState>,
+    title: String,
+    description: String,
+    mail_id: String,
+    due_date: String,
+) -> Result<String, String> {
+    tracing::info!("create_task: {}", title);
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.create_task(&title, &description, &mail_id, &due_date)
+        .map_err(|e| format!("Failed to create task: {}", e))
+}
+
+/// Get all tasks.
+#[tauri::command]
+pub async fn get_tasks(
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::storage::db::Task>, String> {
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.get_tasks()
+        .map_err(|e| format!("Failed to get tasks: {}", e))
+}
+
+/// Complete a task.
+#[tauri::command]
+pub async fn complete_task(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
+    tracing::debug!("complete_task: {}", id);
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.complete_task(&id)
+        .map_err(|e| format!("Failed to complete task: {}", e))
+}
+
+/// Delete a task.
+#[tauri::command]
+pub async fn delete_task(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
+    tracing::debug!("delete_task: {}", id);
+    let db_guard = lock_or_recover(&state.db);
+    let db = db_guard
+        .as_ref()
+        .ok_or_else(|| "Database not available".to_string())?;
+    db.delete_task(&id)
+        .map_err(|e| format!("Failed to delete task: {}", e))
 }
 
 // ── Scheduled Send ───────────────────────────────────────────────────
@@ -251,7 +390,7 @@ pub async fn send_due_scheduled(state: State<'_, AppState>) -> Result<u32, Strin
             continue;
         };
 
-        let password = match fetch_password(account.id.clone()).await {
+        let password = match fetch_password(&account.id).await {
             Ok(pw) => pw,
             Err(e) => {
                 tracing::error!("send_due_scheduled: password error: {}", e);

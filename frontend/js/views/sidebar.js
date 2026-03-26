@@ -284,6 +284,14 @@ export function renderSidebar(el, state, actions) {
         <span aria-hidden="true">+</span>
         <span>${t('add_account')}</span>
       </button>
+      <button class="sidebar-btn" id="sidebar-awaiting-reply" title="Awaiting Reply" aria-label="Awaiting Reply">
+        <span aria-hidden="true">\u{1F552}</span>
+        <span>Awaiting Reply</span>
+      </button>
+      <button class="sidebar-btn" id="sidebar-tasks" title="Tasks" aria-label="Tasks">
+        <span aria-hidden="true">\u2611</span>
+        <span>Tasks</span>
+      </button>
       <button class="sidebar-btn" id="sidebar-analytics" title="Analytics" aria-label="Analytics">
         <span aria-hidden="true">\uD83D\uDCCA</span>
         <span>Analytics</span>
@@ -389,6 +397,8 @@ export function renderSidebar(el, state, actions) {
 
     // Bottom buttons
     if (e.target.closest('#sidebar-add-account') && actions.onAddAccount) { actions.onAddAccount(); return; }
+    if (e.target.closest('#sidebar-awaiting-reply') && actions.onOpenAwaitingReply) { actions.onOpenAwaitingReply(); return; }
+    if (e.target.closest('#sidebar-tasks') && actions.onOpenTasks) { actions.onOpenTasks(); return; }
     if (e.target.closest('#sidebar-analytics') && actions.onOpenAnalytics) { actions.onOpenAnalytics(); return; }
     if (e.target.closest('#sidebar-calendar') && actions.onOpenCalendar) { actions.onOpenCalendar(); return; }
     if (e.target.closest('#sidebar-contacts') && actions.onOpenContacts) { actions.onOpenContacts(); return; }
