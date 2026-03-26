@@ -7,7 +7,7 @@ import { renderSidebar, updateUnreadBadges } from './views/sidebar.js';
 import { renderMailList } from './views/mail_list.js';
 import { renderMailView, isThreadMuted } from './views/mail_view.js';
 import { openCompose, makeReplyPrefill, makeForwardPrefill } from './views/compose.js';
-import { openSettings, getMergedShortcuts, hashPin } from './views/settings.js';
+import { openSettings, getMergedShortcuts, hashPin, restoreImportedTheme } from './views/settings.js';
 import { openOnboarding } from './views/onboarding.js';
 import { openAnalytics } from './views/analytics.js';
 import { openCalendar } from './views/calendar.js';
@@ -217,20 +217,78 @@ if (!sidebarEl || !mailListEl || !mailViewEl) {
 // ---------------------------------------------------------------------------
 let _soundEnabled = localStorage.getItem('exospine_sound_notifications') !== 'false';
 
-function playNotificationSound() {
+function playNotificationSound(accountId) {
   if (!_soundEnabled) return;
+  // Per-account override, then global setting, then default
+  let sound;
+  if (accountId) {
+    const acctSound = localStorage.getItem('exospine_notif_sound_' + accountId);
+    sound = acctSound || localStorage.getItem('exospine_notif_sound') || 'default';
+  } else {
+    sound = localStorage.getItem('exospine_notif_sound') || 'default';
+  }
+  if (sound === 'silent') return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    osc.type = 'sine';
-    gain.gain.value = 0.3;
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-    osc.stop(ctx.currentTime + 0.3);
+    if (sound === 'chime') {
+      // 660Hz then 880Hz sequence
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.frequency.value = 660;
+      osc1.type = 'sine';
+      gain1.gain.value = 0.3;
+      osc1.start();
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc1.stop(ctx.currentTime + 0.2);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.frequency.value = 880;
+      osc2.type = 'sine';
+      gain2.gain.value = 0.3;
+      osc2.start(ctx.currentTime + 0.2);
+      gain2.gain.setValueAtTime(0.3, ctx.currentTime + 0.2);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc2.stop(ctx.currentTime + 0.5);
+    } else if (sound === 'bell') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 440;
+      osc.type = 'triangle';
+      gain.gain.value = 0.4;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.stop(ctx.currentTime + 0.5);
+    } else if (sound === 'gentle') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 523;
+      osc.type = 'sine';
+      gain.gain.value = 0.15;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.stop(ctx.currentTime + 0.4);
+    } else {
+      // Default: 880Hz sine
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.value = 0.3;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.stop(ctx.currentTime + 0.3);
+    }
   } catch {}
 }
 
@@ -1404,24 +1462,28 @@ function setupTauriEvents() {
       if (folder && total) {
         state._syncing = true;
         state._syncProgress = Math.round((current / total) * 100);
+        // Update document title with progress for Windows taskbar hover
+        document.title = `Exospine - Syncing ${state._syncProgress}%`;
         renderList();
       }
       if (current >= total) {
         state._syncing = false;
         state._syncProgress = 0;
+        // Restore default title
+        document.title = 'Exospine';
         renderList();
       }
     });
 
     listen('new-mail', (event) => {
-      const { count, folder, thread_id } = event.payload || {};
+      const { count, folder, thread_id, accountId: evtAccountId } = event.payload || {};
       if (count && folder === state.activeFolder) {
         // Feature 1: Skip notification for muted threads
         if (thread_id && isThreadMuted(thread_id)) {
           refreshCurrentFolder();
           return;
         }
-        playNotificationSound();
+        playNotificationSound(evtAccountId);
         showToast(`${count} new email${count > 1 ? 's' : ''} received.`, 'info');
         refreshCurrentFolder();
       }
@@ -1851,6 +1913,7 @@ async function init() {
   setupResizablePanels();
   setupOfflineMode();
   setupEmlDragDrop();
+  restoreImportedTheme();
 
   // Request notification permission early
   try { if (Notification.permission === 'default') Notification.requestPermission(); } catch {}
@@ -1932,8 +1995,9 @@ async function init() {
     api.syncAllMails(syncAccountId, syncFolder).then(async (count) => {
       state._syncing = false;
       state._syncProgress = 0;
+      document.title = 'Exospine'; // Restore title after sync
       if (count > 0) {
-        playNotificationSound();
+        playNotificationSound(syncAccountId);
         showToast(`Synced ${count} mails in background.`, 'info');
         await loadMails();
         // Update folder unread counts in sidebar
@@ -1945,6 +2009,7 @@ async function init() {
     }).catch((err) => {
       state._syncing = false;
       state._syncProgress = 0;
+      document.title = 'Exospine'; // Restore title on sync error
       renderList();
       console.warn('Background sync failed:', err);
     });
@@ -2003,7 +2068,7 @@ async function init() {
             // Feature 1: Check muted threads — still refresh but skip sound/toast
             const anyMuted = state.mails.slice(0, newCount).some(m => isThreadMuted(m.thread_id || m.id));
             if (!anyMuted) {
-              playNotificationSound();
+              playNotificationSound(activeAccountId());
               showToast(`${newCount} new email${newCount > 1 ? 's' : ''} received.`, 'info');
             }
           }

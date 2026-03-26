@@ -81,6 +81,45 @@ fn url_decode(s: &str) -> String {
     result
 }
 
+/// Parse an `exospine://compose?to=...&subject=...` URL into MailtoData.
+fn parse_exospine_url(url: &str) -> MailtoData {
+    let mut data = MailtoData::default();
+    // Strip the scheme: "exospine://compose?..." -> "compose?..."
+    let stripped = url
+        .strip_prefix("exospine://")
+        .unwrap_or(url);
+
+    // Find query string after '?'
+    let query_part = if let Some(idx) = stripped.find('?') {
+        Some(&stripped[idx + 1..])
+    } else {
+        None
+    };
+
+    if let Some(query) = query_part {
+        for pair in query.split('&') {
+            if let Some((key, value)) = pair.split_once('=') {
+                let decoded = url_decode(value);
+                match key.to_lowercase().as_str() {
+                    "to" => {
+                        if !data.to.is_empty() {
+                            data.to.push_str(", ");
+                        }
+                        data.to.push_str(&decoded);
+                    }
+                    "subject" => data.subject = decoded,
+                    "body" => data.body = decoded,
+                    "cc" => data.cc = decoded,
+                    "bcc" => data.bcc = decoded,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    data
+}
+
 /// Global storage for a pending mailto: compose request, picked up by the frontend.
 static PENDING_MAILTO: LazyLock<Mutex<Option<MailtoData>>> =
     LazyLock::new(|| Mutex::new(None));
@@ -116,11 +155,17 @@ fn get_pending_mailto() -> Option<MailtoData> {
 }
 
 fn main() {
-    // Check if launched with a mailto: argument
+    // Check if launched with a mailto: or exospine:// argument
     for arg in std::env::args().skip(1) {
         if arg.starts_with("mailto:") {
             let data = parse_mailto(&arg);
             tracing::info!("Launched with mailto: to={}", data.to);
+            let mut guard = PENDING_MAILTO.lock().unwrap_or_else(|e| e.into_inner());
+            *guard = Some(data);
+            break;
+        } else if arg.starts_with("exospine://") {
+            let data = parse_exospine_url(&arg);
+            tracing::info!("Launched with exospine:// to={}", data.to);
             let mut guard = PENDING_MAILTO.lock().unwrap_or_else(|e| e.into_inner());
             *guard = Some(data);
             break;
@@ -454,6 +499,8 @@ fn main() {
             // Signature commands
             commands::settings::get_signature,
             commands::settings::save_signature,
+            // Autostart command
+            commands::settings::set_autostart,
             // Contact commands
             commands::contacts::search_contacts,
             commands::contacts::get_all_contacts,

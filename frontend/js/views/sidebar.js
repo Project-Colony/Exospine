@@ -54,6 +54,42 @@ function saveCustomSearchFolders(folders) {
   localStorage.setItem('exospine_search_folders', JSON.stringify(folders));
 }
 
+// ── Shared Labels (cross-account, localStorage) ─────────────────
+const LABEL_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e', '#d35400', '#16a085'];
+
+function loadLabels() {
+  try {
+    const raw = localStorage.getItem('exospine_labels');
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveLabels(labels) {
+  localStorage.setItem('exospine_labels', JSON.stringify(labels));
+}
+
+/** Get mail IDs assigned to a label. Returns a Set. */
+function getMailIdsForLabel(labelName) {
+  try {
+    const raw = localStorage.getItem('exospine_label_mails_' + labelName);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+
+/** Assign or unassign a mail to a label. */
+function toggleMailLabel(labelName, mailId) {
+  const ids = getMailIdsForLabel(labelName);
+  if (ids.has(mailId)) {
+    ids.delete(mailId);
+  } else {
+    ids.add(mailId);
+  }
+  localStorage.setItem('exospine_label_mails_' + labelName, JSON.stringify([...ids]));
+}
+
+/** Export for use by other views (label assignment). */
+export { loadLabels, saveLabels, getMailIdsForLabel, toggleMailLabel, LABEL_COLORS };
+
 
 // ── Folder order persistence (drag reorder) ─────────────────────
 function loadFolderOrder(section) {
@@ -106,9 +142,11 @@ function _sidebarFingerprint(state) {
     af: state.activeFolder,
     ui: state._unifiedInbox,
     asf: state._activeSearchFolder,
+    al: state._activeLabel,
     fe: state._foldersError,
     accts: state.accounts.map(a => a.id),
     folders: state.folders.map(f => typeof f === 'string' ? f : f.name + ':' + (f.unread_count || f.unread || 0)),
+    labels: loadLabels().map(l => l.name).join(','),
   });
 }
 
@@ -277,6 +315,65 @@ export function renderSidebar(el, state, actions) {
   `;
   html += '</div>';
 
+  // Labels section (shared across accounts)
+  const labels = loadLabels();
+  const labelsCollapsed = collapsedSections['labels'] || false;
+
+  html += `<div class="sidebar-section-header" data-section="labels" role="button" tabindex="0" aria-expanded="${!labelsCollapsed}" title="Toggle Labels">
+    <span class="sidebar-section-arrow">${labelsCollapsed ? '\u25B6' : '\u25BC'}</span>
+    <span>\uD83C\uDFF7 Labels</span>
+  </div>`;
+  html += `<div class="sidebar-folders sidebar-labels sidebar-section-content${labelsCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Labels">`;
+  for (const label of labels) {
+    const isActive = state._activeLabel === label.name;
+    html += `
+      <div class="sidebar-folder sidebar-label-item${isActive ? ' active' : ''}" data-label-name="${esc(label.name)}" role="option" aria-selected="${isActive}" tabindex="0">
+        <span class="sidebar-label-dot" style="background:${label.color || '#7f8c8d'}" aria-hidden="true"></span>
+        <span class="sidebar-folder-label">${esc(label.name)}</span>
+        <button class="sidebar-label-delete" data-delete-label="${esc(label.name)}" title="Delete label" aria-label="Delete label ${esc(label.name)}">\u00D7</button>
+      </div>
+    `;
+  }
+  html += `
+    <div class="sidebar-folder sidebar-label-add" data-action="add-label" role="button" tabindex="0">
+      <span class="sidebar-folder-icon" aria-hidden="true">+</span>
+      <span class="sidebar-folder-label">New label</span>
+    </div>
+  `;
+  html += '</div>';
+
+  // ── Widgets section ──────────────────────────────────────────────
+  const widgetPrefs = (() => { try { return JSON.parse(localStorage.getItem('exospine_widget_prefs') || '{}'); } catch { return {}; } })();
+  const showClock = widgetPrefs.clock !== false;
+  const showDate = widgetPrefs.date !== false;
+  const showUnread = widgetPrefs.unread !== false;
+
+  if (showClock || showDate || showUnread) {
+    const widgetsCollapsed = collapsedSections['widgets'] || false;
+    html += `<div class="sidebar-section-header" data-section="widgets" role="button" tabindex="0" aria-expanded="${!widgetsCollapsed}" title="Toggle Widgets">
+      <span class="sidebar-section-arrow">${widgetsCollapsed ? '\u25B6' : '\u25BC'}</span>
+      <span>Widgets</span>
+    </div>`;
+    html += `<div class="sidebar-widgets sidebar-section-content${widgetsCollapsed ? ' collapsed' : ''}">`;
+
+    if (showClock) {
+      html += `<div class="sidebar-widget-item"><span class="sidebar-widget-icon">\u{1F551}</span> <span id="sidebar-clock-value">--:--:--</span></div>`;
+    }
+    if (showDate) {
+      const today = new Date();
+      const dateStr = today.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      html += `<div class="sidebar-widget-item"><span class="sidebar-widget-icon">\uD83D\uDCC5</span> ${esc(dateStr)}</div>`;
+    }
+    if (showUnread) {
+      let totalUnread = 0;
+      for (const folder of state.folders) {
+        if (typeof folder === 'object') totalUnread += (folder.unread_count || folder.unread || 0);
+      }
+      html += `<div class="sidebar-widget-item"><span class="sidebar-widget-icon">\uD83D\uDCE9</span> <span id="sidebar-unread-count">${totalUnread}</span> unread</div>`;
+    }
+    html += '</div>';
+  }
+
   // Bottom buttons
   html += `
     <div class="sidebar-bottom">
@@ -378,6 +475,47 @@ export function renderSidebar(el, state, actions) {
     const sfItem = e.target.closest('.sidebar-folder[data-search-folder]');
     if (sfItem) {
       if (actions.onSearchFolder) actions.onSearchFolder(sfItem.dataset.searchFolder, sfItem.dataset.searchQuery);
+      return;
+    }
+
+    // Label select
+    const labelItem = e.target.closest('.sidebar-label-item[data-label-name]');
+    if (labelItem && !e.target.closest('.sidebar-label-delete')) {
+      const labelName = labelItem.dataset.labelName;
+      if (actions.onLabelSelect) actions.onLabelSelect(labelName);
+      return;
+    }
+
+    // Delete label
+    const deleteLabelBtn = e.target.closest('.sidebar-label-delete');
+    if (deleteLabelBtn) {
+      e.stopPropagation();
+      const name = deleteLabelBtn.dataset.deleteLabel;
+      if (!confirm(`Delete label "${name}"?`)) return;
+      const labels = loadLabels().filter(l => l.name !== name);
+      saveLabels(labels);
+      // Also remove label-mail associations
+      localStorage.removeItem('exospine_label_mails_' + name);
+      _sidebarCacheKey = null;
+      renderSidebar(el, state, actions);
+      return;
+    }
+
+    // Add label
+    const addLabelBtn = e.target.closest('[data-action="add-label"]');
+    if (addLabelBtn) {
+      const name = prompt('Label name:');
+      if (!name || !name.trim()) return;
+      const existing = loadLabels();
+      if (existing.some(l => l.name === name.trim())) {
+        showToast('Label already exists.', 'error');
+        return;
+      }
+      const colorIdx = existing.length % LABEL_COLORS.length;
+      existing.push({ name: name.trim(), color: LABEL_COLORS[colorIdx] });
+      saveLabels(existing);
+      _sidebarCacheKey = null;
+      renderSidebar(el, state, actions);
       return;
     }
 
@@ -552,6 +690,18 @@ export function renderSidebar(el, state, actions) {
   // Separate listeners for folder reorder (uses different data type)
   el.addEventListener('dragover', el._sidebarFolderReorderDragover);
   el.addEventListener('drop', el._sidebarFolderReorderDrop);
+
+  // ── Clock widget: update every second ────────────────────────────
+  if (el._widgetClockInterval) clearInterval(el._widgetClockInterval);
+  const clockEl = el.querySelector('#sidebar-clock-value');
+  if (clockEl) {
+    const updateClock = () => {
+      const now = new Date();
+      clockEl.textContent = now.toLocaleTimeString();
+    };
+    updateClock();
+    el._widgetClockInterval = setInterval(updateClock, 1000);
+  }
 
 }
 

@@ -91,6 +91,15 @@ export async function openSettings(state, actions) {
               <option value="bottom" ${settings.reading_pane === 'bottom' ? 'selected' : ''}>${t('bottom')}</option>
             </select>
           </div>
+          <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+            <label>Import CSS Theme</label>
+            <div class="flex-row gap-6" style="flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm" id="s-import-theme">Import .css Theme</button>
+              <input type="file" id="s-import-theme-file" accept=".css" hidden />
+              ${localStorage.getItem('exospine_imported_theme_css') ? '<button class="btn btn-ghost btn-sm text-danger" id="s-remove-imported-theme">Remove imported theme</button>' : ''}
+            </div>
+            ${localStorage.getItem('exospine_imported_theme_css') ? '<div class="text-xxs text-dim mt-4">An imported CSS theme is currently active.</div>' : ''}
+          </div>
         </div>
 
         <div class="settings-section">
@@ -114,6 +123,22 @@ export async function openSettings(state, actions) {
             </label>
           </div>
           <div class="settings-row">
+            <label>Start with Windows</label>
+            <label class="settings-toggle">
+              <input type="checkbox" id="s-autostart" ${localStorage.getItem('exospine_autostart') === 'true' ? 'checked' : ''} />
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <label>Notification sound</label>
+            <div class="flex-row gap-6">
+              <select id="s-notif-sound">
+                ${['default','chime','bell','gentle','silent'].map(s => `<option value="${s}" ${(localStorage.getItem('exospine_notif_sound') || 'default') === s ? 'selected' : ''}>${s[0].toUpperCase() + s.slice(1)}</option>`).join('')}
+              </select>
+              <button class="btn btn-ghost btn-sm" id="s-test-sound">Test</button>
+            </div>
+          </div>
+          <div class="settings-row">
             <label>${t('language')}</label>
             <select id="s-lang">
               <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
@@ -122,6 +147,24 @@ export async function openSettings(state, actions) {
               <option value="ja" ${settings.language === 'ja' ? 'selected' : ''}>Japanese</option>
             </select>
           </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Sidebar Widgets</div>
+          ${(() => {
+            const wPrefs = JSON.parse(localStorage.getItem('exospine_widget_prefs') || '{}');
+            return ['clock', 'date', 'unread'].map(w => {
+              const enabled = wPrefs[w] !== false;
+              const label = w === 'clock' ? 'Clock' : w === 'date' ? 'Date' : 'Unread Count';
+              return `<div class="settings-row">
+                <label>${label}</label>
+                <label class="settings-toggle">
+                  <input type="checkbox" class="s-widget-toggle" data-widget="${w}" ${enabled ? 'checked' : ''} />
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>`;
+            }).join('');
+          })()}
         </div>
 
         <div class="settings-section">
@@ -235,6 +278,18 @@ export async function openSettings(state, actions) {
         </div>
 
         <div class="settings-section">
+          <div class="settings-section-title">Email Templates</div>
+          <div class="settings-subsection">
+            <div class="text-sm font-bold mb-6">Your Templates</div>
+            <div id="s-user-templates-list" class="mb-8"></div>
+          </div>
+          <div class="settings-subsection">
+            <div class="text-sm font-bold mb-6">Community Templates</div>
+            <div id="s-community-templates-list" class="mb-8"></div>
+          </div>
+        </div>
+
+        <div class="settings-section">
           <div class="settings-section-title">Export / Import Settings</div>
           <div class="flex-row gap-8" style="flex-wrap:wrap;">
             <button class="btn btn-ghost btn-sm" id="s-export-settings">Export Settings</button>
@@ -262,12 +317,29 @@ export async function openSettings(state, actions) {
         <div class="settings-section">
           <div class="settings-section-title">${t('accounts')}</div>
           <div class="settings-account-list" id="s-accounts">
-            ${state.accounts.map((acc, i) => `
-              <div class="settings-account-item">
-                <span>${esc(acc.email || acc.name || `Account ${i + 1}`)}</span>
-                <button class="btn btn-danger btn-sm" data-remove-account="${esc(acc.id || String(i))}">Remove</button>
+            ${state.accounts.map((acc, i) => {
+              const acctSoundKey = 'exospine_notif_sound_' + (acc.id || String(i));
+              const acctSound = localStorage.getItem(acctSoundKey) || '';
+              return `
+              <div class="settings-account-item" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <div class="flex-row-center" style="justify-content:space-between;">
+                  <span>${esc(acc.email || acc.name || 'Account ' + (i + 1))}</span>
+                  <button class="btn btn-danger btn-sm" data-remove-account="${esc(acc.id || String(i))}">Remove</button>
+                </div>
+                <div class="flex-row-center gap-6" style="padding-left:8px;">
+                  <label class="text-xxs text-dim">Notification sound:</label>
+                  <select class="s-acct-sound" data-acct-sound-id="${esc(acc.id || String(i))}" style="font-size:12px;">
+                    <option value="" ${acctSound === '' ? 'selected' : ''}>Global default</option>
+                    <option value="default" ${acctSound === 'default' ? 'selected' : ''}>Default beep</option>
+                    <option value="chime" ${acctSound === 'chime' ? 'selected' : ''}>Chime</option>
+                    <option value="bell" ${acctSound === 'bell' ? 'selected' : ''}>Bell</option>
+                    <option value="gentle" ${acctSound === 'gentle' ? 'selected' : ''}>Gentle</option>
+                    <option value="silent" ${acctSound === 'silent' ? 'selected' : ''}>Silent</option>
+                  </select>
+                </div>
               </div>
-            `).join('')}
+              `;
+            }).join('')}
             ${state.accounts.length === 0 ? '<div class="text-dim text-sm">No accounts configured.</div>' : ''}
           </div>
         </div>
@@ -726,6 +798,196 @@ export async function openSettings(state, actions) {
     });
   }
 
+  // ── CSS Theme Import ─────────────────────────────────────────────
+  overlay.querySelector('#s-import-theme')?.addEventListener('click', () => {
+    overlay.querySelector('#s-import-theme-file').click();
+  });
+
+  overlay.querySelector('#s-import-theme-file')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const cssText = await file.text();
+      localStorage.setItem('exospine_imported_theme_css', cssText);
+      applyImportedThemeCSS(cssText);
+      showToast('CSS theme imported and applied.', 'success');
+    } catch (err) {
+      showToast(`Failed to import theme: ${err}`, 'error');
+    }
+    e.target.value = '';
+  });
+
+  overlay.querySelector('#s-remove-imported-theme')?.addEventListener('click', () => {
+    localStorage.removeItem('exospine_imported_theme_css');
+    removeImportedThemeCSS();
+    showToast('Imported theme removed.', 'info');
+  });
+
+  // ── Notification Sound Picker ──────────────────────────────────────
+  overlay.querySelector('#s-notif-sound')?.addEventListener('change', (e) => {
+    localStorage.setItem('exospine_notif_sound', e.target.value);
+  });
+
+  overlay.querySelector('#s-test-sound')?.addEventListener('click', () => {
+    const sound = overlay.querySelector('#s-notif-sound')?.value || 'default';
+    playNotifSoundPreview(sound);
+  });
+
+  // ── Widget Toggles ─────────────────────────────────────────────────
+  overlay.querySelectorAll('.s-widget-toggle').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const prefs = JSON.parse(localStorage.getItem('exospine_widget_prefs') || '{}');
+      prefs[cb.dataset.widget] = cb.checked;
+      localStorage.setItem('exospine_widget_prefs', JSON.stringify(prefs));
+    });
+  });
+
+  // ── Autostart Toggle ─────────────────────────────────────────────────
+  overlay.querySelector('#s-autostart')?.addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    try {
+      await api.setAutostart(enabled);
+      localStorage.setItem('exospine_autostart', String(enabled));
+      showToast(enabled ? 'Exospine will start with Windows.' : 'Autostart disabled.', 'success');
+    } catch (err) {
+      e.target.checked = !enabled; // revert toggle
+      showToast(`Failed to set autostart: ${err}`, 'error');
+    }
+  });
+
+  // ── Per-Account Notification Sound ──────────────────────────────────
+  overlay.querySelectorAll('.s-acct-sound').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      const acctId = sel.dataset.acctSoundId;
+      const val = sel.value;
+      if (val) {
+        localStorage.setItem('exospine_notif_sound_' + acctId, val);
+      } else {
+        localStorage.removeItem('exospine_notif_sound_' + acctId);
+      }
+    });
+  });
+
+  // ── Email Templates (User + Community) ─────────────────────────────
+  const COMMUNITY_TEMPLATES = [
+    {
+      id: 'community_thank_you',
+      name: 'Professional Thank You',
+      subject: 'Thank You',
+      body: '<p>Dear [Name],</p><p>Thank you for taking the time to [reason]. I truly appreciate your [effort/time/support].</p><p>Please do not hesitate to reach out if there is anything I can assist you with.</p><p>Best regards,<br/>[Your Name]</p>',
+    },
+    {
+      id: 'community_meeting_request',
+      name: 'Meeting Request',
+      subject: 'Meeting Request: [Topic]',
+      body: '<p>Dear [Name],</p><p>I would like to schedule a meeting to discuss [topic]. Would you be available on [date] at [time]?</p><p>The meeting should take approximately [duration]. Please let me know if this works for you or suggest an alternative time.</p><p>Best regards,<br/>[Your Name]</p>',
+    },
+    {
+      id: 'community_project_update',
+      name: 'Project Update',
+      subject: 'Project Update: [Project Name]',
+      body: '<p>Hi team,</p><p>Here is a quick update on [Project Name]:</p><ul><li><strong>Completed:</strong> [items]</li><li><strong>In Progress:</strong> [items]</li><li><strong>Next Steps:</strong> [items]</li></ul><p>Please reach out if you have any questions.</p><p>Best regards,<br/>[Your Name]</p>',
+    },
+    {
+      id: 'community_invoice_followup',
+      name: 'Invoice Follow-up',
+      subject: 'Follow-up: Invoice #[Number]',
+      body: '<p>Dear [Name],</p><p>I am writing to follow up on Invoice #[Number] dated [date], in the amount of [amount]. According to our records, this invoice is currently outstanding.</p><p>Could you please confirm the status of this payment? If you have already processed it, please disregard this message.</p><p>Thank you for your attention to this matter.</p><p>Best regards,<br/>[Your Name]</p>',
+    },
+    {
+      id: 'community_introduction',
+      name: 'Introduction',
+      subject: 'Introduction: [Your Name]',
+      body: '<p>Dear [Name],</p><p>My name is [Your Name] and I am [your role] at [Company]. I am reaching out because [reason for contact].</p><p>I would love the opportunity to [propose next step]. Would you be open to a brief call or meeting?</p><p>Looking forward to hearing from you.</p><p>Best regards,<br/>[Your Name]</p>',
+    },
+  ];
+
+  function loadUserTemplates() {
+    try { return JSON.parse(localStorage.getItem('exospine_templates') || '[]'); } catch { return []; }
+  }
+  function saveUserTemplates(templates) {
+    localStorage.setItem('exospine_templates', JSON.stringify(templates));
+  }
+
+  function renderUserTemplates() {
+    const list = overlay.querySelector('#s-user-templates-list');
+    if (!list) return;
+    const templates = loadUserTemplates();
+    if (templates.length === 0) {
+      list.innerHTML = '<div class="text-dim text-sm">No custom templates yet. Import from Community Templates below.</div>';
+      return;
+    }
+    list.innerHTML = templates.map((t, i) => `
+      <div class="settings-rule-item">
+        <div class="text-sm"><b>${esc(t.name)}</b> <span class="text-dim">&mdash; ${esc(t.subject)}</span></div>
+        <div class="flex-row gap-4">
+          <button class="btn btn-ghost btn-sm" data-export-template="${i}">Export</button>
+          <button class="btn btn-danger btn-sm" data-delete-template="${i}">Delete</button>
+        </div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('[data-delete-template]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const templates = loadUserTemplates();
+        templates.splice(parseInt(btn.dataset.deleteTemplate, 10), 1);
+        saveUserTemplates(templates);
+        renderUserTemplates();
+        showToast('Template deleted.', 'info');
+      });
+    });
+
+    list.querySelectorAll('[data-export-template]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const templates = loadUserTemplates();
+        const tmpl = templates[parseInt(btn.dataset.exportTemplate, 10)];
+        if (!tmpl) return;
+        const blob = new Blob([JSON.stringify(tmpl, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `template-${(tmpl.name || 'export').replace(/\s+/g, '_').toLowerCase()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Template exported.', 'success');
+      });
+    });
+  }
+
+  function renderCommunityTemplates() {
+    const list = overlay.querySelector('#s-community-templates-list');
+    if (!list) return;
+    list.innerHTML = COMMUNITY_TEMPLATES.map((t) => `
+      <div class="settings-rule-item">
+        <div>
+          <div class="text-sm font-bold">${esc(t.name)}</div>
+          <div class="text-xxs text-dim">${esc(t.subject)}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" data-import-community="${esc(t.id)}">Import</button>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('[data-import-community]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tmpl = COMMUNITY_TEMPLATES.find(t => t.id === btn.dataset.importCommunity);
+        if (!tmpl) return;
+        const templates = loadUserTemplates();
+        // Avoid duplicates by name
+        if (templates.some(t => t.name === tmpl.name)) {
+          showToast('Template already imported.', 'info');
+          return;
+        }
+        templates.push({ name: tmpl.name, subject: tmpl.subject, body: tmpl.body });
+        saveUserTemplates(templates);
+        renderUserTemplates();
+        showToast(`"${tmpl.name}" imported to your templates.`, 'success');
+      });
+    });
+  }
+
+  renderUserTemplates();
+  renderCommunityTemplates();
+
   // Save
   overlay.querySelector('#settings-save').addEventListener('click', async () => {
     const intervalMin = parseInt(overlay.querySelector('#s-interval').value, 10) || 5;
@@ -740,7 +1002,20 @@ export async function openSettings(state, actions) {
     };
 
     // Save sound notification setting
-    localStorage.setItem('exospine_sound_notifications', String(newSettings.sound_notifications));
+    const soundEnabled = overlay.querySelector('#s-sound-notif')?.checked !== false;
+    localStorage.setItem('exospine_sound_notifications', String(soundEnabled));
+    newSettings.sound_notifications = soundEnabled;
+
+    // Save notification sound choice
+    const notifSound = overlay.querySelector('#s-notif-sound')?.value || 'default';
+    localStorage.setItem('exospine_notif_sound', notifSound);
+
+    // Save widget preferences
+    const widgetPrefs = {};
+    overlay.querySelectorAll('.s-widget-toggle').forEach(cb => {
+      widgetPrefs[cb.dataset.widget] = cb.checked;
+    });
+    localStorage.setItem('exospine_widget_prefs', JSON.stringify(widgetPrefs));
 
     // Save custom theme colors if custom theme is selected
     if (newSettings.theme === 'custom') {
@@ -933,4 +1208,98 @@ function renderShortcutsList() {
       </div>
     </div>
   `).join('');
+}
+
+// ── Imported CSS Theme helpers ──────────────────────────────────────
+
+const IMPORTED_THEME_STYLE_ID = 'exospine-imported-theme';
+
+export function applyImportedThemeCSS(cssText) {
+  removeImportedThemeCSS();
+  if (!cssText) return;
+  const style = document.createElement('style');
+  style.id = IMPORTED_THEME_STYLE_ID;
+  style.textContent = cssText;
+  document.head.appendChild(style);
+}
+
+export function removeImportedThemeCSS() {
+  const existing = document.getElementById(IMPORTED_THEME_STYLE_ID);
+  if (existing) existing.remove();
+}
+
+/**
+ * Restore imported CSS theme from localStorage on startup.
+ * Should be called once during init.
+ */
+export function restoreImportedTheme() {
+  const css = localStorage.getItem('exospine_imported_theme_css');
+  if (css) applyImportedThemeCSS(css);
+}
+
+// ── Notification sound preview ──────────────────────────────────────
+
+function playNotifSoundPreview(sound) {
+  if (sound === 'silent') return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (sound === 'default') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.value = 0.3;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.stop(ctx.currentTime + 0.3);
+    } else if (sound === 'chime') {
+      // 660Hz then 880Hz sequence
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.frequency.value = 660;
+      osc1.type = 'sine';
+      gain1.gain.value = 0.3;
+      osc1.start();
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc1.stop(ctx.currentTime + 0.2);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.frequency.value = 880;
+      osc2.type = 'sine';
+      gain2.gain.value = 0.3;
+      osc2.start(ctx.currentTime + 0.2);
+      gain2.gain.setValueAtTime(0.3, ctx.currentTime + 0.2);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc2.stop(ctx.currentTime + 0.5);
+    } else if (sound === 'bell') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 440;
+      osc.type = 'triangle';
+      gain.gain.value = 0.4;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.stop(ctx.currentTime + 0.5);
+    } else if (sound === 'gentle') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 523;
+      osc.type = 'sine';
+      gain.gain.value = 0.15;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.stop(ctx.currentTime + 0.4);
+    }
+  } catch {}
 }

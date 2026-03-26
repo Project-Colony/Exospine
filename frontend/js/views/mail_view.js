@@ -102,10 +102,29 @@ export function renderMailView(el, state, actions) {
 
   let html = '';
 
+  // Generate 1-line summary from plain text body
+  const _summaryText = (() => {
+    const plainText = (body && body.text) || '';
+    if (!plainText) return '';
+    // Strip greeting lines like "Hi Name," / "Hello," / "Dear ..."
+    let cleaned = plainText.replace(/^(Hi|Hello|Hey|Dear|Bonjour|Salut)\s*[^,\n]*[,!]?\s*\n?/i, '');
+    // Strip signature blocks (lines starting with --, lines like "Regards," etc.)
+    cleaned = cleaned.replace(/(\n--\s*\n[\s\S]*$)/m, '');
+    cleaned = cleaned.replace(/\n(Regards|Best|Cheers|Thanks|Cordialement|Merci|Sincerely|Kind regards|Best regards)[,.]?\s*\n[\s\S]*$/im, '');
+    cleaned = cleaned.trim();
+    if (!cleaned) return '';
+    // Take first sentence (up to 150 chars)
+    const firstSentence = cleaned.match(/^[^\n]*?[.!?](?:\s|$)/);
+    let summary = firstSentence ? firstSentence[0].trim() : cleaned.split('\n')[0].trim();
+    if (summary.length > 150) summary = summary.slice(0, 147) + '...';
+    return summary;
+  })();
+
   // Header
   html += `
     <div class="mail-view-header">
       <div class="mail-view-subject">${esc(mail.subject || '(No subject)')}</div>
+      ${_summaryText ? `<div class="mail-view-summary">${esc(_summaryText)}</div>` : ''}
       <div class="mail-view-meta">
         <div class="mail-view-meta-row">
           <span class="mail-view-meta-label" id="mv-from-label">From</span>
@@ -194,6 +213,7 @@ export function renderMailView(el, state, actions) {
       </div>
       <button class="mail-view-toolbar-btn" data-action="archive" title="${t('archive')}" aria-label="${t('archive')}">\uD83D\uDCE6 ${t('archive')}</button>
       <button class="mail-view-toolbar-btn danger" data-action="delete" title="${t('delete')}" aria-label="${t('delete')}">\uD83D\uDDD1 ${t('delete')}</button>
+      <button class="mail-view-toolbar-btn" data-action="open-new-window" title="Open in new window" aria-label="Open in new window">\u{1F5D7} New window</button>
       <span class="toolbar-sep" aria-hidden="true"></span>
       <div class="zoom-controls">
         <button class="mail-view-toolbar-btn" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">\u2212</button>
@@ -338,13 +358,17 @@ export function renderMailView(el, state, actions) {
   }
   html += '</div>';
 
-  // Notes section (collapsible sticky-note style)
+  // Internal Comments section (threaded comments on this thread)
+  const _threadKey = mail.thread_id || mail.id;
   html += `
-    <details class="mail-view-notes-section" id="notes-section">
-      <summary class="notes-section-toggle">\uD83D\uDCDD Notes <span id="notes-indicator" class="notes-indicator" hidden>\u2022</span></summary>
+    <details class="mail-view-notes-section mail-view-comments-section" id="comments-section">
+      <summary class="notes-section-toggle">\uD83D\uDCDD Comments <span id="comments-indicator" class="notes-indicator" hidden>\u2022</span></summary>
       <div class="notes-section-body">
-        <textarea id="mail-note-textarea" class="mail-note-textarea" placeholder="Add a private note about this email..." rows="3" aria-label="Email note"></textarea>
-        <div class="notes-status" id="notes-status"></div>
+        <div class="comments-timeline" id="comments-timeline" aria-label="Internal comments"></div>
+        <div class="comments-input-row">
+          <textarea id="comment-input" class="mail-note-textarea comment-input" placeholder="Add a comment..." rows="2" aria-label="New comment"></textarea>
+          <button class="comment-add-btn" id="comment-add-btn" title="Add comment" aria-label="Add comment">Add</button>
+        </div>
       </div>
     </details>
   `;
@@ -499,41 +523,101 @@ export function renderMailView(el, state, actions) {
     });
   }
 
-  // Notes: load existing note and set up auto-save
-  const noteTextarea = el.querySelector('#mail-note-textarea');
-  const notesIndicator = el.querySelector('#notes-indicator');
-  const notesStatus = el.querySelector('#notes-status');
-  if (noteTextarea && mail.id) {
-    let _noteSaveTimer = null;
-    // Load existing note
+  // Internal Comments: load and render threaded comments (stored in localStorage)
+  const commentsTimeline = el.querySelector('#comments-timeline');
+  const commentInput = el.querySelector('#comment-input');
+  const commentAddBtn = el.querySelector('#comment-add-btn');
+  const commentsIndicator = el.querySelector('#comments-indicator');
+  const threadKey = mail.thread_id || mail.id;
+
+  function loadComments(tid) {
+    try {
+      const raw = localStorage.getItem('exospine_comments_' + tid);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  }
+  function saveComments(tid, comments) {
+    localStorage.setItem('exospine_comments_' + tid, JSON.stringify(comments));
+  }
+  function renderComments() {
+    const comments = loadComments(threadKey);
+    if (commentsIndicator) commentsIndicator.hidden = comments.length === 0;
+    if (!commentsTimeline) return;
+    if (comments.length === 0) {
+      commentsTimeline.innerHTML = '<div class="comments-empty">No comments yet.</div>';
+      return;
+    }
+    let html = '';
+    for (const c of comments) {
+      const d = new Date(c.timestamp);
+      const timeStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      html += `
+        <div class="comment-bubble" data-comment-ts="${c.timestamp}">
+          <div class="comment-meta">
+            <span class="comment-author">${esc(c.author || 'You')}</span>
+            <span class="comment-time">${esc(timeStr)}</span>
+            <button class="comment-delete-btn" data-delete-ts="${c.timestamp}" title="Delete comment" aria-label="Delete comment">\u00D7</button>
+          </div>
+          <div class="comment-text">${esc(c.text)}</div>
+        </div>
+      `;
+    }
+    commentsTimeline.innerHTML = html;
+    // Scroll to bottom of timeline
+    commentsTimeline.scrollTop = commentsTimeline.scrollHeight;
+    // Attach delete handlers
+    commentsTimeline.querySelectorAll('.comment-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ts = btn.dataset.deleteTs;
+        const all = loadComments(threadKey);
+        const filtered = all.filter(c => c.timestamp !== ts);
+        saveComments(threadKey, filtered);
+        renderComments();
+      });
+    });
+  }
+  renderComments();
+
+  if (commentAddBtn && commentInput) {
+    const addComment = () => {
+      const text = commentInput.value.trim();
+      if (!text) return;
+      const comments = loadComments(threadKey);
+      comments.push({
+        text,
+        timestamp: new Date().toISOString(),
+        author: 'You',
+      });
+      saveComments(threadKey, comments);
+      commentInput.value = '';
+      renderComments();
+    };
+    commentAddBtn.addEventListener('click', addComment);
+    commentInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        addComment();
+      }
+    });
+  }
+
+  // Also migrate old notes to a comment if present (one-time migration)
+  if (mail.id) {
     api.getNote(mail.id).then((note) => {
-      if (note) {
-        noteTextarea.value = note;
-        if (notesIndicator) notesIndicator.hidden = false;
+      if (note && note.trim()) {
+        const existing = loadComments(threadKey);
+        const alreadyMigrated = existing.some(c => c.text === note.trim() && c.author === 'Migrated note');
+        if (!alreadyMigrated) {
+          existing.unshift({
+            text: note.trim(),
+            timestamp: new Date().toISOString(),
+            author: 'Migrated note',
+          });
+          saveComments(threadKey, existing);
+          renderComments();
+        }
       }
     }).catch(() => {});
-    // Auto-save on blur (debounced)
-    const saveNote = () => {
-      clearTimeout(_noteSaveTimer);
-      _noteSaveTimer = setTimeout(async () => {
-        const text = noteTextarea.value;
-        try {
-          await api.saveNote(mail.id, text);
-          if (notesIndicator) notesIndicator.hidden = !text.trim();
-          if (notesStatus) {
-            notesStatus.textContent = text.trim() ? 'Saved' : '';
-            setTimeout(() => { if (notesStatus) notesStatus.textContent = ''; }, 2000);
-          }
-        } catch (err) {
-          if (notesStatus) notesStatus.textContent = 'Save failed';
-        }
-      }, 500);
-    };
-    noteTextarea.addEventListener('blur', saveNote);
-    noteTextarea.addEventListener('input', () => {
-      clearTimeout(_noteSaveTimer);
-      _noteSaveTimer = setTimeout(saveNote, 2000);
-    });
   }
 
   // Zoom controls
@@ -592,6 +676,34 @@ export function renderMailView(el, state, actions) {
         showToast('Task created: ' + title, 'success');
       } catch (err) {
         showToast('Failed to create task: ' + err, 'error');
+      }
+    },
+    'open-new-window': () => {
+      const subject = mail.subject || '(No subject)';
+      const htmlContent = (body && body.html) || '';
+      const textContent = (body && body.text) || '';
+      const content = htmlContent || `<pre style="white-space:pre-wrap;font-family:sans-serif;">${esc(textContent)}</pre>`;
+      const fullHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${esc(subject)}</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:20px;color:#1e1e1e;background:#fff;}
+.mail-header{border-bottom:1px solid #ddd;padding-bottom:12px;margin-bottom:16px;}
+.mail-subject{font-size:20px;font-weight:bold;margin-bottom:8px;}
+.mail-meta{font-size:13px;color:#666;}</style></head><body>
+<div class="mail-header">
+  <div class="mail-subject">${esc(subject)}</div>
+  <div class="mail-meta">From: ${esc(mail.from || 'Unknown')}</div>
+  <div class="mail-meta">To: ${esc(mail.to || '')}</div>
+  <div class="mail-meta">Date: ${esc(mail.date || '')}</div>
+</div>
+<div class="mail-body">${content}</div>
+</body></html>`;
+      const newWin = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no');
+      if (newWin) {
+        newWin.document.write(fullHtml);
+        newWin.document.close();
+        newWin.document.title = subject;
+      } else {
+        showToast('Pop-up blocked. Please allow pop-ups for Exospine.', 'error');
       }
     },
   };

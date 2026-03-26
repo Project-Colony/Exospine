@@ -237,6 +237,22 @@ html, body {
   text-align: center;
 }
 
+/* --- Sidebar widgets --------------------------------------- */
+.sidebar-widgets {
+  padding: 4px 14px 8px;
+}
+.sidebar-widget-item {
+  font-size: 12px;
+  color: var(--sidebar-text-dim);
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-widget-icon {
+  margin-right: 4px;
+}
+
 .sidebar-bottom {
   border-top: 1px solid rgba(255,255,255,0.06);
   padding: 8px 0;
@@ -4222,6 +4238,10 @@ body.col-resizing {
   border-bottom: 1px solid var(--pane-border);
 }
 
+.settings-subsection {
+  margin-bottom: 12px;
+}
+
 /* -- Settings: rule/display-rule editor section --------------- */
 .settings-rule-editor {
   margin-top: 8px;
@@ -4661,4 +4681,162 @@ body.col-resizing {
 }
 [data-theme="light"] .mail-item.duplicate {
   background: rgba(231, 76, 60, 0.04);
+}
+
+/* ================================================================
+   Feature: Email Summary line
+   ================================================================ */
+.mail-view-summary {
+  font-style: italic;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  opacity: 0.75;
+  margin-top: 2px;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-theme="dark"] .mail-view-summary {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ================================================================
+   Feature: Internal Comments (threaded)
+   ================================================================ */
+.mail-view-comments-section .notes-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comments-timeline {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+.comments-empty {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  font-style: italic;
+  padding: 4px 0;
+}
+.comment-bubble {
+  background: rgba(52, 152, 219, 0.08);
+  border-left: 3px solid #3498db;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+[data-theme="dark"] .comment-bubble {
+  background: rgba(52, 152, 219, 0.1);
+}
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.comment-author {
+  font-weight: 600;
+  font-size: 12px;
+  color: #3498db;
+}
+.comment-time {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+}
+.comment-delete-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.comment-bubble:hover .comment-delete-btn {
+  opacity: 1;
+}
+.comment-delete-btn:hover {
+  color: #e74c3c;
+}
+.comment-text {
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comments-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+.comments-input-row .comment-input {
+  flex: 1;
+  min-height: 40px;
+}
+.comment-add-btn {
+  padding: 6px 14px;
+  background: #3498db;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  height: 36px;
+  transition: background 0.15s;
+}
+.comment-add-btn:hover {
+  background: #2980b9;
+}
+
+/* ================================================================
+   Feature: Shared Labels (sidebar)
+   ================================================================ */
+.sidebar-labels {
+  padding-bottom: 4px;
+}
+.sidebar-label-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-label-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sidebar-label-delete {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.sidebar-label-item:hover .sidebar-label-delete {
+  opacity: 1;
+}
+.sidebar-label-delete:hover {
+  color: #e74c3c;
+}
+.sidebar-label-add {
+  opacity: 0.7;
+}
+.sidebar-label-add:hover {
+  opacity: 1;
 }

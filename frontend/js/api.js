@@ -163,6 +163,9 @@ export const openEmlFile = (path) => invoke('open_eml_file', { path });
 // Secure wipe
 export const secureWipe = () => invoke('secure_wipe');
 
+// Autostart
+export const setAutostart = (enabled) => invoke('set_autostart', { enabled });
+
 // Follow-up tracker
 export const addFollowup = (mailId, expectedFrom, dueDate) =>
   invoke('add_followup', { mailId, expectedFrom, dueDate });

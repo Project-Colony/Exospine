@@ -79,6 +79,61 @@ pub struct SaveSignatureParams {
     pub signature_html: Option<String>,
 }
 
+/// Enable or disable starting Exospine with Windows via the registry.
+#[tauri::command]
+pub async fn set_autostart(enabled: bool) -> Result<(), String> {
+    tracing::info!("set_autostart: enabled={}", enabled);
+    #[cfg(target_os = "windows")]
+    {
+        let exe = std::env::current_exe()
+            .map_err(|e| format!("Failed to get exe path: {}", e))?;
+        let exe_str = exe.to_string_lossy().to_string();
+
+        if enabled {
+            let output = std::process::Command::new("reg")
+                .args([
+                    "add",
+                    r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
+                    "/v", "Exospine",
+                    "/t", "REG_SZ",
+                    "/d", &exe_str,
+                    "/f",
+                ])
+                .output()
+                .map_err(|e| format!("Failed to run reg add: {}", e))?;
+            if !output.status.success() {
+                return Err(format!(
+                    "reg add failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+        } else {
+            let output = std::process::Command::new("reg")
+                .args([
+                    "delete",
+                    r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
+                    "/v", "Exospine",
+                    "/f",
+                ])
+                .output()
+                .map_err(|e| format!("Failed to run reg delete: {}", e))?;
+            // Ignore "not found" errors when disabling
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if !stderr.contains("unable to find") && !stderr.contains("not found") {
+                    return Err(format!("reg delete failed: {}", stderr));
+                }
+            }
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = enabled;
+        tracing::warn!("set_autostart: not implemented on this platform");
+    }
+    Ok(())
+}
+
 /// Securely wipe all data: messages, accounts, config, credentials.
 #[tauri::command]
 pub async fn secure_wipe(state: State<'_, AppState>) -> Result<(), String> {
