@@ -10,9 +10,8 @@ let _autoThemeInterval = null;
 export function applyAutoTheme() {
   const hour = new Date().getHours();
   const isDark = hour < 7 || hour >= 20; // Dark between 8pm-7am
-  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
   if (isDark) {
-    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'dark');
   } else {
     document.documentElement.setAttribute('data-theme', 'light');
   }

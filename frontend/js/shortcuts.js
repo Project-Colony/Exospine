@@ -33,7 +33,19 @@ export function setShortcutCallbacks(cbs) {
   _updateMailItemSelection = cbs.updateMailItemSelection;
 }
 
+let _keydownHandler = null;
+
+export function cleanupShortcuts() {
+  if (_keydownHandler) {
+    document.removeEventListener('keydown', _keydownHandler);
+    _keydownHandler = null;
+  }
+}
+
 export function setupKeyboardShortcuts() {
+  // Remove any previous listener before adding a new one
+  cleanupShortcuts();
+
   /**
    * Build a key descriptor string from a KeyboardEvent, matching the format
    * stored by the shortcut editor (e.g. "Ctrl+n", "Shift+R", "F5", "Delete").
@@ -47,16 +59,15 @@ export function setupKeyboardShortcuts() {
     return desc;
   }
 
-  // Global keyboard shortcuts listener — intentional: registered once at
-  // app startup and needed for the entire app lifetime. No cleanup needed.
-  document.addEventListener('keydown', (e) => {
+  // Global keyboard shortcuts listener
+  _keydownHandler = (e) => {
     const shortcuts = getMergedShortcuts();
     const keyDesc = eventToKeyDesc(e);
 
     // Focus mode shortcut (works even in inputs)
     if (keyDesc === shortcuts.focusMode) {
       e.preventDefault();
-      _toggleFocusMode();
+      if (_toggleFocusMode) _toggleFocusMode();
       return;
     }
 
@@ -75,29 +86,29 @@ export function setupKeyboardShortcuts() {
     // Configurable shortcut actions
     const shortcutActions = {
       [shortcuts.compose]: () => {
-        openCompose({ accountId: activeAccountId() }, () => _refreshCurrentFolder());
+        openCompose({ accountId: activeAccountId() }, () => _refreshCurrentFolder && _refreshCurrentFolder());
       },
-      [shortcuts.reply]: () => { if (state.selectedMail) _handleReply(state.selectedMail); },
-      [shortcuts.replyAll]: () => { if (state.selectedMail) _handleReplyAll(state.selectedMail); },
-      [shortcuts.forward]: () => { if (state.selectedMail) _handleForward(state.selectedMail); },
-      [shortcuts.delete]: () => { if (state.selectedMail) _handleDelete(state.selectedMail); },
-      [shortcuts.archive]: () => { if (state.selectedMail) _handleArchive(state.selectedMail); },
-      [shortcuts.star]: () => { if (state.selectedMail) _toggleMailStar(state.selectedMail.id); },
-      [shortcuts.unread]: () => { if (state.selectedMail) _handleMarkUnread(state.selectedMail); },
+      [shortcuts.reply]: () => { if (state.selectedMail && _handleReply) _handleReply(state.selectedMail); },
+      [shortcuts.replyAll]: () => { if (state.selectedMail && _handleReplyAll) _handleReplyAll(state.selectedMail); },
+      [shortcuts.forward]: () => { if (state.selectedMail && _handleForward) _handleForward(state.selectedMail); },
+      [shortcuts.delete]: () => { if (state.selectedMail && _handleDelete) _handleDelete(state.selectedMail); },
+      [shortcuts.archive]: () => { if (state.selectedMail && _handleArchive) _handleArchive(state.selectedMail); },
+      [shortcuts.star]: () => { if (state.selectedMail && _toggleMailStar) _toggleMailStar(state.selectedMail.id); },
+      [shortcuts.unread]: () => { if (state.selectedMail && _handleMarkUnread) _handleMarkUnread(state.selectedMail); },
       [shortcuts.next]: () => {
-        if (!state.mails.length) return;
+        if (!state.mails.length || !_selectMail) return;
         const idx = state.selectedMail
           ? state.mails.findIndex((m) => m.id === state.selectedMail.id) : -1;
         if (idx + 1 < state.mails.length) _selectMail(state.mails[idx + 1].id);
       },
       [shortcuts.prev]: () => {
-        if (!state.mails.length) return;
+        if (!state.mails.length || !_selectMail) return;
         const idx = state.selectedMail
           ? state.mails.findIndex((m) => m.id === state.selectedMail.id)
           : state.mails.length;
         if (idx - 1 >= 0) _selectMail(state.mails[idx - 1].id);
       },
-      [shortcuts.refresh]: () => { _refreshCurrentFolder(); },
+      [shortcuts.refresh]: () => { if (_refreshCurrentFolder) _refreshCurrentFolder(); },
     };
 
     // Check if the current key matches any configured shortcut
@@ -141,8 +152,8 @@ export function setupKeyboardShortcuts() {
           const prevId = state.selectedMail.id;
           state.selectedMail = null;
           state.mailBody = null;
-          _updateMailItemSelection(prevId, null);
-          _renderView();
+          if (_updateMailItemSelection) _updateMailItemSelection(prevId, null);
+          if (_renderView) _renderView();
         }
         break;
       }
@@ -162,5 +173,6 @@ export function setupKeyboardShortcuts() {
         break;
       }
     }
-  });
+  };
+  document.addEventListener('keydown', _keydownHandler);
 }

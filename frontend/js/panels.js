@@ -29,8 +29,8 @@ export function setupConnectionStatus() {
   // Periodic health check every 30 seconds
   _intervals.push(setInterval(async () => {
     try {
-      await api.getAccounts();
-      updateStatus(true);
+      const result = await api.getAccounts();
+      updateStatus(Array.isArray(result));
     } catch {
       updateStatus(false);
     }

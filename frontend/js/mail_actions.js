@@ -160,10 +160,14 @@ export async function handleUnflagMail(mailId) {
 }
 
 export async function handleSweepSender(mail) {
-  // Extract sender email from the "from" field
+  // Extract exact sender email from the "from" field
+  const extractEmail = (from) => {
+    const match = from.match(/<([^>]+)>/);
+    return match ? match[1].toLowerCase() : from.toLowerCase().trim();
+  };
+
   const fromField = mail.from || '';
-  const emailMatch = fromField.match(/<([^>]+)>/) || [null, fromField];
-  const senderEmail = (emailMatch[1] || fromField).trim();
+  const senderEmail = extractEmail(fromField);
   if (!senderEmail) {
     showToast('Cannot determine sender email.', 'error');
     return;
@@ -180,7 +184,7 @@ export async function handleSweepSender(mail) {
   if (_isOffline) {
     queueAction({ type: 'sweep_sender', accountId: activeAccountId(), folder: state.activeFolder, senderEmail });
     // Optimistic local removal
-    const toRemove = state.mails.filter(m => (m.from || '').includes(senderEmail));
+    const toRemove = state.mails.filter(m => extractEmail(m.from || '') === senderEmail);
     for (const m of toRemove) _removeMail(m.id);
     return;
   }
@@ -189,7 +193,7 @@ export async function handleSweepSender(mail) {
     const count = await api.sweepSender(activeAccountId(), state.activeFolder, senderEmail);
     showToast(`Deleted ${count || 'all'} emails from ${senderEmail}.`, 'success');
     // Remove matching mails from local state
-    const toRemove = state.mails.filter(m => (m.from || '').includes(senderEmail)).map(m => m.id);
+    const toRemove = state.mails.filter(m => extractEmail(m.from || '') === senderEmail).map(m => m.id);
     for (const id of toRemove) _removeMail(id);
   } catch (err) {
     showToast(`Sweep failed: ${err}`, 'error');

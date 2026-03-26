@@ -95,7 +95,7 @@ export async function replayQueue() {
       showToast(`${discarded.length} action(s) failed after ${MAX_RETRIES} retries and were discarded.`, 'error');
     }
     if (failed.length > 0) {
-      _actionQueue.unshift(...failed);
+      _actionQueue.push(...failed);
       break; // stop on first batch with failures, will retry next time
     }
   }

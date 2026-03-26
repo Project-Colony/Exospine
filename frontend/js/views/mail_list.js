@@ -26,7 +26,10 @@ const SORT_OPTIONS = [
   { key: 'subject-az', label: 'Subject A-Z' },
   { key: 'priority', label: 'Priority' },
 ];
-let _currentSort = localStorage.getItem('exospine_mail_sort') || 'date-desc';
+let _currentSort = (() => {
+  const saved = localStorage.getItem('exospine_mail_sort');
+  return (saved && SORT_OPTIONS.some(s => s.key === saved)) ? saved : 'date-desc';
+})();
 
 // ── Duplicate detection state ────────────────────────────────
 let _duplicateIds = new Set(); // IDs of messages that are duplicates

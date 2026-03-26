@@ -74,6 +74,9 @@ function _previewCacheGet(key) {
  * @param {object} actions  { onReply, onReplyAll, onForward, onArchive, onDelete, onMarkUnread }
  */
 export function renderMailView(el, state, actions) {
+  // Clear any pending zoom save timer on re-render
+  if (_zoomSaveTimer) { clearTimeout(_zoomSaveTimer); _zoomSaveTimer = null; }
+
   const mail = state.selectedMail;
 
   if (!mail) {
@@ -111,9 +114,16 @@ export function renderMailView(el, state, actions) {
     if (!plainText) return '';
     // Strip greeting lines like "Hi Name," / "Hello," / "Dear ..."
     let cleaned = plainText.replace(/^(Hi|Hello|Hey|Dear|Bonjour|Salut)\s*[^,\n]*[,!]?\s*\n?/i, '');
-    // Strip signature blocks (lines starting with --, lines like "Regards," etc.)
-    cleaned = cleaned.replace(/(\n--\s*\n[\s\S]*$)/m, '');
-    cleaned = cleaned.replace(/\n(Regards|Best|Cheers|Thanks|Cordialement|Merci|Sincerely|Kind regards|Best regards)[,.]?\s*\n[\s\S]*$/im, '');
+    // Strip signature blocks only if they appear in the last 30% of the text
+    const threshold = Math.floor(cleaned.length * 0.7);
+    const sigDashMatch = cleaned.search(/\n--\s*\n/m);
+    if (sigDashMatch >= 0 && sigDashMatch >= threshold) {
+      cleaned = cleaned.slice(0, sigDashMatch);
+    }
+    const sigClosingMatch = cleaned.search(/\n(Regards|Best|Cheers|Thanks|Cordialement|Merci|Sincerely|Kind regards|Best regards)[,.]?\s*\n/im);
+    if (sigClosingMatch >= 0 && sigClosingMatch >= threshold) {
+      cleaned = cleaned.slice(0, sigClosingMatch);
+    }
     cleaned = cleaned.trim();
     if (!cleaned) return '';
     // Take first sentence (up to 150 chars)

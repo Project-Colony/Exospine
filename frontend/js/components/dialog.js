@@ -28,10 +28,24 @@ export function showDialog({ title, message, confirmLabel = 'Confirm', cancelLab
       </div>
     `;
 
+    let _resolved = false;
+
+    // Escape to cancel
+    const onKey = (e) => {
+      if (e.key === 'Escape') cleanup(false);
+    };
+
+    const onBackdrop = (e) => {
+      if (e.target === container) cleanup(false);
+    };
+
     const cleanup = (result) => {
+      if (_resolved) return;
+      _resolved = true;
       container.hidden = true;
       container.innerHTML = '';
       document.removeEventListener('keydown', onKey);
+      container.removeEventListener('click', onBackdrop);
       resolve(result);
     };
 
@@ -39,14 +53,8 @@ export function showDialog({ title, message, confirmLabel = 'Confirm', cancelLab
     container.querySelector('[data-action="cancel"]').addEventListener('click', () => cleanup(false));
 
     // Close on backdrop click
-    container.addEventListener('click', (e) => {
-      if (e.target === container) cleanup(false);
-    }, { once: true });
+    container.addEventListener('click', onBackdrop);
 
-    // Escape to cancel
-    const onKey = (e) => {
-      if (e.key === 'Escape') cleanup(false);
-    };
     document.addEventListener('keydown', onKey);
 
     // Focus confirm button

@@ -18,11 +18,11 @@ let _autoSaveInterval = null;
 let _currentDraftId = null;
 let _lastContentHash = null;
 
-/** Simple hash for dirty-checking auto-save content. */
+/** djb2 hash for dirty-checking auto-save content. */
 function _hashContent(str) {
-  let h = 0;
+  let h = 5381;
   for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    h = ((h << 5) + h + str.charCodeAt(i)) | 0; // h * 33 + c
   }
   return h;
 }
@@ -57,8 +57,13 @@ function startAutoSave(getDraft) {
           indicator.hidden = false;
           setTimeout(() => { if (indicator) indicator.hidden = true; }, 2000);
         }
-      } catch {
-        // Silent fail for auto-save
+      } catch (e) {
+        console.warn('Auto-save failed:', e);
+        const indicator = overlay.querySelector('#compose-autosave-indicator');
+        if (indicator) {
+          indicator.textContent = 'Save failed';
+          indicator.hidden = false;
+        }
       }
     }
   }, 30000);

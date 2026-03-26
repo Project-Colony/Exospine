@@ -46,7 +46,7 @@ export const saveDraft = (draft) => invoke('save_draft', { draft });
 export const getSignature = (accountId) => invoke('get_signature', { accountId });
 
 export const saveSignature = (accountId, signature, signatureHtml) =>
-  invoke('save_signature', { params: { account_id: accountId, signature, signature_html: signatureHtml || null } });
+  invoke('save_signature', { account_id: accountId, signature, signature_html: signatureHtml || null });
 
 export const getSettings = () => invoke('get_settings');
 

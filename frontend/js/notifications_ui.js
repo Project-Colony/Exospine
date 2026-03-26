@@ -87,7 +87,7 @@ export function playNotificationSound(accountId) {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
       osc.stop(ctx.currentTime + 0.3);
     }
-  } catch {}
+  } catch (e) { console.debug('Audio not available:', e); }
 }
 
 // ---------------------------------------------------------------------------
@@ -102,7 +102,7 @@ export function showDesktopNotification(title, body) {
         if (p === 'granted') new Notification(title, { body, icon: '' });
       });
     }
-  } catch {}
+  } catch (e) { console.debug('Desktop notification not available:', e); }
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 // Exospine Plugin API
 // Allows third-party extensions to hook into the email client.
 
+import { showToast } from './components/toast.js';
+
 const _plugins = [];
 
 export function registerPlugin(plugin) {
@@ -20,16 +22,8 @@ export function getPlugins() { return [..._plugins]; }
 
 function getPluginContext() {
   return {
-    showToast: (msg, level) => {
-      const { showToast } = await_import('./components/toast.js');
-      if (showToast) showToast(msg, level);
-    },
+    showToast: (msg, level) => showToast(msg, level),
     getVersion: () => '0.2.0',
     getTheme: () => document.documentElement.getAttribute('data-theme') || 'dark',
   };
-}
-
-// Lazy import helper (plugins can't use ES modules easily)
-async function await_import(path) {
-  try { return await import(path); } catch { return {}; }
 }
