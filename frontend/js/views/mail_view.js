@@ -447,28 +447,10 @@ export function renderMailView(el, state, actions) {
       const showBtn = el.querySelector('#show-images-btn');
       if (showBtn) {
         showBtn.addEventListener('click', () => {
-          // Instead of rewriting the entire iframe (causes flash),
-          // restore original src on all blocked images inside the iframe.
-          // Add loading="lazy" to prevent all images from loading simultaneously.
-          try {
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-            if (iframeDoc) {
-              const imgs = iframeDoc.querySelectorAll('img[data-original-src]');
-              imgs.forEach(img => {
-                img.setAttribute('loading', 'lazy');
-                img.src = img.getAttribute('data-original-src');
-                img.removeAttribute('data-original-src');
-              });
-            } else {
-              // Fallback: rewrite iframe if can't access document (sandbox restriction)
-              writeToIframe(iframe, body.html);
-            }
-          } catch {
-            // Sandbox may block access — fallback to full rewrite
-            writeToIframe(iframe, body.html);
-          }
+          // Rewrite iframe with images allowed (no stripRemoteImages)
+          writeToIframe(iframe, body.html);
           const banner = el.querySelector('#image-banner');
-          if (banner) banner.remove();
+          if (banner) banner.style.display = 'none';
         });
       }
     }

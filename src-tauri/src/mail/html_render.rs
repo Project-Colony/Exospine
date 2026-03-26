@@ -18,13 +18,17 @@ fn email_sanitizer(remote_images: bool) -> Builder<'static> {
         "h1", "h2", "h3", "h4", "h5", "h6",
         "blockquote", "pre", "code", "sup", "sub", "dl", "dt", "dd",
         "caption", "colgroup", "col", "abbr", "address",
+        "style", "center", "font", "big", "small", "strike", "s",
     ]
     .into_iter()
     .collect();
     builder.tags(tags);
 
     // Allowed attributes per tag
-    let generic_attrs: HashSet<&str> = ["class", "style", "title"].into_iter().collect();
+    let generic_attrs: HashSet<&str> = [
+        "class", "style", "title", "align", "valign", "bgcolor", "background",
+        "dir", "lang", "id",
+    ].into_iter().collect();
     builder.generic_attributes(generic_attrs);
 
     let mut tag_attrs: HashMap<&str, HashSet<&str>> = HashMap::new();
@@ -55,6 +59,18 @@ fn email_sanitizer(remote_images: bool) -> Builder<'static> {
         ["class", "style", "width", "cellpadding", "cellspacing", "border"]
             .into_iter()
             .collect(),
+    );
+    tag_attrs.insert(
+        "font",
+        ["color", "face", "size", "class", "style"].into_iter().collect(),
+    );
+    tag_attrs.insert(
+        "tr",
+        ["class", "style", "bgcolor", "height"].into_iter().collect(),
+    );
+    tag_attrs.insert(
+        "col",
+        ["width", "span", "style"].into_iter().collect(),
     );
     builder.tag_attributes(tag_attrs);
 
