@@ -42,6 +42,11 @@
 .mail-item.acct-color-4 { border-left: 3px solid rgb(230, 150, 0); }
 .mail-item.acct-color-5 { border-left: 3px solid rgb(0, 180, 160); }
 
+/* -- Unread accent takes priority over account color ---------- */
+.mail-item.unread[class*="acct-color-"] {
+  border-left-color: var(--accent) !important;
+}
+
 /* -- Virtual scroll container --------------------------------- */
 #ml-virtual-container {
   overflow-y: auto;
@@ -534,7 +539,7 @@ body.col-resizing {
   padding: 6px 10px;
   cursor: pointer;
   font-size: 13px;
-  border-bottom: 1px solid var(--pane-border, #333);
+  border-bottom: 1px solid var(--pane-border);
 }
 .compose-autocomplete-name { font-weight: 500; }
 .compose-autocomplete-email { color: var(--pane-text-dim); margin-left: 6px; }
@@ -544,7 +549,7 @@ body.col-resizing {
   padding: 6px 12px;
   cursor: pointer;
   font-size: 13px;
-  border-bottom: 1px solid var(--pane-border, #333);
+  border-bottom: 1px solid var(--pane-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -647,17 +652,17 @@ body.col-resizing {
   background: rgba(52, 152, 219, 0.08);
   border-bottom: 1px solid var(--pane-border);
   font-size: 13px;
-  color: #3498db;
+  color: var(--accent);
   flex-shrink: 0;
 }
 .unsubscribe-link {
-  color: #3498db;
+  color: var(--accent);
   text-decoration: underline;
   cursor: pointer;
   font-weight: 500;
 }
 .unsubscribe-link:hover {
-  color: #2980b9;
+  color: var(--accent-hover);
 }
 [data-theme="light"] .mail-view-unsubscribe-banner {
   background: rgba(52, 152, 219, 0.06);
@@ -693,7 +698,7 @@ body.col-resizing {
   transform: rotate(90deg);
 }
 .notes-indicator {
-  color: #f39c12;
+  color: var(--warning);
   font-size: 16px;
   line-height: 1;
 }
@@ -716,7 +721,7 @@ body.col-resizing {
   box-sizing: border-box;
 }
 .mail-note-textarea:focus {
-  border-color: #f39c12;
+  border-color: var(--warning);
 }
 .mail-note-textarea::placeholder {
   color: #b7950b;
@@ -745,14 +750,14 @@ body.col-resizing {
    ================================================================ */
 .mail-item.duplicate {
   background: rgba(231, 76, 60, 0.06);
-  border-left: 3px solid #e74c3c;
+  border-left: 3px solid var(--danger);
 }
 .mail-duplicate-badge {
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 3px;
   background: rgba(231, 76, 60, 0.12);
-  color: #e74c3c;
+  color: var(--danger);
   font-weight: 600;
   flex-shrink: 0;
   align-self: center;
@@ -771,7 +776,7 @@ body.col-resizing {
 .mail-view-summary {
   font-style: italic;
   font-size: 13px;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   opacity: 0.75;
   margin-top: 2px;
   margin-bottom: 4px;
@@ -803,13 +808,13 @@ body.col-resizing {
 }
 .comments-empty {
   font-size: 12px;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   font-style: italic;
   padding: 4px 0;
 }
 .comment-bubble {
   background: rgba(52, 152, 219, 0.08);
-  border-left: 3px solid #3498db;
+  border-left: 3px solid var(--accent);
   border-radius: 4px;
   padding: 6px 10px;
   font-size: 13px;
@@ -826,17 +831,17 @@ body.col-resizing {
 .comment-author {
   font-weight: 600;
   font-size: 12px;
-  color: #3498db;
+  color: var(--accent);
 }
 .comment-time {
   font-size: 11px;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
 }
 .comment-delete-btn {
   margin-left: auto;
   background: none;
   border: none;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 14px;
   padding: 0 4px;
@@ -848,7 +853,7 @@ body.col-resizing {
   opacity: 1;
 }
 .comment-delete-btn:hover {
-  color: #e74c3c;
+  color: var(--danger);
 }
 .comment-text {
   line-height: 1.4;
@@ -866,7 +871,7 @@ body.col-resizing {
 }
 .comment-add-btn {
   padding: 6px 14px;
-  background: #3498db;
+  background: var(--accent);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -878,7 +883,7 @@ body.col-resizing {
   transition: background 0.15s;
 }
 .comment-add-btn:hover {
-  background: #2980b9;
+  background: var(--accent-hover);
 }
 
 /* ================================================================
@@ -902,7 +907,7 @@ body.col-resizing {
   margin-left: auto;
   background: none;
   border: none;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 14px;
   padding: 0 4px;
@@ -914,7 +919,7 @@ body.col-resizing {
   opacity: 1;
 }
 .sidebar-label-delete:hover {
-  color: #e74c3c;
+  color: var(--danger);
 }
 .sidebar-label-add {
   opacity: 0.7;

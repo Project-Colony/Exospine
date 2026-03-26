@@ -108,6 +108,11 @@
   }
 }
 
+@media (max-width: 480px) {
+  .mail-view-toolbar { flex-wrap: wrap; gap: 4px; }
+  .mail-view-header { padding: 8px; }
+}
+
 /* ============================================================
    RTL Language Support
    ============================================================ */
@@ -168,3 +173,5 @@
 [dir="rtl"] .status-bar {
   flex-direction: row-reverse;
 }
+[dir="rtl"] .mail-item-date { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .quick-action-btn { right: auto; left: 8px; }

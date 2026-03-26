@@ -24,6 +24,7 @@
   border-radius: 4px;
   background: rgba(255,255,255,0.08);
   animation: skeleton-pulse 1.2s ease-in-out infinite;
+  will-change: opacity;
 }
 
 /* --- Error state with retry -------------------------------- */
@@ -102,6 +103,7 @@
 .sync-progress-bar.indeterminate .sync-progress-fill {
   width: 30% !important;
   animation: sync-indeterminate 1.5s ease-in-out infinite;
+  will-change: left, width;
 }
 @keyframes sync-indeterminate {
   0%   { left: -30%; }
@@ -349,6 +351,7 @@
   overflow-y: auto;
   margin: 0;
   background: rgba(0,0,0,0.02);
+}
 
 /* ============================================================
    Image lightbox

@@ -136,25 +136,6 @@
   gap: 8px;
 }
 
-/* --- Utility ----------------------------------------------- */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0,0,0,0);
-  border: 0;
-}
-
-.text-ellipsis {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-
 .context-menu {
   position: fixed;
   z-index: 10000;
@@ -303,14 +284,14 @@
 
 /* Light theme overrides for headers modal */
 [data-theme="light"] .headers-modal {
-  background: #fff;
+  background: var(--pane-bg);
   border-color: rgba(0,0,0,0.12);
 }
 [data-theme="light"] .headers-modal-title {
-  color: #1e1e1e;
+  color: var(--pane-text);
 }
 [data-theme="light"] .headers-modal-content {
-  color: #333;
+  color: var(--pane-text);
 }
 [data-theme="light"] .headers-modal-content .header-highlight {
   color: rgb(0, 100, 200);
@@ -320,7 +301,7 @@
   border-color: rgba(0,0,0,0.1);
 }
 [data-theme="light"] .settings-security-log-entry {
-  color: #555;
+  color: var(--pane-text-dim);
   border-bottom-color: rgba(0,0,0,0.06);
 }
 
@@ -380,25 +361,7 @@
   right: 0;
   z-index: 9999;
   background: var(--warning);
-  color: #1e1e1e;
-  text-align: center;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: var(--font);
-}
-
-/* ============================================================
-   Offline Banner
-   ============================================================ */
-.offline-banner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 9999;
-  background: var(--warning);
-  color: #1e1e1e;
+  color: var(--pane-text);
   text-align: center;
   padding: 6px 12px;
   font-size: 13px;
@@ -492,6 +455,16 @@
   outline-offset: 2px;
 }
 
+.mail-item:focus-visible,
+.sidebar-folder:focus-visible,
+.mail-list-btn:focus-visible,
+.compose-field-input:focus-visible,
+.compose-editor:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Remove focus ring for mouse users */
 :focus:not(:focus-visible) {
   outline: none;
@@ -532,13 +505,13 @@
 /* ============================================================
    Feature: Focus mode
    ============================================================ */
-#app.focus-mode #sidebar,
-#app.focus-mode .panel-splitter:first-of-type {
-  display: none !important;
+body #app.focus-mode #sidebar,
+body #app.focus-mode .panel-splitter:first-of-type {
+  display: none;
 }
-#app.focus-mode #mail-list,
-#app.focus-mode .panel-splitter:nth-of-type(2) {
-  display: none !important;
+body #app.focus-mode #mail-list,
+body #app.focus-mode .panel-splitter:nth-of-type(2) {
+  display: none;
 }
 #app.focus-mode #content {
   flex: 1;
@@ -823,28 +796,6 @@
   font-size: 14px;
   color: inherit;
   opacity: 0.7;
-}
-
-.mail-list-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  color: var(--list-text-dim);
-  font-size: 14px;
-  padding: 40px 20px;
-  text-align: center;
-}
-
-.mail-view-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  color: var(--pane-text-dim);
-  font-size: 15px;
 }
 
 /* ============================================================

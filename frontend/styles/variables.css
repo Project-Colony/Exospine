@@ -46,6 +46,10 @@
   --font-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
   --font-size: 14px;
 
+  --separator: var(--pane-border);
+  --border: var(--pane-border);
+  --text-muted: var(--pane-text-dim);
+
   --toast-success: rgb(40, 167, 69);
   --toast-error: rgb(220, 53, 69);
   --toast-info: rgb(0, 120, 214);

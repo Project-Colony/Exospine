@@ -141,7 +141,7 @@
 }
 .mail-item.unread .mail-item-from {
   font-weight: 700;
-  color: #fff;
+  color: var(--list-text);
 }
 
 .mail-item-date {
