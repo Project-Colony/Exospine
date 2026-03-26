@@ -343,35 +343,37 @@ pub async fn start_idle(
         let timeout_secs: u64 = 29 * 60; // 29 minutes per RFC 2177
 
         loop {
-            // Connect fresh for each IDLE cycle
-            let session = match crate::mail::imap::connect(&account, &password).await {
-                Ok(s) => s,
-                Err(e) => {
-                    tracing::error!("IDLE: failed to connect for {}: {}", account.email, e);
-                    // Wait before retrying
-                    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-                    continue;
-                }
-            };
+            let cycle_result: Result<(), String> = async {
+                // Connect fresh for each IDLE cycle
+                let session = crate::mail::imap::connect(&account, &password)
+                    .await
+                    .map_err(|e| format!("IDLE: failed to connect for {}: {}", account.email, e))?;
 
-            match crate::mail::idle::idle_wait(session, "INBOX", timeout_secs).await {
-                Ok((new_mail, mut session)) => {
-                    if new_mail {
-                        tracing::info!("IDLE: new mail detected for {}", account.email);
-                        let _ = app.emit("new-mail", serde_json::json!({
-                            "count": 1,
-                            "folder": "INBOX",
-                            "accountId": account.id,
-                        }));
+                match crate::mail::idle::idle_wait(session, "INBOX", timeout_secs).await {
+                    Ok((new_mail, mut session)) => {
+                        if new_mail {
+                            tracing::info!("IDLE: new mail detected for {}", account.email);
+                            let _ = app.emit("new-mail", serde_json::json!({
+                                "count": 1,
+                                "folder": "INBOX",
+                                "accountId": account.id,
+                            }));
+                        }
+                        // Logout and reconnect for next cycle
+                        let _ = session.logout().await;
                     }
-                    // Logout and reconnect for next cycle
-                    let _ = session.logout().await;
+                    Err(e) => {
+                        return Err(format!("IDLE: error for {}: {}", account.email, e));
+                    }
                 }
-                Err(e) => {
-                    tracing::error!("IDLE: error for {}: {}", account.email, e);
-                    // Wait before retrying
-                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-                }
+                Ok(())
+            }
+            .await;
+
+            if let Err(e) = cycle_result {
+                tracing::error!("{}", e);
+                // Wait before retrying — don't let a tight error loop burn CPU
+                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
             }
         }
     });

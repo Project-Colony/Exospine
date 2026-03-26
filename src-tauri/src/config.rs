@@ -42,9 +42,40 @@ use aes_gcm::{
 use aes_gcm::aead::generic_array::GenericArray;
 use sha2::{Digest, Sha256};
 
-/// Derive a 256-bit encryption key from machine-specific data.
-/// Not a substitute for a proper key-management system, but prevents
-/// casual / cross-user reads of the plaintext refresh tokens.
+/// Path to the per-installation random salt file.
+fn salt_path() -> PathBuf {
+    data_dir().join("encryption.salt")
+}
+
+/// Load or create a 32-byte random salt unique to this installation.
+/// The salt is stored in `<data_dir>/encryption.salt`.
+fn load_or_create_salt() -> [u8; 32] {
+    let path = salt_path();
+    if let Ok(data) = std::fs::read(&path) {
+        if data.len() == 32 {
+            let mut salt = [0u8; 32];
+            salt.copy_from_slice(&data);
+            return salt;
+        }
+    }
+    // Generate a new random salt
+    let mut salt = [0u8; 32];
+    {
+        use aes_gcm::aead::rand_core::RngCore;
+        OsRng.fill_bytes(&mut salt);
+    }
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Err(e) = std::fs::write(&path, &salt) {
+        tracing::error!("Failed to write encryption salt: {}", e);
+    }
+    salt
+}
+
+/// Derive a 256-bit encryption key from machine-specific data plus a
+/// per-installation random salt. This prevents the same key from being
+/// derived on different machines even with identical hostname/username.
 fn derive_encryption_key() -> [u8; 32] {
     let hostname = std::env::var("COMPUTERNAME")
         .or_else(|_| std::env::var("HOSTNAME"))
@@ -52,14 +83,14 @@ fn derive_encryption_key() -> [u8; 32] {
     let username = std::env::var("USERNAME")
         .or_else(|_| std::env::var("USER"))
         .unwrap_or_else(|_| "exospine-user".to_string());
-    let salt = "exospine-accounts-encryption-salt-v1";
+    let installation_salt = load_or_create_salt();
 
     let mut hasher = Sha256::new();
     hasher.update(hostname.as_bytes());
     hasher.update(b":");
     hasher.update(username.as_bytes());
     hasher.update(b":");
-    hasher.update(salt.as_bytes());
+    hasher.update(&installation_salt);
     hasher.finalize().into()
 }
 

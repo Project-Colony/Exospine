@@ -109,6 +109,28 @@ static CUSTOM: ProviderConfig = ProviderConfig {
     auth_method: AuthMethod::Basic,
 };
 
+/// Build an OAuth2Config for the given account based on its email domain.
+/// Returns `None` if the account is not OAuth2.
+pub fn oauth2_config_for_account(
+    account: &crate::app_state::Account,
+    config: &crate::config::Config,
+) -> Option<crate::accounts::oauth2::OAuth2Config> {
+    if !matches!(account.auth_method, crate::app_state::AuthMethod::OAuth2 { .. }) {
+        return None;
+    }
+    let provider_cfg = detect_provider(&account.email);
+    let (client_id, client_secret) = match provider_cfg.provider {
+        Provider::Gmail => (config.google_client_id.clone(), config.google_client_secret.clone()),
+        Provider::Outlook => (config.microsoft_client_id.clone(), config.microsoft_client_secret.clone()),
+        _ => (config.google_client_id.clone(), config.google_client_secret.clone()),
+    };
+    Some(crate::accounts::oauth2::config_for_provider(
+        provider_cfg.provider,
+        client_id,
+        client_secret,
+    ))
+}
+
 /// Detect the email provider from an email address.
 ///
 /// Exchange Online / Office 365 accounts use the same IMAP/SMTP servers and

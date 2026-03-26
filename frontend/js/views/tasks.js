@@ -157,7 +157,7 @@ async function loadAndRenderTasks(overlay, opts) {
     });
 
   } catch (err) {
-    listEl.innerHTML = `<div class="tasks-error">Failed to load tasks: ${err}</div>`;
+    listEl.innerHTML = `<div class="tasks-error">Failed to load tasks: ${esc(String(err))}</div>`;
   }
 }
 
@@ -264,7 +264,7 @@ async function loadAndRenderFollowups(overlay, opts) {
     });
 
   } catch (err) {
-    listEl.innerHTML = `<div class="tasks-error">Failed to load follow-ups: ${err}</div>`;
+    listEl.innerHTML = `<div class="tasks-error">Failed to load follow-ups: ${esc(String(err))}</div>`;
   }
 }
 

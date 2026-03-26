@@ -90,34 +90,61 @@ fn main() {
         }
     }
 
-    // Refresh OAuth2 tokens at startup in parallel (non-blocking)
-    {
-        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-        let mut handles = Vec::new();
-        for acct in &accounts {
+    // OAuth2 token refresh data: collected here, spawned in .setup() to avoid blocking startup.
+    let oauth_refresh_tasks: Vec<_> = accounts
+        .iter()
+        .filter_map(|acct| {
             if let app_state::AuthMethod::OAuth2 { ref refresh_token } = acct.auth_method {
-                let provider_cfg = accounts::provider::detect_provider(&acct.email);
-                let (client_id, client_secret) = match provider_cfg.provider {
-                    accounts::provider::Provider::Gmail => {
-                        (config.google_client_id.clone(), config.google_client_secret.clone())
+                let oauth_cfg = accounts::provider::oauth2_config_for_account(acct, &config)?;
+                Some((acct.id.clone(), acct.email.clone(), refresh_token.clone(), oauth_cfg))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Open SQLite database
+    let db = Database::open().ok();
+
+    // Create shutdown broadcast channel
+    let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
+
+    let state = AppState {
+        accounts: Mutex::new(accounts),
+        db: Mutex::new(db),
+        config: Mutex::new(config),
+        settings: Mutex::new(settings),
+        shutdown_tx: shutdown_tx.clone(),
+    };
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .manage(state)
+        .setup(move |app| {
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(debug_assertions)]
+                window.open_devtools();
+                // Restore window position/size from saved state
+                restore_window_state(&window);
+                // Save window state on close and trigger graceful shutdown
+                let win = window.clone();
+                let shutdown = shutdown_tx.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        save_window_state(&win);
+                        // Signal all background tasks to stop
+                        let _ = shutdown.send(());
+                        // Brief grace period for background tasks
+                        std::thread::sleep(std::time::Duration::from_millis(500));
                     }
-                    accounts::provider::Provider::Outlook => {
-                        (config.microsoft_client_id.clone(), config.microsoft_client_secret.clone())
-                    }
-                    _ => {
-                        (config.google_client_id.clone(), config.google_client_secret.clone())
-                    }
-                };
-                let oauth_cfg = accounts::oauth2::config_for_provider(
-                    provider_cfg.provider,
-                    client_id,
-                    client_secret,
-                );
-                let rt_token = refresh_token.clone();
-                let acct_id = acct.id.clone();
-                let acct_email = acct.email.clone();
-                handles.push(rt.spawn(async move {
-                    match accounts::oauth2::refresh_token(&oauth_cfg, &rt_token).await {
+                });
+            }
+
+            // Refresh OAuth2 tokens in background (non-blocking)
+            for (acct_id, acct_email, rt_token, oauth_cfg) in oauth_refresh_tasks {
+                tauri::async_runtime::spawn(async move {
+                    match crate::accounts::oauth2::refresh_token(&oauth_cfg, &rt_token).await {
                         Ok(token_resp) => {
                             tracing::info!(
                                 "Refreshed OAuth2 token for account {} (access_token len={})",
@@ -141,54 +168,6 @@ fn main() {
                                 e
                             );
                         }
-                    }
-                }));
-            }
-        }
-        // Wait for all refresh tasks to complete (with timeout)
-        rt.block_on(async {
-            for handle in handles {
-                let _ = tokio::time::timeout(
-                    std::time::Duration::from_secs(15),
-                    handle,
-                ).await;
-            }
-        });
-    }
-
-    // Open SQLite database
-    let db = Database::open().ok();
-
-    // Create shutdown broadcast channel
-    let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
-
-    let state = AppState {
-        accounts: Mutex::new(accounts),
-        db: Mutex::new(db),
-        config: Mutex::new(config),
-        settings: Mutex::new(settings),
-        shutdown_tx: shutdown_tx.clone(),
-    };
-
-    tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .manage(state)
-        .setup(move |app| {
-            use tauri::Manager;
-            if let Some(window) = app.get_webview_window("main") {
-                window.open_devtools();
-                // Restore window position/size from saved state
-                restore_window_state(&window);
-                // Save window state on close and trigger graceful shutdown
-                let win = window.clone();
-                let shutdown = shutdown_tx.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { .. } = event {
-                        save_window_state(&win);
-                        // Signal all background tasks to stop
-                        let _ = shutdown.send(());
-                        // Brief grace period for background tasks
-                        std::thread::sleep(std::time::Duration::from_millis(500));
                     }
                 });
             }
@@ -436,12 +415,11 @@ fn main() {
         .unwrap_or_else(|e| {
             let msg = format!(
                 "Exospine failed to start.\n\n\
-                 Error: {}\n\n\
+                 Error: {e}\n\n\
                  This is often caused by a missing or outdated WebView2 runtime.\n\
                  Please install WebView2 from:\n\
                  https://developer.microsoft.com/en-us/microsoft-edge/webview2/\n\n\
                  If the problem persists, try running Exospine as administrator.",
-                e
             );
             tracing::error!("{}", msg);
             // Show a native message box so the user sees the error even without a console

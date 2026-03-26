@@ -96,8 +96,19 @@ pub async fn get_session_for_folder(
                     return Ok(entry.session);
                 }
                 // Different folder (or none) — SELECT it
-                entry.session.select(folder).await?;
-                return Ok(entry.session);
+                match entry.session.select(folder).await {
+                    Ok(_) => return Ok(entry.session),
+                    Err(e) => {
+                        tracing::debug!(
+                            account = %account.email,
+                            folder = %folder,
+                            error = %e,
+                            "Pooled session SELECT failed, dropping session and creating new one"
+                        );
+                        // Explicitly drop the broken session — do NOT return it to pool
+                        drop(entry.session);
+                    }
+                }
             }
             Ok(Err(e)) => {
                 tracing::debug!(

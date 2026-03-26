@@ -37,24 +37,8 @@ pub async fn try_refresh_oauth_token(
         _ => return Err("Account is not OAuth2".to_string()),
     };
 
-    let provider_cfg = crate::accounts::provider::detect_provider(&account.email);
-    let (client_id, client_secret) = match provider_cfg.provider {
-        crate::accounts::provider::Provider::Gmail => {
-            (config.google_client_id.clone(), config.google_client_secret.clone())
-        }
-        crate::accounts::provider::Provider::Outlook => {
-            (config.microsoft_client_id.clone(), config.microsoft_client_secret.clone())
-        }
-        _ => {
-            (config.google_client_id.clone(), config.google_client_secret.clone())
-        }
-    };
-
-    let oauth_cfg = crate::accounts::oauth2::config_for_provider(
-        provider_cfg.provider,
-        client_id,
-        client_secret,
-    );
+    let oauth_cfg = crate::accounts::provider::oauth2_config_for_account(account, config)
+        .ok_or_else(|| "Account is not OAuth2 or provider not supported".to_string())?;
 
     let token_resp = crate::accounts::oauth2::refresh_token(&oauth_cfg, &refresh_token)
         .await

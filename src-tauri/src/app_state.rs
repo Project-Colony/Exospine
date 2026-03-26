@@ -12,19 +12,11 @@ use zeroize::Zeroize;
 
 use crate::mail::attachments::AttachmentMeta;
 use crate::mail::security::{AuthStatus, PhishingWarning};
-use crate::storage::db::Database;
-
 // ── Lock helpers ────────────────────────────────────────────────────────
 
 /// Acquire a mutex lock, recovering from a poisoned state.
 pub fn lock_or_recover<T>(mutex: &std::sync::Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// Convenience: lock the DB mutex and return a guard, or an error string.
-#[allow(dead_code)]
-pub fn get_db(state: &crate::AppState) -> Result<MutexGuard<'_, Option<Database>>, String> {
-    Ok(lock_or_recover(&state.db))
 }
 
 // ── Global in-memory credential store ──────────────────────────────────
@@ -45,7 +37,6 @@ pub fn store_credential(account_id: &str, password: &str) {
 }
 
 /// Remove a credential from the in-memory store, zeroizing the secret before drop.
-#[allow(dead_code)]
 pub fn remove_credential(account_id: &str) {
     let mut store = lock_or_recover(&CREDENTIALS);
     if let Some(mut old) = store.remove(account_id) {
