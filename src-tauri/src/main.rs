@@ -250,21 +250,20 @@ fn main() {
             for acct in idle_accounts {
                 let handle = app_handle.clone();
                 let acct_id = acct.id.clone();
-                let acct_clone = acct.clone();
                 let mut shutdown_rx = shutdown_tx.subscribe();
                 tauri::async_runtime::spawn(async move {
                     let timeout_secs: u64 = 29 * 60; // 29 minutes per RFC 2177
                     loop {
                         // Check for shutdown before each cycle
                         if shutdown_rx.try_recv().is_ok() {
-                            tracing::info!("IDLE task for {} received shutdown", acct_clone.email);
+                            tracing::info!("IDLE task for {} received shutdown", acct.email);
                             break;
                         }
 
                         let password = match crate::app_state::fetch_password(&acct_id).await {
                             Ok(pw) => pw,
                             Err(e) => {
-                                tracing::error!("IDLE setup: no password for {}: {}", acct_clone.email, e);
+                                tracing::error!("IDLE setup: no password for {}: {}", acct.email, e);
                                 tokio::select! {
                                     _ = tokio::time::sleep(std::time::Duration::from_secs(120)) => {}
                                     _ = shutdown_rx.recv() => { break; }
@@ -272,10 +271,10 @@ fn main() {
                                 continue;
                             }
                         };
-                        let session = match crate::mail::imap::connect(&acct_clone, &password).await {
+                        let session = match crate::mail::imap::connect(&acct, &password).await {
                             Ok(s) => s,
                             Err(e) => {
-                                tracing::error!("IDLE: connect failed for {}: {}", acct_clone.email, e);
+                                tracing::error!("IDLE: connect failed for {}: {}", acct.email, e);
                                 tokio::select! {
                                     _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {}
                                     _ = shutdown_rx.recv() => { break; }
@@ -286,7 +285,7 @@ fn main() {
                         match crate::mail::idle::idle_wait(session, "INBOX", timeout_secs).await {
                             Ok((new_mail, mut session)) => {
                                 if new_mail {
-                                    tracing::info!("IDLE: new mail for {}", acct_clone.email);
+                                    tracing::info!("IDLE: new mail for {}", acct.email);
                                     use tauri::Emitter;
                                     let _ = handle.emit("new-mail", serde_json::json!({
                                         "count": 1,
@@ -297,7 +296,7 @@ fn main() {
                                 let _ = session.logout().await;
                             }
                             Err(e) => {
-                                tracing::error!("IDLE: error for {}: {}", acct_clone.email, e);
+                                tracing::error!("IDLE: error for {}: {}", acct.email, e);
                                 tokio::select! {
                                     _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {}
                                     _ = shutdown_rx.recv() => { break; }

@@ -4,7 +4,7 @@
 use serde::Serialize;
 use tauri::State;
 
-use crate::app_state::{fetch_password, lock_or_recover};
+use crate::app_state::{fetch_password, lock_or_recover, with_db};
 use crate::mail::attachments;
 use crate::AppState;
 
@@ -104,12 +104,10 @@ pub async fn add_category(
     category: String,
 ) -> Result<(), String> {
     tracing::debug!("add_category: mail_id={}, category={}", mail_id, category);
-    {
-        let db_guard = lock_or_recover(&state.db);
-        let db = db_guard.as_ref().ok_or("Database not available")?;
+    with_db(&state, |db| {
         db.add_category(&mail_id, &category)
-            .map_err(|e| format!("Failed to add category: {}", e))?;
-    }
+            .map_err(|e| format!("Failed to add category: {}", e))
+    })?;
 
     // Best-effort sync to IMAP keywords
     sync_imap_keyword(&state, &mail_id, &category, true).await;
@@ -126,12 +124,10 @@ pub async fn remove_category(
     category: String,
 ) -> Result<(), String> {
     tracing::debug!("remove_category: mail_id={}, category={}", mail_id, category);
-    {
-        let db_guard = lock_or_recover(&state.db);
-        let db = db_guard.as_ref().ok_or("Database not available")?;
+    with_db(&state, |db| {
         db.remove_category(&mail_id, &category)
-            .map_err(|e| format!("Failed to remove category: {}", e))?;
-    }
+            .map_err(|e| format!("Failed to remove category: {}", e))
+    })?;
 
     // Best-effort sync to IMAP keywords
     sync_imap_keyword(&state, &mail_id, &category, false).await;
@@ -224,10 +220,10 @@ pub async fn report_spam(
     mail_id: String,
 ) -> Result<(), String> {
     tracing::debug!("report_spam: mail_id={}", mail_id);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not available")?;
-    db.add_category(&mail_id, "Spam")
-        .map_err(|e| format!("Failed to report spam: {}", e))
+    with_db(&state, |db| {
+        db.add_category(&mail_id, "Spam")
+            .map_err(|e| format!("Failed to report spam: {}", e))
+    })
 }
 
 /// Report a mail as not spam (removes Spam category).
@@ -237,10 +233,10 @@ pub async fn report_not_spam(
     mail_id: String,
 ) -> Result<(), String> {
     tracing::debug!("report_not_spam: mail_id={}", mail_id);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not available")?;
-    db.remove_category(&mail_id, "Spam")
-        .map_err(|e| format!("Failed to unmark spam: {}", e))
+    with_db(&state, |db| {
+        db.remove_category(&mail_id, "Spam")
+            .map_err(|e| format!("Failed to unmark spam: {}", e))
+    })
 }
 
 /// Helper: fetch the raw RFC 822 message bytes for a given UID.
@@ -276,10 +272,10 @@ pub async fn get_analytics(
     state: State<'_, AppState>,
     account_id: String,
 ) -> Result<crate::storage::db::EmailAnalytics, String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not initialized")?;
-    db.get_analytics(&account_id)
-        .map_err(|e| format!("Failed to get analytics: {}", e))
+    with_db(&state, |db| {
+        db.get_analytics(&account_id)
+            .map_err(|e| format!("Failed to get analytics: {}", e))
+    })
 }
 
 /// Delete messages older than the specified number of days. 0 = disabled (no-op).
@@ -292,13 +288,10 @@ pub async fn cleanup_old_messages(
         return Ok(0);
     }
     tracing::info!("cleanup_old_messages: deleting messages older than {} days", days);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-    let count = db
-        .cleanup_old_messages(days)
-        .map_err(|e| format!("Failed to cleanup old messages: {}", e))?;
+    let count = with_db(&state, |db| {
+        db.cleanup_old_messages(days)
+            .map_err(|e| format!("Failed to cleanup old messages: {}", e))
+    })?;
     if count > 0 {
         tracing::info!("cleanup_old_messages: deleted {} messages", count);
     }
@@ -315,15 +308,15 @@ pub async fn save_note(
     note: String,
 ) -> Result<(), String> {
     tracing::debug!("save_note: mail_id={}", mail_id);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not available")?;
-    if note.trim().is_empty() {
-        db.delete_note(&mail_id)
-            .map_err(|e| format!("Failed to delete note: {}", e))
-    } else {
-        db.save_note(&mail_id, &note)
-            .map_err(|e| format!("Failed to save note: {}", e))
-    }
+    with_db(&state, |db| {
+        if note.trim().is_empty() {
+            db.delete_note(&mail_id)
+                .map_err(|e| format!("Failed to delete note: {}", e))
+        } else {
+            db.save_note(&mail_id, &note)
+                .map_err(|e| format!("Failed to save note: {}", e))
+        }
+    })
 }
 
 /// Get a note for a mail message.
@@ -332,10 +325,10 @@ pub async fn get_note(
     state: State<'_, AppState>,
     mail_id: String,
 ) -> Result<Option<String>, String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not available")?;
-    db.get_note(&mail_id)
-        .map_err(|e| format!("Failed to get note: {}", e))
+    with_db(&state, |db| {
+        db.get_note(&mail_id)
+            .map_err(|e| format!("Failed to get note: {}", e))
+    })
 }
 
 // ── Duplicate detection commands ────────────────────────────────────
@@ -355,16 +348,16 @@ pub async fn find_duplicates(
     folder: String,
 ) -> Result<Vec<DuplicatePair>, String> {
     tracing::debug!("find_duplicates: {}/{}", account_id, folder);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not available")?;
-    let pairs = db
-        .find_duplicates(&account_id, &folder)
-        .map_err(|e| format!("Failed to find duplicates: {}", e))?;
-    Ok(pairs
-        .into_iter()
-        .map(|(orig, dup)| DuplicatePair {
-            original_id: orig,
-            duplicate_id: dup,
-        })
-        .collect())
+    with_db(&state, |db| {
+        let pairs = db
+            .find_duplicates(&account_id, &folder)
+            .map_err(|e| format!("Failed to find duplicates: {}", e))?;
+        Ok(pairs
+            .into_iter()
+            .map(|(orig, dup)| DuplicatePair {
+                original_id: orig,
+                duplicate_id: dup,
+            })
+            .collect())
+    })
 }

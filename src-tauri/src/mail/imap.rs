@@ -7,6 +7,9 @@ use tokio_rustls::TlsConnector;
 
 use crate::app_state::{Account, MailEntry};
 
+/// Timeout for XOAUTH2 authentication.
+const OAUTH_REFRESH_TIMEOUT_SECS: u64 = 15;
+
 /// A connected IMAP session over TLS.
 pub type ImapSession = async_imap::Session<tokio_rustls::client::TlsStream<TcpStream>>;
 
@@ -118,7 +121,7 @@ pub async fn connect_oauth2(account: &Account, access_token: &str) -> Result<Ima
     let authenticator = XOAuth2Authenticator::new(&account.username, access_token);
 
     let session = tokio::time::timeout(
-        std::time::Duration::from_secs(15),
+        std::time::Duration::from_secs(OAUTH_REFRESH_TIMEOUT_SECS),
         client.authenticate("XOAUTH2", authenticator),
     )
     .await
@@ -127,6 +130,13 @@ pub async fn connect_oauth2(account: &Account, access_token: &str) -> Result<Ima
 
     tracing::info!("IMAP OAuth2: authenticated successfully");
     Ok(session)
+}
+
+/// Extract is_read (Seen) and is_starred (Flagged) from IMAP flags.
+fn extract_mail_flags(flags: &[async_imap::types::Flag<'_>]) -> (bool, bool) {
+    let is_read = flags.iter().any(|f| matches!(f, async_imap::types::Flag::Seen));
+    let is_starred = flags.iter().any(|f| matches!(f, async_imap::types::Flag::Flagged));
+    (is_read, is_starred)
 }
 
 /// Fetch recent messages from a given folder.
@@ -166,12 +176,9 @@ pub async fn fetch_messages(
                         entry.uid = uid;
                     }
                     let flags: Vec<_> = msg.flags().collect();
-                    entry.is_read = flags
-                        .iter()
-                        .any(|f| matches!(f, async_imap::types::Flag::Seen));
-                    entry.is_starred = flags
-                        .iter()
-                        .any(|f| matches!(f, async_imap::types::Flag::Flagged));
+                    let (is_read, is_starred) = extract_mail_flags(&flags);
+                    entry.is_read = is_read;
+                    entry.is_starred = is_starred;
                     entries.push(entry);
                 }
                 Err(e) => {
@@ -378,12 +385,9 @@ pub async fn fetch_batch_by_uids(
                         entry.uid = uid;
                     }
                     let flags: Vec<_> = msg.flags().collect();
-                    entry.is_read = flags
-                        .iter()
-                        .any(|f| matches!(f, async_imap::types::Flag::Seen));
-                    entry.is_starred = flags
-                        .iter()
-                        .any(|f| matches!(f, async_imap::types::Flag::Flagged));
+                    let (is_read, is_starred) = extract_mail_flags(&flags);
+                    entry.is_read = is_read;
+                    entry.is_starred = is_starred;
                     entries.push(entry);
                 }
                 Err(e) => {

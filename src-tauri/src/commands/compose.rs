@@ -2,8 +2,10 @@
 
 use tauri::State;
 
-use crate::app_state::{fetch_password, lock_or_recover, ComposeDraft};
+use crate::app_state::{fetch_password, with_db, ComposeDraft};
 use crate::AppState;
+
+use super::mail::get_account;
 
 /// Send a composed email via SMTP.
 #[tauri::command]
@@ -13,14 +15,7 @@ pub async fn send_mail(
 ) -> Result<(), String> {
     tracing::info!("send_mail: to={}, subject={}", draft.to, draft.subject);
 
-    let account = {
-        let accounts = lock_or_recover(&state.accounts);
-        accounts
-            .iter()
-            .find(|a| a.id == draft.account_id)
-            .cloned()
-            .ok_or_else(|| format!("Account not found: {}", draft.account_id))?
-    };
+    let account = get_account(&state, &draft.account_id)?;
 
     let password = fetch_password(&account.id).await?;
 
@@ -42,14 +37,7 @@ pub async fn save_draft(
 ) -> Result<(), String> {
     tracing::info!("save_draft: subject={}", draft.subject);
 
-    let account = {
-        let accounts = lock_or_recover(&state.accounts);
-        accounts
-            .iter()
-            .find(|a| a.id == draft.account_id)
-            .cloned()
-            .ok_or_else(|| format!("Account not found: {}", draft.account_id))?
-    };
+    let account = get_account(&state, &draft.account_id)?;
 
     let password = fetch_password(&account.id).await?;
 
@@ -113,10 +101,10 @@ pub async fn save_draft_version(
     body: String,
     body_html: Option<String>,
 ) -> Result<(), String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not initialized")?;
-    db.save_draft_version(&draft_id, &subject, &body, body_html.as_deref())
-        .map_err(|e| format!("Failed to save draft version: {}", e))
+    with_db(&state, |db| {
+        db.save_draft_version(&draft_id, &subject, &body, body_html.as_deref())
+            .map_err(|e| format!("Failed to save draft version: {}", e))
+    })
 }
 
 /// Load draft version history.
@@ -125,10 +113,10 @@ pub async fn load_draft_versions(
     state: State<'_, AppState>,
     draft_id: String,
 ) -> Result<Vec<crate::storage::db::DraftVersion>, String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not initialized")?;
-    db.load_draft_versions(&draft_id)
-        .map_err(|e| format!("Failed to load draft versions: {}", e))
+    with_db(&state, |db| {
+        db.load_draft_versions(&draft_id)
+            .map_err(|e| format!("Failed to load draft versions: {}", e))
+    })
 }
 
 /// Delete all versions of a draft.
@@ -137,8 +125,8 @@ pub async fn delete_draft_versions(
     state: State<'_, AppState>,
     draft_id: String,
 ) -> Result<(), String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not initialized")?;
-    db.delete_draft_versions(&draft_id)
-        .map_err(|e| format!("Failed to delete draft versions: {}", e))
+    with_db(&state, |db| {
+        db.delete_draft_versions(&draft_id)
+            .map_err(|e| format!("Failed to delete draft versions: {}", e))
+    })
 }

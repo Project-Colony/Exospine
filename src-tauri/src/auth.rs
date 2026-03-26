@@ -51,8 +51,15 @@ pub async fn try_refresh_oauth_token(
     if let Some(ref new_rt) = token_resp.refresh_token {
         if *new_rt != refresh_token {
             tracing::info!("OAuth2 refresh token rotated for {}", account.email);
-            // Update the in-memory account and persist to disk
-            // (Caller should update the accounts list if needed)
+            // Update the in-memory account list and persist to disk
+            let mut accounts = crate::config::load_accounts();
+            if let Some(acct) = accounts.iter_mut().find(|a| a.id == account.id) {
+                acct.auth_method = app_state::AuthMethod::OAuth2 {
+                    refresh_token: new_rt.clone(),
+                };
+                crate::config::save_accounts(&accounts);
+                tracing::info!("Persisted rotated refresh token for {}", account.email);
+            }
         }
     }
 

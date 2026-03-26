@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rusqlite::params;
 
-use super::db::{parse_address, ContactRow, Database};
+use super::db::{parse_address, Database};
 use crate::app_state::MailEntry;
 
 impl Database {
@@ -42,7 +42,7 @@ impl Database {
     }
 
     /// Get all contacts, ordered by name.
-    pub fn get_all_contacts(&self) -> Result<Vec<ContactRow>> {
+    pub fn get_all_contacts(&self) -> Result<Vec<(String, String, u32, String, String, String)>> {
         let mut stmt = self.conn().prepare(
             "SELECT email, name, frequency, phone, company, notes FROM contacts
              ORDER BY name ASC, email ASC",

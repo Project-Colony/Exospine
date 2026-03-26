@@ -162,13 +162,13 @@ pub struct Config {
     pub microsoft_client_secret: String,
 }
 
-fn default_reading_pane() -> String {
+pub fn default_reading_pane() -> String {
     "right".to_string()
 }
-fn default_density() -> String {
+pub fn default_density() -> String {
     "normal".to_string()
 }
-fn default_language() -> String {
+pub fn default_language() -> String {
     "en".to_string()
 }
 

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use tauri::State;
 
-use crate::app_state::{fetch_password, lock_or_recover, ComposeDraft};
+use crate::app_state::{fetch_password, lock_or_recover, with_db, ComposeDraft};
 use crate::AppState;
 
 /// Schedule an email to be sent at a future time.
@@ -15,12 +15,10 @@ pub async fn schedule_send(
     scheduled_time: String,
 ) -> Result<(), String> {
     tracing::info!("schedule_send: to={}, at={}", draft.to, scheduled_time);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-    db.save_scheduled_email(&draft, &scheduled_time)
-        .map_err(|e| format!("Failed to schedule email: {}", e))
+    with_db(&state, |db| {
+        db.save_scheduled_email(&draft, &scheduled_time)
+            .map_err(|e| format!("Failed to schedule email: {}", e))
+    })
 }
 
 /// Get all scheduled (not yet sent) emails.
@@ -28,12 +26,10 @@ pub async fn schedule_send(
 pub async fn get_scheduled_emails(
     state: State<'_, AppState>,
 ) -> Result<Vec<crate::storage::db::ScheduledEmail>, String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-    db.get_scheduled_emails()
-        .map_err(|e| format!("Failed to get scheduled emails: {}", e))
+    with_db(&state, |db| {
+        db.get_scheduled_emails()
+            .map_err(|e| format!("Failed to get scheduled emails: {}", e))
+    })
 }
 
 /// Cancel a scheduled email.
@@ -43,27 +39,21 @@ pub async fn cancel_scheduled(
     schedule_id: String,
 ) -> Result<(), String> {
     tracing::info!("cancel_scheduled: {}", schedule_id);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-    db.delete_scheduled_email(&schedule_id)
-        .map_err(|e| format!("Failed to cancel scheduled email: {}", e))
+    with_db(&state, |db| {
+        db.delete_scheduled_email(&schedule_id)
+            .map_err(|e| format!("Failed to cancel scheduled email: {}", e))
+    })
 }
 
 /// Send all due scheduled emails. Called by the background task.
 #[tauri::command]
 pub async fn send_due_scheduled(state: State<'_, AppState>) -> Result<u32, String> {
-    let due = {
-        let db_guard = lock_or_recover(&state.db);
-        let db = db_guard
-            .as_ref()
-            .ok_or_else(|| "Database not available".to_string())?;
+    let due = with_db(&state, |db| {
         db.get_due_scheduled_emails()
-            .map_err(|e| format!("Failed to get due scheduled: {}", e))?
-    };
+            .map_err(|e| format!("Failed to get due scheduled: {}", e))
+    })?;
 
-    // Lock accounts ONCE and build a HashMap for O(1) lookups
+    // Lock accounts ONCE, clone into a lookup map, then drop the guard before any .await
     let account_map: HashMap<String, crate::app_state::Account> = {
         let accounts = lock_or_recover(&state.accounts);
         accounts

@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::app_state::lock_or_recover;
+use crate::app_state::with_db;
 use crate::AppState;
 
 /// A contact entry returned to the frontend.
@@ -30,26 +30,23 @@ pub async fn search_contacts(
         return Ok(Vec::new());
     }
 
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
+    with_db(&state, |db| {
+        let contacts = db
+            .search_contacts(&query)
+            .map_err(|e| format!("Failed to search contacts: {}", e))?;
 
-    let contacts = db
-        .search_contacts(&query)
-        .map_err(|e| format!("Failed to search contacts: {}", e))?;
-
-    Ok(contacts
-        .into_iter()
-        .map(|(email, name, freq)| ContactEntry {
-            email,
-            name,
-            frequency: freq,
-            phone: String::new(),
-            company: String::new(),
-            notes: String::new(),
-        })
-        .collect())
+        Ok(contacts
+            .into_iter()
+            .map(|(email, name, freq)| ContactEntry {
+                email,
+                name,
+                frequency: freq,
+                phone: String::new(),
+                company: String::new(),
+                notes: String::new(),
+            })
+            .collect())
+    })
 }
 
 /// Get all contacts.
@@ -57,26 +54,23 @@ pub async fn search_contacts(
 pub async fn get_all_contacts(
     state: State<'_, AppState>,
 ) -> Result<Vec<ContactEntry>, String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
+    with_db(&state, |db| {
+        let contacts = db
+            .get_all_contacts()
+            .map_err(|e| format!("Failed to get contacts: {}", e))?;
 
-    let contacts = db
-        .get_all_contacts()
-        .map_err(|e| format!("Failed to get contacts: {}", e))?;
-
-    Ok(contacts
-        .into_iter()
-        .map(|(email, name, freq, phone, company, notes)| ContactEntry {
-            email,
-            name,
-            frequency: freq,
-            phone,
-            company,
-            notes,
-        })
-        .collect())
+        Ok(contacts
+            .into_iter()
+            .map(|(email, name, freq, phone, company, notes)| ContactEntry {
+                email,
+                name,
+                frequency: freq,
+                phone,
+                company,
+                notes,
+            })
+            .collect())
+    })
 }
 
 /// Update a contact's details.
@@ -89,15 +83,10 @@ pub async fn update_contact(
     company: String,
     notes: String,
 ) -> Result<(), String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-
-    db.update_contact(&email, &name, &phone, &company, &notes)
-        .map_err(|e| format!("Failed to update contact: {}", e))?;
-
-    Ok(())
+    with_db(&state, |db| {
+        db.update_contact(&email, &name, &phone, &company, &notes)
+            .map_err(|e| format!("Failed to update contact: {}", e))
+    })
 }
 
 /// Delete a contact.
@@ -106,15 +95,10 @@ pub async fn delete_contact(
     state: State<'_, AppState>,
     email: String,
 ) -> Result<(), String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-
-    db.delete_contact(&email)
-        .map_err(|e| format!("Failed to delete contact: {}", e))?;
-
-    Ok(())
+    with_db(&state, |db| {
+        db.delete_contact(&email)
+            .map_err(|e| format!("Failed to delete contact: {}", e))
+    })
 }
 
 /// Get total unread count across all INBOX folders.
@@ -122,11 +106,8 @@ pub async fn delete_contact(
 pub async fn get_unread_count(
     state: State<'_, AppState>,
 ) -> Result<u32, String> {
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-
-    db.count_unread()
-        .map_err(|e| format!("Failed to count unread: {}", e))
+    with_db(&state, |db| {
+        db.count_unread()
+            .map_err(|e| format!("Failed to count unread: {}", e))
+    })
 }

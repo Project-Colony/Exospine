@@ -524,6 +524,7 @@ mod tests {
 /// Insert an invisible watermark into HTML email content.
 /// Encodes a hash of recipient + timestamp as zero-width Unicode characters.
 /// Used when forwarding/exporting to trace leaks.
+#[allow(dead_code)]
 pub fn watermark_email(html: &str, recipient: &str) -> String {
     use sha2::{Sha256, Digest};
     let mut hasher = Sha256::new();

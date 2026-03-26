@@ -2,8 +2,10 @@
 
 use tauri::State;
 
-use crate::app_state::{fetch_password, lock_or_recover, ComposeDraft};
+use crate::app_state::{fetch_password, ComposeDraft};
 use crate::AppState;
+
+use super::mail::get_account;
 
 /// Send a read receipt (MDN) for a mail.
 #[tauri::command]
@@ -17,15 +19,7 @@ pub async fn send_read_receipt(
 ) -> Result<(), String> {
     tracing::info!("send_read_receipt: mail={} to={}", mail_id, receipt_to);
 
-    let account = {
-        let accounts = lock_or_recover(&state.accounts);
-        accounts
-            .iter()
-            .find(|a| a.id == account_id)
-            .cloned()
-            .ok_or_else(|| format!("Account not found: {}", account_id))?
-    };
-
+    let account = get_account(&state, &account_id)?;
     let password = fetch_password(&account.id).await?;
 
     // Build a simple MDN message

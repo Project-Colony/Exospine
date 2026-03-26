@@ -12,6 +12,9 @@ use crate::AppState;
 
 use super::mail::get_account;
 
+/// Timeout for fetching folder list from IMAP.
+const FOLDER_FETCH_TIMEOUT_SECS: u64 = 30;
+
 // ── Folder cache TTL (5 minutes) ────────────────────────────────────
 static FOLDER_CACHE_TS: std::sync::LazyLock<StdMutex<HashMap<String, Instant>>> =
     std::sync::LazyLock::new(|| StdMutex::new(HashMap::new()));
@@ -66,7 +69,7 @@ pub async fn get_folders(
         .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
 
     let folders = timeout(
-        Duration::from_secs(30),
+        Duration::from_secs(FOLDER_FETCH_TIMEOUT_SECS),
         crate::mail::folders::fetch_folders_with_counts(&mut session),
     )
     .await

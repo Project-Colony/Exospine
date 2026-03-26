@@ -10,9 +10,6 @@ pub use super::followup_db::Followup;
 pub use super::schedule_db::ScheduledEmail;
 pub use super::tasks_db::Task;
 
-/// A contact row: (email, name, frequency, phone, company, notes).
-pub type ContactRow = (String, String, u32, String, String, String);
-
 /// SQLite-backed local storage for accounts and cached messages.
 pub struct Database {
     conn: Connection,
@@ -152,7 +149,19 @@ impl Database {
                 due_date TEXT NOT NULL DEFAULT '',
                 completed INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL
-            );",
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_messages_read
+                ON messages(account_id, folder, is_read);
+
+            CREATE INDEX IF NOT EXISTS idx_messages_starred
+                ON messages(account_id, is_starred);
+
+            CREATE INDEX IF NOT EXISTS idx_messages_spam
+                ON messages(spam_score);
+
+            CREATE INDEX IF NOT EXISTS idx_messages_uid
+                ON messages(account_id, folder, uid);",
         )?;
         Ok(())
     }

@@ -377,13 +377,13 @@ pub struct AppSettings {
     /// Whether to show desktop notifications for new mail.
     pub show_notifications: bool,
     /// Reading pane position: "right", "bottom", or "off".
-    #[serde(default = "default_reading_pane")]
+    #[serde(default = "crate::config::default_reading_pane")]
     pub reading_pane: String,
     /// Display density: "compact" or "normal".
-    #[serde(default = "default_density")]
+    #[serde(default = "crate::config::default_density")]
     pub density: String,
     /// UI language: "en" or "fr".
-    #[serde(default = "default_language")]
+    #[serde(default = "crate::config::default_language")]
     pub language: String,
 }
 
@@ -391,15 +391,6 @@ fn default_importance() -> String {
     "normal".to_string()
 }
 
-fn default_reading_pane() -> String {
-    "right".to_string()
-}
-fn default_density() -> String {
-    "normal".to_string()
-}
-fn default_language() -> String {
-    "en".to_string()
-}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -415,13 +406,25 @@ impl Default for AppSettings {
     }
 }
 
-// ── Quick filter ───────────────────────────────────────────────────────
+// ── Account lookup helper ──────────────────────────────────────────
 
-/// Predefined quick-filter categories.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum QuickFilter {
-    All,
-    Unread,
-    Starred,
-    HasAttachments,
+/// Look up an account by ID from the global accounts list.
+pub fn get_account(state: &crate::AppState, account_id: &str) -> Result<Account, String> {
+    let accounts = lock_or_recover(&state.accounts);
+    accounts
+        .iter()
+        .find(|a| a.id == account_id)
+        .cloned()
+        .ok_or_else(|| format!("Account not found: {}", account_id))
 }
+
+// ── DB guard helper ────────────────────────────────────────────────
+
+/// Acquire the database mutex and run a closure with a reference to the DB.
+/// Returns an error if the database is not available.
+pub fn with_db<T>(state: &crate::AppState, f: impl FnOnce(&crate::storage::db::Database) -> Result<T, String>) -> Result<T, String> {
+    let guard = lock_or_recover(&state.db);
+    let db = guard.as_ref().ok_or_else(|| "Database not available".to_string())?;
+    f(db)
+}
+

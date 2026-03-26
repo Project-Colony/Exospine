@@ -9,7 +9,6 @@ use crate::app_state::{Account, ComposeDraft};
 
 /// Priority level for outgoing mail.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum Priority {
     High,
     Normal,
@@ -251,36 +250,3 @@ impl lettre::message::header::Header for XPriority {
     }
 }
 
-/// Guess the MIME content type for a file based on its extension.
-#[allow(dead_code)]
-pub fn guess_content_type(path: &std::path::Path) -> &'static str {
-    match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
-        "pdf" => "application/pdf",
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "svg" => "image/svg+xml",
-        "txt" => "text/plain",
-        "html" | "htm" => "text/html",
-        "css" => "text/css",
-        "js" => "application/javascript",
-        "json" => "application/json",
-        "xml" => "application/xml",
-        "zip" => "application/zip",
-        "gz" | "gzip" => "application/gzip",
-        "tar" => "application/x-tar",
-        "doc" => "application/msword",
-        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "xls" => "application/vnd.ms-excel",
-        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "ppt" => "application/vnd.ms-powerpoint",
-        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "csv" => "text/csv",
-        "mp3" => "audio/mpeg",
-        "mp4" => "video/mp4",
-        "wav" => "audio/wav",
-        "webp" => "image/webp",
-        "eml" => "message/rfc822",
-        _ => "application/octet-stream",
-    }
-}

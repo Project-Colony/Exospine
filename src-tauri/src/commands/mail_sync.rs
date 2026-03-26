@@ -5,60 +5,10 @@ use std::time::Duration;
 use tauri::State;
 use tokio::time::timeout;
 
-use crate::app_state::{fetch_password, lock_or_recover, Account, MailEntry};
+use crate::app_state::{fetch_password, lock_or_recover, MailEntry};
 use crate::AppState;
 
 use super::mail::get_account;
-
-/// Try to connect to IMAP. If the connection fails with what looks like an
-/// authentication error on an OAuth2 account, attempt to refresh the token
-/// and retry once.
-#[allow(dead_code)]
-pub(crate) async fn connect_with_oauth_retry(
-    state: &State<'_, AppState>,
-    account: &Account,
-    password: &str,
-) -> Result<crate::mail::imap::ImapSession, String> {
-    match crate::mail::connection::connect_with_retry(account, password, 3).await {
-        Ok(session) => Ok(session),
-        Err(e) => {
-            let err_str = e.to_string().to_lowercase();
-            let is_auth_error = err_str.contains("auth")
-                || err_str.contains("login")
-                || err_str.contains("credential")
-                || err_str.contains("invalid");
-
-            if is_auth_error && matches!(account.auth_method, crate::app_state::AuthMethod::OAuth2 { .. }) {
-                tracing::warn!(
-                    "IMAP auth failed for {}, attempting OAuth2 token refresh",
-                    account.email
-                );
-                let config = lock_or_recover(&state.config).clone();
-                match crate::auth::try_refresh_oauth_token(account, &config).await {
-                    Ok(new_token) => {
-                        // Retry connection with refreshed token
-                        crate::mail::connection::connect_with_retry(account, &new_token, 3)
-                            .await
-                            .map_err(|e| format!("IMAP connection failed after token refresh: {}", e))
-                    }
-                    Err(refresh_err) => {
-                        tracing::error!(
-                            "OAuth2 token refresh failed for {}: {}. User may need to re-authenticate.",
-                            account.email,
-                            refresh_err
-                        );
-                        Err(format!(
-                            "Authentication failed and token refresh failed: {}. Please re-authenticate the account.",
-                            refresh_err
-                        ))
-                    }
-                }
-            } else {
-                Err(format!("Failed to connect to IMAP: {}", e))
-            }
-        }
-    }
-}
 
 /// Background sync: fetch ALL mails from IMAP that are not yet in SQLite cache.
 /// Returns the number of newly synced mails.

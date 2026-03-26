@@ -2,7 +2,7 @@
 
 use tauri::State;
 
-use crate::app_state::lock_or_recover;
+use crate::app_state::with_db;
 use crate::AppState;
 
 /// Flag a mail with an optional due date for follow-up.
@@ -13,12 +13,10 @@ pub async fn flag_mail(
     due_date: Option<String>,
 ) -> Result<(), String> {
     tracing::debug!("flag_mail: {} due={:?}", mail_id, due_date);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-    db.update_flag_due_date(&mail_id, due_date.as_deref())
-        .map_err(|e| format!("Failed to flag mail: {}", e))
+    with_db(&state, |db| {
+        db.update_flag_due_date(&mail_id, due_date.as_deref())
+            .map_err(|e| format!("Failed to flag mail: {}", e))
+    })
 }
 
 /// Unflag a mail (remove flag due date).
@@ -28,10 +26,8 @@ pub async fn unflag_mail(
     mail_id: String,
 ) -> Result<(), String> {
     tracing::debug!("unflag_mail: {}", mail_id);
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard
-        .as_ref()
-        .ok_or_else(|| "Database not available".to_string())?;
-    db.update_flag_due_date(&mail_id, None)
-        .map_err(|e| format!("Failed to unflag mail: {}", e))
+    with_db(&state, |db| {
+        db.update_flag_due_date(&mail_id, None)
+            .map_err(|e| format!("Failed to unflag mail: {}", e))
+    })
 }

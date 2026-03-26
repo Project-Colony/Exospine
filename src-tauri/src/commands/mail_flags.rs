@@ -172,6 +172,8 @@ pub async fn archive_mail(
         .await
         .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
 
+    // "Archive" is the standard IMAP archive folder name (RFC 6154 \Archive).
+    // Gmail uses "[Gmail]/All Mail" but most other providers use "Archive".
     crate::mail::imap::move_message(&mut session, &mail_uid, "Archive")
         .await
         .map_err(|e| format!("Failed to archive message: {}", e))?;

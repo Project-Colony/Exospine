@@ -2,7 +2,7 @@
 
 use tauri::State;
 
-use crate::app_state::{lock_or_recover, MailEntry};
+use crate::app_state::{with_db, MailEntry};
 use crate::AppState;
 
 /// Search messages in the local SQLite cache for a given account and folder.
@@ -23,9 +23,6 @@ pub async fn search_local(
         "search_local: query={}, account_id={}, folder={}, from={:?}, subject={:?}, to={:?}, has_attachment={:?}",
         query, account_id, folder, filter_from, filter_subject, filter_to, filter_has_attachment
     );
-    let db_guard = lock_or_recover(&state.db);
-    let db = db_guard.as_ref().ok_or("Database not available")?;
-
     // If no structured filters, use the standard search
     let has_filters = filter_from.is_some()
         || filter_subject.is_some()
@@ -33,9 +30,10 @@ pub async fn search_local(
         || filter_has_attachment.unwrap_or(false);
 
     if !has_filters {
-        return db
-            .search_messages_in_folder(&query, &account_id, &folder)
-            .map_err(|e| e.to_string());
+        return with_db(&state, |db| {
+            db.search_messages_in_folder(&query, &account_id, &folder)
+                .map_err(|e| e.to_string())
+        });
     }
 
     // Build dynamic SQL WHERE clause for structured search
@@ -90,6 +88,8 @@ pub async fn search_local(
         where_clause
     );
 
-    db.search_messages_dynamic(&sql, &param_values)
-        .map_err(|e| e.to_string())
+    with_db(&state, |db| {
+        db.search_messages_dynamic(&sql, &param_values)
+            .map_err(|e| e.to_string())
+    })
 }

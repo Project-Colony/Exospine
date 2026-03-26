@@ -5,17 +5,13 @@
 
 use tauri::State;
 
-use crate::app_state::{lock_or_recover, Account};
+use crate::app_state::Account;
 use crate::AppState;
 
 /// Helper: get account by ID from state.
+/// Delegates to `app_state::get_account` so all modules share one implementation.
 pub(crate) fn get_account(state: &State<'_, AppState>, account_id: &str) -> Result<Account, String> {
-    let accounts = lock_or_recover(&state.accounts);
-    accounts
-        .iter()
-        .find(|a| a.id == account_id)
-        .cloned()
-        .ok_or_else(|| format!("Account not found: {}", account_id))
+    crate::app_state::get_account(state, account_id)
 }
 
 // ── Re-exports from sub-modules ─────────────────────────────────────

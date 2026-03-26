@@ -13,6 +13,9 @@ use anyhow::Result;
 use crate::app_state::Account;
 use crate::mail::imap::ImapSession;
 
+/// Timeout for NOOP keep-alive checks on pooled sessions.
+const NOOP_TIMEOUT_SECS: u64 = 5;
+
 /// Pooled session entry: the IMAP session plus the currently SELECT'd folder (if any).
 struct PoolEntry {
     session: ImapSession,
@@ -44,7 +47,7 @@ pub async fn get_session(
 
     if let Some(mut entry) = pooled {
         // Verify the connection is still alive with a NOOP (5s timeout)
-        match tokio::time::timeout(Duration::from_secs(5), entry.session.noop()).await {
+        match tokio::time::timeout(Duration::from_secs(NOOP_TIMEOUT_SECS), entry.session.noop()).await {
             Ok(Ok(_)) => return Ok(entry.session),
             Ok(Err(e)) => {
                 tracing::debug!(
@@ -84,7 +87,7 @@ pub async fn get_session_for_folder(
 
     if let Some(mut entry) = pooled {
         // Verify the connection is still alive with a NOOP (5s timeout)
-        match tokio::time::timeout(Duration::from_secs(5), entry.session.noop()).await {
+        match tokio::time::timeout(Duration::from_secs(NOOP_TIMEOUT_SECS), entry.session.noop()).await {
             Ok(Ok(_)) => {
                 if entry.selected_folder.as_deref() == Some(folder) {
                     // Already SELECT'd on this folder — skip the SELECT command
@@ -153,7 +156,6 @@ pub fn return_session_with_folder(account_id: &str, session: ImapSession, folder
 }
 
 /// Remove and logout all pooled sessions (e.g. when an account is removed).
-#[allow(dead_code)]
 pub async fn evict_session(account_id: &str) {
     let entry = {
         let mut pool = crate::app_state::lock_or_recover(&POOL);
@@ -200,5 +202,5 @@ pub async fn connect_with_retry(
         }
     }
 
-    unreachable!()
+    Err(anyhow::anyhow!("Connection failed after all retries"))
 }
