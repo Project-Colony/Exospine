@@ -12,6 +12,14 @@ use zeroize::Zeroize;
 
 use crate::mail::attachments::AttachmentMeta;
 use crate::mail::security::{AuthStatus, PhishingWarning};
+// ── Error mapping helper ────────────────────────────────────────────────
+
+/// Helper to convert any error to a user-friendly string.
+/// Usage: `.map_err(map_err_str("Failed to connect to IMAP"))?`
+pub fn map_err_str<E: std::fmt::Display>(context: &str) -> impl FnOnce(E) -> String + '_ {
+    move |e| format!("{}: {}", context, e)
+}
+
 // ── Lock helpers ────────────────────────────────────────────────────────
 
 /// Acquire a mutex lock, recovering from a poisoned state.
@@ -426,5 +434,24 @@ pub fn with_db<T>(state: &crate::AppState, f: impl FnOnce(&crate::storage::db::D
     let guard = lock_or_recover(&state.db);
     let db = guard.as_ref().ok_or_else(|| "Database not available".to_string())?;
     f(db)
+}
+
+// ── IMAP session helper ────────────────────────────────────────────────
+
+/// Look up an account, fetch its password, and open an IMAP session on the given folder.
+/// Returns the session and the resolved Account.
+pub async fn get_imap_session(
+    state: &crate::AppState,
+    account_id: &str,
+    folder: &str,
+) -> Result<(crate::mail::imap::ImapSession, Account), String> {
+    let account = get_account(state, account_id)?;
+    let password = fetch_password(account_id).await?;
+    let session = crate::mail::connection::get_session_for_folder(
+        account_id, &account, &password, folder,
+    )
+    .await
+    .map_err(map_err_str("Failed to connect to IMAP"))?;
+    Ok((session, account))
 }
 

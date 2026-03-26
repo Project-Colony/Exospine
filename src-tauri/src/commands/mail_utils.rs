@@ -4,7 +4,7 @@
 use serde::Serialize;
 use tauri::State;
 
-use crate::app_state::{fetch_password, lock_or_recover, with_db};
+use crate::app_state::{fetch_password, get_imap_session, lock_or_recover, map_err_str, with_db};
 use crate::mail::attachments;
 use crate::AppState;
 
@@ -26,12 +26,7 @@ pub async fn download_attachment(
         mail_uid, part_index, account_id, folder
     );
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     // Fetch the raw message by UID
     let raw = fetch_raw_message(&mut session, mail_uid).await?;
@@ -42,7 +37,7 @@ pub async fn download_attachment(
     let dest = attachments::download_dir();
     let file_path = attachments::save_attachment(&raw, part_index, &dest)
         .await
-        .map_err(|e| format!("Failed to save attachment: {}", e))?;
+        .map_err(map_err_str("Failed to save attachment"))?;
 
     Ok(file_path.to_string_lossy().to_string())
 }
@@ -60,12 +55,7 @@ pub async fn export_mail(
         mail_uid, account_id, folder
     );
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     // Fetch the raw message
     let raw = fetch_raw_message(&mut session, mail_uid).await?;
@@ -76,14 +66,14 @@ pub async fn export_mail(
     let dest = attachments::download_dir();
     tokio::fs::create_dir_all(&dest)
         .await
-        .map_err(|e| format!("Failed to create directory: {}", e))?;
+        .map_err(map_err_str("Failed to create directory"))?;
 
     let filename = format!("email_{}.eml", mail_uid);
     let file_path = dest.join(&filename);
 
     tokio::fs::write(&file_path, &raw)
         .await
-        .map_err(|e| format!("Failed to write .eml file: {}", e))?;
+        .map_err(map_err_str("Failed to write .eml file"))?;
 
     Ok(file_path.to_string_lossy().to_string())
 }
@@ -106,7 +96,7 @@ pub async fn add_category(
     tracing::debug!("add_category: mail_id={}, category={}", mail_id, category);
     with_db(&state, |db| {
         db.add_category(&mail_id, &category)
-            .map_err(|e| format!("Failed to add category: {}", e))
+            .map_err(map_err_str("Failed to add category"))
     })?;
 
     // Best-effort sync to IMAP keywords
@@ -126,7 +116,7 @@ pub async fn remove_category(
     tracing::debug!("remove_category: mail_id={}, category={}", mail_id, category);
     with_db(&state, |db| {
         db.remove_category(&mail_id, &category)
-            .map_err(|e| format!("Failed to remove category: {}", e))
+            .map_err(map_err_str("Failed to remove category"))
     })?;
 
     // Best-effort sync to IMAP keywords
@@ -222,7 +212,7 @@ pub async fn report_spam(
     tracing::debug!("report_spam: mail_id={}", mail_id);
     with_db(&state, |db| {
         db.add_category(&mail_id, "Spam")
-            .map_err(|e| format!("Failed to report spam: {}", e))
+            .map_err(map_err_str("Failed to report spam"))
     })
 }
 
@@ -235,7 +225,7 @@ pub async fn report_not_spam(
     tracing::debug!("report_not_spam: mail_id={}", mail_id);
     with_db(&state, |db| {
         db.remove_category(&mail_id, "Spam")
-            .map_err(|e| format!("Failed to unmark spam: {}", e))
+            .map_err(map_err_str("Failed to unmark spam"))
     })
 }
 
@@ -250,10 +240,10 @@ pub(crate) async fn fetch_raw_message(
     let messages: Vec<_> = session
         .uid_fetch(&uid_str, "BODY.PEEK[]")
         .await
-        .map_err(|e| format!("Failed to fetch raw message: {}", e))?
+        .map_err(map_err_str("Failed to fetch raw message"))?
         .try_collect::<Vec<_>>()
         .await
-        .map_err(|e| format!("Failed to collect raw message: {}", e))?;
+        .map_err(map_err_str("Failed to collect raw message"))?;
 
     let msg = messages
         .first()
@@ -274,7 +264,7 @@ pub async fn get_analytics(
 ) -> Result<crate::storage::db::EmailAnalytics, String> {
     with_db(&state, |db| {
         db.get_analytics(&account_id)
-            .map_err(|e| format!("Failed to get analytics: {}", e))
+            .map_err(map_err_str("Failed to get analytics"))
     })
 }
 
@@ -290,7 +280,7 @@ pub async fn cleanup_old_messages(
     tracing::info!("cleanup_old_messages: deleting messages older than {} days", days);
     let count = with_db(&state, |db| {
         db.cleanup_old_messages(days)
-            .map_err(|e| format!("Failed to cleanup old messages: {}", e))
+            .map_err(map_err_str("Failed to cleanup old messages"))
     })?;
     if count > 0 {
         tracing::info!("cleanup_old_messages: deleted {} messages", count);
@@ -311,10 +301,10 @@ pub async fn save_note(
     with_db(&state, |db| {
         if note.trim().is_empty() {
             db.delete_note(&mail_id)
-                .map_err(|e| format!("Failed to delete note: {}", e))
+                .map_err(map_err_str("Failed to delete note"))
         } else {
             db.save_note(&mail_id, &note)
-                .map_err(|e| format!("Failed to save note: {}", e))
+                .map_err(map_err_str("Failed to save note"))
         }
     })
 }
@@ -327,7 +317,7 @@ pub async fn get_note(
 ) -> Result<Option<String>, String> {
     with_db(&state, |db| {
         db.get_note(&mail_id)
-            .map_err(|e| format!("Failed to get note: {}", e))
+            .map_err(map_err_str("Failed to get note"))
     })
 }
 
@@ -351,7 +341,7 @@ pub async fn find_duplicates(
     with_db(&state, |db| {
         let pairs = db
             .find_duplicates(&account_id, &folder)
-            .map_err(|e| format!("Failed to find duplicates: {}", e))?;
+            .map_err(map_err_str("Failed to find duplicates"))?;
         Ok(pairs
             .into_iter()
             .map(|(orig, dup)| DuplicatePair {

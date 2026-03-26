@@ -5,7 +5,7 @@ use std::time::Duration;
 use tauri::State;
 use tokio::time::timeout;
 
-use crate::app_state::{fetch_password, lock_or_recover, MailEntry};
+use crate::app_state::{fetch_password, get_imap_session, lock_or_recover, map_err_str, MailEntry};
 use crate::AppState;
 
 use super::mail::get_account;
@@ -20,17 +20,12 @@ pub async fn sync_all_mails(
 ) -> Result<u32, String> {
     tracing::info!("sync_all_mails: starting for {}/{}", account_id, folder);
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     // 1. Get all UIDs from IMAP
     let all_uids = crate::mail::imap::fetch_uids_for_folder(&mut session, &folder)
         .await
-        .map_err(|e| format!("Failed to fetch UIDs: {}", e))?;
+        .map_err(map_err_str("Failed to fetch UIDs"))?;
 
     if all_uids.is_empty() {
         crate::mail::connection::return_session_with_folder(&account_id, session, folder);
@@ -70,7 +65,7 @@ pub async fn sync_all_mails(
 
     // 4. Acquire rate limiter permit
     let limiter = crate::mail::rate_limiter::get_limiter(&account_id);
-    let _permit = limiter.acquire().await.map_err(|e| format!("Rate limiter error: {}", e))?;
+    let _permit = limiter.acquire().await.map_err(map_err_str("Rate limiter error"))?;
 
     // 5. Fetch missing in batches of 100 (resilient: continue on batch failure)
     let mut synced = 0u32;
@@ -183,17 +178,17 @@ pub async fn refresh_folder(
 
     let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
         .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+        .map_err(map_err_str("Failed to connect to IMAP"))?;
 
     let imap_future = async {
         if since_uid == 0 {
             crate::mail::imap::fetch_all_mails_batched(&mut session, &folder, &account_id)
                 .await
-                .map_err(|e| format!("Failed to fetch all mails: {}", e))
+                .map_err(map_err_str("Failed to fetch all mails"))
         } else {
             crate::mail::imap::fetch_new_mails(&mut session, &folder, &account_id, since_uid)
                 .await
-                .map_err(|e| format!("Failed to fetch new mails: {}", e))
+                .map_err(map_err_str("Failed to fetch new mails"))
         }
     };
     let new_mails = timeout(Duration::from_secs(60), imap_future)
@@ -216,7 +211,7 @@ pub async fn refresh_folder(
         let db_guard = lock_or_recover(&state.db);
         if let Some(ref db) = *db_guard {
             db.save_messages(&new_mails)
-                .map_err(|e| format!("Failed to save new mails to DB: {}", e))?;
+                .map_err(map_err_str("Failed to save new mails to DB"))?;
         }
     }
 

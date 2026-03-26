@@ -41,6 +41,25 @@ if (!sidebarEl || !mailListEl || !mailViewEl) {
   console.error('Missing required DOM elements (#sidebar, #mail-list, or #mail-view)');
 }
 
+// ---------------------------------------------------------------------------
+// Mail lookup helpers
+// ---------------------------------------------------------------------------
+
+/** Find a mail by ID in the current mails list. */
+export function findMail(mailId) {
+  return state.mails.find(m => m.id === mailId);
+}
+
+/** Update a mail (and selectedMail if matching) with the given properties. */
+export function updateMail(mailId, updates) {
+  const mail = findMail(mailId);
+  if (mail) Object.assign(mail, updates);
+  if (state.selectedMail && state.selectedMail.id === mailId) {
+    Object.assign(state.selectedMail, updates);
+  }
+  return mail;
+}
+
 // Body cache — avoids redundant API calls for already-loaded mail bodies
 export const bodyCache = new Map(); // mailId -> { text, html }
 

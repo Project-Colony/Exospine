@@ -3,7 +3,8 @@
 import * as api from './api.js';
 import { showToast } from './components/toast.js';
 import { showDialog } from './components/dialog.js';
-import { state, activeAccountId } from './state.js';
+import { state, activeAccountId, findMail, updateMail } from './state.js';
+import { toastError } from './components/toast_helpers.js';
 import { _isOffline, queueAction } from './offline.js';
 
 // These callbacks are injected by app.js at init time
@@ -36,7 +37,7 @@ export async function handleArchive(mail) {
       }
     });
   } catch (err) {
-    showToast(`Failed to archive: ${err}`, 'error');
+    toastError('archive', err);
   }
 }
 
@@ -67,7 +68,7 @@ export async function handleDelete(mail) {
       }
     });
   } catch (err) {
-    showToast(`Failed to delete: ${err}`, 'error');
+    toastError('delete', err);
   }
 }
 
@@ -77,7 +78,7 @@ export async function handleMarkRead(mail) {
     mail.is_read = true;
     _renderList();
   } catch (err) {
-    showToast(`Failed to mark as read: ${err}`, 'error');
+    toastError('mark as read', err);
   }
 }
 
@@ -88,74 +89,56 @@ export async function handleMarkUnread(mail) {
     _renderList();
     showToast('Marked as unread.', 'info');
   } catch (err) {
-    showToast(`Failed to mark unread: ${err}`, 'error');
+    toastError('mark unread', err);
   }
 }
 
 export async function toggleMailStar(mailId) {
-  const mail = state.mails.find((m) => m.id === mailId);
+  const mail = findMail(mailId);
   const newStarred = !(mail?.is_starred);
   // Optimistic update
-  if (mail) mail.is_starred = newStarred;
-  if (state.selectedMail && state.selectedMail.id === mailId) {
-    state.selectedMail.is_starred = newStarred;
-  }
+  updateMail(mailId, { is_starred: newStarred });
   _renderList();
 
   try {
     await api.toggleStar(activeAccountId(), state.activeFolder, mailId, newStarred);
   } catch (err) {
     // Revert on failure
-    if (mail) mail.is_starred = !newStarred;
-    if (state.selectedMail && state.selectedMail.id === mailId) {
-      state.selectedMail.is_starred = !newStarred;
-    }
+    updateMail(mailId, { is_starred: !newStarred });
     _renderList();
-    showToast(`Failed to toggle star: ${err}`, 'error');
+    toastError('toggle star', err);
   }
 }
 
 export async function handleFlagMail(mailId, dueDate) {
-  const mail = state.mails.find((m) => m.id === mailId);
+  const mail = findMail(mailId);
   if (!mail) return;
   // Optimistic update
-  mail.flag_due_date = dueDate;
-  if (state.selectedMail && state.selectedMail.id === mailId) {
-    state.selectedMail.flag_due_date = dueDate;
-  }
+  updateMail(mailId, { flag_due_date: dueDate });
   _renderList();
 
   try {
     await api.flagMail(mailId, dueDate);
   } catch (err) {
-    mail.flag_due_date = null;
-    if (state.selectedMail && state.selectedMail.id === mailId) {
-      state.selectedMail.flag_due_date = null;
-    }
+    updateMail(mailId, { flag_due_date: null });
     _renderList();
-    showToast(`Failed to flag mail: ${err}`, 'error');
+    toastError('flag mail', err);
   }
 }
 
 export async function handleUnflagMail(mailId) {
-  const mail = state.mails.find((m) => m.id === mailId);
+  const mail = findMail(mailId);
   if (!mail) return;
   const prev = mail.flag_due_date;
-  mail.flag_due_date = null;
-  if (state.selectedMail && state.selectedMail.id === mailId) {
-    state.selectedMail.flag_due_date = null;
-  }
+  updateMail(mailId, { flag_due_date: null });
   _renderList();
 
   try {
     await api.unflagMail(mailId);
   } catch (err) {
-    mail.flag_due_date = prev;
-    if (state.selectedMail && state.selectedMail.id === mailId) {
-      state.selectedMail.flag_due_date = prev;
-    }
+    updateMail(mailId, { flag_due_date: prev });
     _renderList();
-    showToast(`Failed to unflag mail: ${err}`, 'error');
+    toastError('unflag mail', err);
   }
 }
 
@@ -208,7 +191,7 @@ export async function handleReportSpam(mail) {
     _renderList();
     showToast('Reported as spam.', 'info');
   } catch (err) {
-    showToast(`Failed to report spam: ${err}`, 'error');
+    toastError('report spam', err);
   }
 }
 
@@ -221,7 +204,7 @@ export async function handleReportNotSpam(mail) {
     _renderList();
     showToast('Marked as not spam.', 'info');
   } catch (err) {
-    showToast(`Failed to unmark spam: ${err}`, 'error');
+    toastError('unmark spam', err);
   }
 }
 
@@ -232,7 +215,7 @@ export async function handleAddCategory(mail, category) {
     if (!mail.categories.includes(category)) mail.categories.push(category);
     _renderList();
   } catch (err) {
-    showToast(`Failed to add category: ${err}`, 'error');
+    toastError('add category', err);
   }
 }
 
@@ -244,6 +227,6 @@ export async function handleRemoveCategory(mail, category) {
     }
     _renderList();
   } catch (err) {
-    showToast(`Failed to remove category: ${err}`, 'error');
+    toastError('remove category', err);
   }
 }

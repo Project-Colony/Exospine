@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::app_state::{lock_or_recover, remove_credential, store_credential, Account};
+use crate::app_state::{lock_or_recover, map_err_str, remove_credential, store_credential, Account};
 use crate::AppState;
 
 /// Serializable provider detection result for the frontend.
@@ -162,7 +162,7 @@ pub async fn add_oauth_account(
         },
     )
     .await
-    .map_err(|e| format!("Failed to create OAuth account: {}", e))?;
+    .map_err(map_err_str("Failed to create OAuth account"))?;
 
     // Store access token in memory too
     store_credential(&account.id, &params.access_token);
@@ -217,7 +217,7 @@ pub async fn add_account(
         params.smtp_port,
     )
     .await
-    .map_err(|e| format!("Failed to create account: {}", e))?;
+    .map_err(map_err_str("Failed to create account"))?;
 
     // Store password in memory
     store_credential(&account.id, &params.password);
@@ -311,8 +311,8 @@ pub async fn test_connection(params: TestConnectionParams) -> Result<(), String>
         ),
     );
 
-    imap_result.map_err(|e| format!("IMAP connection failed: {}", e))?;
-    smtp_result.map_err(|e| format!("SMTP connection failed: {}", e))?;
+    imap_result.map_err(map_err_str("IMAP connection failed"))?;
+    smtp_result.map_err(map_err_str("SMTP connection failed"))?;
 
     tracing::info!("test_connection: both IMAP and SMTP passed");
     Ok(())

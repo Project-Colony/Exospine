@@ -2,7 +2,7 @@
 
 use tauri::State;
 
-use crate::app_state::with_db;
+use crate::app_state::{map_err_str, with_db};
 use crate::AppState;
 
 /// Flag a mail with an optional due date for follow-up.
@@ -15,7 +15,7 @@ pub async fn flag_mail(
     tracing::debug!("flag_mail: {} due={:?}", mail_id, due_date);
     with_db(&state, |db| {
         db.update_flag_due_date(&mail_id, due_date.as_deref())
-            .map_err(|e| format!("Failed to flag mail: {}", e))
+            .map_err(map_err_str("Failed to flag mail"))
     })
 }
 
@@ -28,6 +28,6 @@ pub async fn unflag_mail(
     tracing::debug!("unflag_mail: {}", mail_id);
     with_db(&state, |db| {
         db.update_flag_due_date(&mail_id, None)
-            .map_err(|e| format!("Failed to unflag mail: {}", e))
+            .map_err(map_err_str("Failed to unflag mail"))
     })
 }

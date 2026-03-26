@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use tauri::State;
 use tokio::time::timeout;
 
-use crate::app_state::{fetch_password, lock_or_recover, Folder};
+use crate::app_state::{fetch_password, lock_or_recover, map_err_str, Folder};
 use crate::AppState;
 
 use super::mail::get_account;
@@ -66,7 +66,7 @@ pub async fn get_folders(
 
     let mut session = crate::mail::connection::get_session(&account_id, &account, &password)
         .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+        .map_err(map_err_str("Failed to connect to IMAP"))?;
 
     let folders = timeout(
         Duration::from_secs(FOLDER_FETCH_TIMEOUT_SECS),
@@ -74,7 +74,7 @@ pub async fn get_folders(
     )
     .await
     .map_err(|_| "Timeout: folder fetch took longer than 30 seconds".to_string())?
-    .map_err(|e| format!("Failed to fetch folders: {}", e))?;
+    .map_err(map_err_str("Failed to fetch folders"))?;
 
     crate::mail::connection::return_session(&account_id, session);
 

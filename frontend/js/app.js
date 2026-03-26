@@ -15,7 +15,8 @@ import { openTasks, openAwaitingReply } from './views/tasks.js';
 import { setLanguage } from './i18n.js';
 
 // Module imports
-import { state, activeAccountId, sidebarEl, mailListEl, mailViewEl, hamburgerBtn, bodyCache, _prefetchInFlight, _intervals } from './state.js';
+import { state, activeAccountId, sidebarEl, mailListEl, mailViewEl, hamburgerBtn, bodyCache, _prefetchInFlight, _intervals, findMail, updateMail } from './state.js';
+import { toastError } from './components/toast_helpers.js';
 import { setupOfflineMode } from './offline.js';
 import { handleArchive, handleDelete, handleMarkRead, handleMarkUnread, toggleMailStar, handleFlagMail, handleUnflagMail, handleSweepSender, handleReportSpam, handleReportNotSpam, handleAddCategory, handleRemoveCategory, setMailActionCallbacks } from './mail_actions.js';
 import { handleBatchArchive, handleBatchDelete, handleBatchMarkRead, handleBatchMove, setBatchOpsCallbacks } from './batch_ops.js';
@@ -251,7 +252,7 @@ async function loadAccounts() {
   try {
     state.accounts = await api.getAccounts();
   } catch (err) {
-    showToast(`Failed to load accounts: ${err}`, 'error');
+    toastError('load accounts', err);
     state.accounts = [];
   }
 }
@@ -337,7 +338,7 @@ async function loadMailBody(mailId) {
   } catch (err) {
     if (_loadingMailId !== mailId) return;
     if (state.selectedMail && state.selectedMail.id === mailId) {
-      showToast(`Failed to load email body: ${err}`, 'error');
+      toastError('load email body', err);
       state.mailBody = { text: '', html: '' };
       renderView();
     }
@@ -367,7 +368,7 @@ async function selectFolder(folder) {
 }
 
 async function selectMail(mailId) {
-  const mail = state.mails.find((m) => m.id === mailId);
+  const mail = findMail(mailId);
   if (!mail) return;
 
   const prevId = state.selectedMail ? state.selectedMail.id : null;
@@ -422,7 +423,7 @@ async function refreshCurrentFolder() {
   try {
     await api.refreshFolder(activeAccountId(), state.activeFolder);
   } catch (err) {
-    showToast(`Refresh failed: ${err}`, 'error');
+    toastError('refresh', err);
   }
 
   await loadMails();
@@ -492,7 +493,7 @@ async function searchMails(query) {
     }
     state.hasMore = false;
   } catch (err) {
-    showToast(`Search failed: ${err}`, 'error');
+    toastError('search', err);
   }
 
   state.loading = false;
@@ -500,14 +501,11 @@ async function searchMails(query) {
 }
 
 async function toggleMailPin(mailId) {
-  const mail = state.mails.find((m) => m.id === mailId);
+  const mail = findMail(mailId);
   if (!mail) return;
   const newPinned = !mail.is_pinned;
   // Optimistic update
-  mail.is_pinned = newPinned;
-  if (state.selectedMail && state.selectedMail.id === mailId) {
-    state.selectedMail.is_pinned = newPinned;
-  }
+  updateMail(mailId, { is_pinned: newPinned });
   renderList();
 
   try {
@@ -517,12 +515,9 @@ async function toggleMailPin(mailId) {
       await api.unpinMail(mailId);
     }
   } catch (err) {
-    mail.is_pinned = !newPinned;
-    if (state.selectedMail && state.selectedMail.id === mailId) {
-      state.selectedMail.is_pinned = !newPinned;
-    }
+    updateMail(mailId, { is_pinned: !newPinned });
     renderList();
-    showToast(`Failed to toggle pin: ${err}`, 'error');
+    toastError('toggle pin', err);
   }
 }
 
@@ -531,8 +526,7 @@ function handleSnooze(mail) {
   if (mail.snoozed_until) {
     // Snoozed_until was already set by the snooze command.
     // Just update local state and re-render.
-    const localMail = state.mails.find((m) => m.id === mail.id);
-    if (localMail) localMail.snoozed_until = mail.snoozed_until;
+    updateMail(mail.id, { snoozed_until: mail.snoozed_until });
   }
   removeMail(mail.id);
 }
@@ -840,7 +834,7 @@ function setupEmlDragDrop() {
           showToast(`Opened: ${entry.subject || '(no subject)'}`, 'info');
         }
       } catch (err) {
-        showToast(`Failed to open .eml file: ${err}`, 'error');
+        toastError('open .eml file', err);
       }
     }
   });

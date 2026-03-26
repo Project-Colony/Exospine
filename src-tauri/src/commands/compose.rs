@@ -2,7 +2,7 @@
 
 use tauri::State;
 
-use crate::app_state::{fetch_password, with_db, ComposeDraft};
+use crate::app_state::{fetch_password, map_err_str, with_db, ComposeDraft};
 use crate::AppState;
 
 use super::mail::get_account;
@@ -23,7 +23,7 @@ pub async fn send_mail(
 
     crate::mail::smtp::send_mail(&account, &password, &draft, reply_to)
         .await
-        .map_err(|e| format!("Failed to send email: {}", e))?;
+        .map_err(map_err_str("Failed to send email"))?;
 
     tracing::info!("send_mail: completed successfully");
     Ok(())
@@ -72,7 +72,7 @@ pub async fn save_draft(
 
     let mut session = crate::mail::connection::connect_with_retry(&account, &password, 3)
         .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+        .map_err(map_err_str("Failed to connect to IMAP"))?;
 
     // Find the Drafts folder
     let drafts_folder = account
@@ -84,7 +84,7 @@ pub async fn save_draft(
 
     crate::mail::imap::append_message(&mut session, &drafts_folder, rfc822.as_bytes())
         .await
-        .map_err(|e| format!("Failed to save draft: {}", e))?;
+        .map_err(map_err_str("Failed to save draft"))?;
 
     let _ = session.logout().await;
 
@@ -103,7 +103,7 @@ pub async fn save_draft_version(
 ) -> Result<(), String> {
     with_db(&state, |db| {
         db.save_draft_version(&draft_id, &subject, &body, body_html.as_deref())
-            .map_err(|e| format!("Failed to save draft version: {}", e))
+            .map_err(map_err_str("Failed to save draft version"))
     })
 }
 
@@ -115,7 +115,7 @@ pub async fn load_draft_versions(
 ) -> Result<Vec<crate::storage::db::DraftVersion>, String> {
     with_db(&state, |db| {
         db.load_draft_versions(&draft_id)
-            .map_err(|e| format!("Failed to load draft versions: {}", e))
+            .map_err(map_err_str("Failed to load draft versions"))
     })
 }
 
@@ -127,6 +127,6 @@ pub async fn delete_draft_versions(
 ) -> Result<(), String> {
     with_db(&state, |db| {
         db.delete_draft_versions(&draft_id)
-            .map_err(|e| format!("Failed to delete draft versions: {}", e))
+            .map_err(map_err_str("Failed to delete draft versions"))
     })
 }

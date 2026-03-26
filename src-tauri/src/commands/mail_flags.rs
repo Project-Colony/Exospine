@@ -2,10 +2,8 @@
 
 use tauri::State;
 
-use crate::app_state::{fetch_password, lock_or_recover};
+use crate::app_state::{get_imap_session, lock_or_recover, map_err_str};
 use crate::AppState;
-
-use super::mail::get_account;
 
 /// Mark a message as read on IMAP and in the local DB.
 #[tauri::command]
@@ -17,16 +15,11 @@ pub async fn mark_read(
 ) -> Result<(), String> {
     tracing::debug!("mark_read: uid={} in {}/{}", mail_uid, account_id, folder);
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     crate::mail::imap::mark_as_read(&mut session, &mail_uid)
         .await
-        .map_err(|e| format!("Failed to mark as read: {}", e))?;
+        .map_err(map_err_str("Failed to mark as read"))?;
 
     crate::mail::connection::return_session_with_folder(&account_id, session, folder);
 
@@ -53,16 +46,11 @@ pub async fn mark_unread(
 ) -> Result<(), String> {
     tracing::debug!("mark_unread: uid={} in {}/{}", mail_uid, account_id, folder);
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     crate::mail::imap::mark_as_unread(&mut session, &mail_uid)
         .await
-        .map_err(|e| format!("Failed to mark as unread: {}", e))?;
+        .map_err(map_err_str("Failed to mark as unread"))?;
 
     crate::mail::connection::return_session_with_folder(&account_id, session, folder);
 
@@ -89,21 +77,16 @@ pub async fn toggle_star(
 ) -> Result<(), String> {
     tracing::debug!("toggle_star: uid={}, starred={} in {}/{}", mail_uid, is_starred, account_id, folder);
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     if is_starred {
         crate::mail::imap::set_flagged(&mut session, &mail_uid)
             .await
-            .map_err(|e| format!("Failed to set flag: {}", e))?;
+            .map_err(map_err_str("Failed to set flag"))?;
     } else {
         crate::mail::imap::remove_flagged(&mut session, &mail_uid)
             .await
-            .map_err(|e| format!("Failed to remove flag: {}", e))?;
+            .map_err(map_err_str("Failed to remove flag"))?;
     }
 
     crate::mail::connection::return_session_with_folder(&account_id, session, folder);
@@ -130,16 +113,11 @@ pub async fn delete_mail(
 ) -> Result<(), String> {
     tracing::info!("delete_mail: uid={} in {}/{}", mail_uid, account_id, folder);
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     crate::mail::imap::delete_message(&mut session, &mail_uid)
         .await
-        .map_err(|e| format!("Failed to delete message: {}", e))?;
+        .map_err(map_err_str("Failed to delete message"))?;
 
     crate::mail::connection::return_session_with_folder(&account_id, session, folder);
 
@@ -165,18 +143,13 @@ pub async fn archive_mail(
 ) -> Result<(), String> {
     tracing::info!("archive_mail: uid={} in {}/{}", mail_uid, account_id, folder);
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     // "Archive" is the standard IMAP archive folder name (RFC 6154 \Archive).
     // Gmail uses "[Gmail]/All Mail" but most other providers use "Archive".
     crate::mail::imap::move_message(&mut session, &mail_uid, "Archive")
         .await
-        .map_err(|e| format!("Failed to archive message: {}", e))?;
+        .map_err(map_err_str("Failed to archive message"))?;
 
     crate::mail::connection::return_session_with_folder(&account_id, session, folder);
 

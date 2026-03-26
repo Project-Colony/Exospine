@@ -6,11 +6,9 @@ use serde::Serialize;
 use tauri::State;
 use tokio::time::timeout;
 
-use crate::app_state::{fetch_password, lock_or_recover, MailEntry};
+use crate::app_state::{get_imap_session, lock_or_recover, map_err_str, MailEntry};
 use crate::mail::security::{AuthStatus, PhishingWarning};
 use crate::AppState;
-
-use super::mail::get_account;
 
 /// Response structure for get_mail_body, serialized as { text, html, security } for the frontend.
 #[derive(Debug, Clone, Serialize)]
@@ -60,18 +58,14 @@ pub async fn get_mails(
     // If no cached data and first page, fetch the latest N mails from IMAP (fast)
     if cached_count == 0 && page == 0 {
         tracing::info!("get_mails: no cache, fetching from IMAP for {}/{}", account_id, folder);
-        let account = get_account(&state, &account_id)?;
-        let password = fetch_password(&account_id).await?;
 
-        let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-            .await
-            .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+        let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
         // Only fetch the latest 50 mails (not all 2000+)
         let mut mails =
             crate::mail::imap::fetch_messages(&mut session, &folder, per_page)
                 .await
-                .map_err(|e| format!("Failed to fetch messages: {}", e))?;
+                .map_err(map_err_str("Failed to fetch messages"))?;
 
         crate::mail::connection::return_session_with_folder(&account_id, session, folder.clone());
 
@@ -104,7 +98,7 @@ pub async fn get_mails(
 
     let result = db
         .load_message_headers_page(&account_id, &folder, per_page, offset)
-        .map_err(|e| format!("Failed to load messages from cache: {}", e))?;
+        .map_err(map_err_str("Failed to load messages from cache"))?;
 
     tracing::debug!("get_mails: returning {} cached mails", result.len());
     Ok(result)
@@ -167,15 +161,10 @@ pub async fn get_mail_body(
             .as_ref()
             .ok_or_else(|| "Database not available".to_string())?;
         db.load_message_meta(&mail_id)
-            .map_err(|e| format!("Failed to load message metadata: {}", e))?
+            .map_err(map_err_str("Failed to load message metadata"))?
     };
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(&account_id, &account, &password, &folder)
-        .await
-        .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     let mails = timeout(
         Duration::from_secs(15),
@@ -188,7 +177,7 @@ pub async fn get_mail_body(
     )
     .await
     .map_err(|_| "Timeout: fetching message body took longer than 15 seconds".to_string())?
-    .map_err(|e| format!("Failed to fetch message body: {}", e))?;
+    .map_err(map_err_str("Failed to fetch message body"))?;
 
     crate::mail::connection::return_session_with_folder(&account_id, session, folder.clone());
 
@@ -238,14 +227,7 @@ pub async fn get_mail_headers(
         mail_uid, account_id, folder
     );
 
-    let account = get_account(&state, &account_id)?;
-    let password = fetch_password(&account_id).await?;
-
-    let mut session = crate::mail::connection::get_session_for_folder(
-        &account_id, &account, &password, &folder,
-    )
-    .await
-    .map_err(|e| format!("Failed to connect to IMAP: {}", e))?;
+    let (mut session, _account) = get_imap_session(&state, &account_id, &folder).await?;
 
     // Fetch only the HEADER section for this UID
     let uid_str = mail_uid.to_string();
@@ -254,10 +236,10 @@ pub async fn get_mail_headers(
         session
             .uid_fetch(&uid_str, "BODY.PEEK[HEADER]")
             .await
-            .map_err(|e| format!("Failed to fetch headers: {}", e))?
+            .map_err(map_err_str("Failed to fetch headers"))?
             .try_collect::<Vec<_>>()
             .await
-            .map_err(|e| format!("Failed to collect headers: {}", e))?
+            .map_err(map_err_str("Failed to collect headers"))?
     };
 
     crate::mail::connection::return_session_with_folder(&account_id, session, folder);
@@ -283,10 +265,10 @@ pub async fn open_eml_file(path: String) -> Result<MailEntry, String> {
 
     let raw = tokio::fs::read(&path)
         .await
-        .map_err(|e| format!("Failed to read .eml file: {}", e))?;
+        .map_err(map_err_str("Failed to read .eml file"))?;
 
     let entry = crate::mail::parser::parse_email(&raw, "__local__", "__eml__")
-        .map_err(|e| format!("Failed to parse .eml file: {}", e))?;
+        .map_err(map_err_str("Failed to parse .eml file"))?;
 
     Ok(entry)
 }

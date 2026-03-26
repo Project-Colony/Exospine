@@ -2,7 +2,7 @@
 
 use tauri::State;
 
-use crate::app_state::{fetch_password, ComposeDraft};
+use crate::app_state::{fetch_password, map_err_str, ComposeDraft};
 use crate::AppState;
 
 use super::mail::get_account;
@@ -43,7 +43,7 @@ pub async fn send_read_receipt(
 
     crate::mail::smtp::send_mail(&account, &password, &draft, None)
         .await
-        .map_err(|e| format!("Failed to send read receipt: {}", e))?;
+        .map_err(map_err_str("Failed to send read receipt"))?;
 
     Ok(())
 }
