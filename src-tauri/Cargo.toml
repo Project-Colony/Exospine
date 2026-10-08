@@ -2,6 +2,7 @@
 name = "exospine-tauri"
 version = "0.2.0"
 edition = "2021"
+rust-version = "1.88"
 description = "Portable email client built with Rust + Tauri v2"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/Project-Colony/Exospine"
