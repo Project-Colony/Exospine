@@ -76,7 +76,7 @@ fn read_or_create_salt_file() -> [u8; 32] {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    if let Err(e) = std::fs::write(&path, &salt) {
+    if let Err(e) = std::fs::write(&path, salt) {
         tracing::error!("Failed to write encryption salt: {}", e);
     }
     salt
@@ -99,7 +99,7 @@ fn derive_encryption_key() -> [u8; 32] {
     hasher.update(b":");
     hasher.update(username.as_bytes());
     hasher.update(b":");
-    hasher.update(&installation_salt);
+    hasher.update(installation_salt);
     hasher.finalize().into()
 }
 
