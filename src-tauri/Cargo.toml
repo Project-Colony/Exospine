@@ -25,7 +25,7 @@ mail-parser = "0.9"
 
 # HTML handling
 html2text = "0.13"
-ammonia = "4"
+ammonia = "4.2.1"
 
 # Storage
 rusqlite = { version = "0.32", features = ["bundled"] }
