@@ -3,7 +3,8 @@ name = "exospine-tauri"
 version = "0.2.0"
 edition = "2021"
 description = "Portable email client built with Rust + Tauri v2"
-license = "MIT"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/Project-Colony/Exospine"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

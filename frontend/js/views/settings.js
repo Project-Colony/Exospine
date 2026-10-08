@@ -347,7 +347,7 @@ export async function openSettings(state, actions) {
         <div class="settings-section settings-section-about">
           <div class="font-bolder mb-4" style="font-size:18px;">Exospine v0.2.0</div>
           <div class="text-sm text-dim mb-6">Built with Rust + Tauri</div>
-          <div class="mb-6"><a href="https://github.com/MotherSphere/Exospine-Private" target="_blank" rel="noopener" class="text-accent text-sm">GitHub Repository</a></div>
+          <div class="mb-6"><a href="https://github.com/Project-Colony/Exospine" target="_blank" rel="noopener" class="text-accent text-sm">GitHub Repository</a></div>
           <div class="text-xs text-dim">&copy; 2026 MotherSphere</div>
         </div>
       </div>

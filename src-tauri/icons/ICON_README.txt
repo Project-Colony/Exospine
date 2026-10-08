@@ -1,4 +1,4 @@
-Exospine App Icon — How to Replace
+Exospine App Icon - How to Replace
 ===================================
 
 The current icon.ico is a placeholder. To create a proper icon:

@@ -1,166 +1,36 @@
 # Exospine
 
-A modern, portable email client built with **Rust + Tauri v2**.
-Exospine aims to be a fast, privacy-respecting alternative to mainstream email clients, with a lightweight vanilla JS frontend and a Rust backend handling all mail protocols.
+Exospine is a portable desktop email client. A Rust backend (Tauri v2) handles IMAP, SMTP, OAuth2 and local storage, and a vanilla JavaScript webview renders the interface.
 
-![Screenshot placeholder](docs/screenshot.png)
+> **Status:** early development. There is no release yet, CI is being repaired, and the interface does not yet follow the Colony design system.
 
----
+## What it does
 
-## Features
+- IMAP sync with IDLE push and SMTP sending, for several accounts at once
+- Gmail and Outlook / Office 365 sign-in through OAuth2; other IMAP/SMTP providers with a password or app password
+- Passwords and tokens kept in the OS keyring, the accounts file encrypted at rest, TLS through rustls
+- Local SQLite mail cache with search
+- Portable mode: put a `portable.txt` file next to the executable and all configuration and data go to a `data/` folder beside it
 
-### Mail
-- IMAP sync with IDLE push notifications (real-time new mail)
-- SMTP sending with draft versioning
-- Multi-account support (unified inbox + per-account folder trees)
-- Threaded conversation view (In-Reply-To / References)
-- Full-text search across cached messages
-- Pin, snooze, schedule send, flag for follow-up
-- Star, archive, move, sweep sender
-- Read receipts (send/request)
-- Spam scoring and reporting
-- Categories / labels
-- Drag-and-drop `.eml` file import
+## Build from source
 
-### Providers
-- **Gmail** — OAuth2 (XOAUTH2 SASL)
-- **Outlook / Office 365 / Exchange Online** — OAuth2 (Microsoft endpoints, `outlook.office365.com`)
-- **ProtonMail** — via Proton Bridge (localhost IMAP/SMTP, app password)
-- **Yahoo, iCloud, Fastmail** — app password
-- **Custom IMAP/SMTP** — any provider with standard ports
+You need a stable Rust toolchain and the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform (WebView2 on Windows, WebKitGTK on Linux).
 
-### Security
-- Passwords and tokens stored in OS keyring
-- Accounts file encrypted at rest (AES-256-GCM)
-- TLS enforced on all IMAP/SMTP connections (rustls)
-- Phishing / sender-spoofing warnings
-- Anti-tracking for HTML emails
-- Authentication-Results header analysis (SPF, DKIM, DMARC)
-
-### Compose
-- Rich text and plain text editor
-- Per-account signatures (text + HTML)
-- Draft auto-save with version history
-- CC / BCC support
-- Attachment handling
-
-### UI
-- Dark and light themes
-- Compact / normal / comfortable density
-- Right or bottom reading pane
-- Resizable panels
-- Keyboard shortcuts (customizable)
-- Offline mode with action queue (sync on reconnect)
-- Focus mode
-- i18n (English, French, and more)
-- Calendar and contacts views
-
-### Portable Mode
-- Drop a `portable.txt` file next to the executable
-- All config and data stored in a `data/` folder next to the exe (USB-friendly)
-
----
-
-## Installation / Build
-
-### Prerequisites
-- [Rust](https://rustup.rs/) (stable toolchain)
-- [Node.js](https://nodejs.org/) (for Tauri CLI)
-- [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (Windows; usually pre-installed on Windows 10+)
-
-### Build
 ```bash
 cd src-tauri
 cargo build --release
 ```
 
-The binary will be at `target/release/exospine-tauri.exe` (Windows).
+The binary is `src-tauri/target/release/exospine-tauri` (`exospine-tauri.exe` on Windows).
 
-### Run
-```bash
-cargo tauri dev
-```
-
-If WebView2 is installed in a non-standard location, set the environment variable:
-```bash
-set WEBVIEW2_BROWSER_EXECUTABLE_FOLDER=C:\path\to\WebView2
-```
-
----
-
-## Architecture
-
-```
-Exospine
- |- src-tauri/         Rust backend (Tauri v2)
- |   |- src/
- |   |   |- main.rs           App entry, Tauri setup, IDLE loops
- |   |   |- config.rs         Config loading/saving, account persistence (encrypted)
- |   |   |- app_state.rs      Shared state types (Account, MailEntry, etc.)
- |   |   |- accounts/         Provider detection, OAuth2, keyring, account setup
- |   |   |- mail/             IMAP, SMTP, parser, attachments, security, spam, IDLE
- |   |   |- commands/         Tauri IPC commands (accounts, mail, compose, settings, ...)
- |   |   |- storage/          SQLite database, audit log
- |   |   |- search.rs         Full-text search
- |   |   |- notifications.rs  Desktop notifications
- |   |- Cargo.toml
- |
- |- frontend/          Vanilla JS frontend
- |   |- js/
- |   |   |- app.js            Main entry, global state, init
- |   |   |- api.js            Tauri invoke wrappers
- |   |   |- views/            Sidebar, mail list, mail view, compose, onboarding, settings, ...
- |   |   |- components/       Toast, dialog, context menu
- |   |   |- i18n.js           Internationalization
- |   |- css/
- |   |- index.html
-```
-
-**Backend:** Rust with Tauri v2. All IMAP/SMTP operations, OAuth2 flows, encryption, and SQLite storage happen in the backend. The frontend communicates via Tauri's IPC invoke mechanism.
-
-**Frontend:** Vanilla JavaScript (no framework). Views are rendered imperatively into DOM elements. State is managed in a simple global object in `app.js`.
-
----
+For development, install the Tauri CLI (`cargo install tauri-cli --version "^2"`) and run `cargo tauri dev`.
 
 ## Configuration
 
-Configuration is stored at:
-- **Normal mode:** `%APPDATA%/exospine/config.toml` (Windows) or `~/.config/exospine/config.toml` (Linux/macOS)
-- **Portable mode:** `data/config.toml` next to the executable (when `portable.txt` exists)
+Settings live in `config.toml` inside the platform configuration directory: `~/.config/exospine/` on Linux, `~/Library/Application Support/exospine/` on macOS, `%APPDATA%\exospine\` on Windows, or `data/` in portable mode.
 
-### OAuth2 Setup (Gmail / Outlook)
-
-Set credentials in `config.toml`:
-```toml
-google_client_id = "your-google-client-id"
-google_client_secret = "your-google-client-secret"
-microsoft_client_id = "your-microsoft-client-id"
-microsoft_client_secret = "your-microsoft-client-secret"
-```
-
-Or via environment variables:
-```
-EXOSPINE_GOOGLE_CLIENT_ID
-EXOSPINE_GOOGLE_CLIENT_SECRET
-EXOSPINE_MICROSOFT_CLIENT_ID
-EXOSPINE_MICROSOFT_CLIENT_SECRET
-```
-
----
+Gmail and Outlook sign-in need your own OAuth2 client credentials. Set them in `config.toml` (`google_client_id`, `google_client_secret`, `microsoft_client_id`, `microsoft_client_secret`) or through the environment variables `EXOSPINE_GOOGLE_CLIENT_ID`, `EXOSPINE_GOOGLE_CLIENT_SECRET`, `EXOSPINE_MICROSOFT_CLIENT_ID` and `EXOSPINE_MICROSOFT_CLIENT_SECRET`, which take precedence.
 
 ## License
 
-MIT
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Make your changes and ensure `cargo check` passes in `src-tauri/`
-4. Test manually (no CI yet)
-5. Commit with a clear message describing what changed and why
-6. Open a pull request
-
-Please keep the codebase lean: no heavy frameworks, no unnecessary dependencies. Vanilla JS on the frontend, idiomatic Rust on the backend.
+Exospine is free software, licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE).
