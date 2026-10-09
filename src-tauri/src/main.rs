@@ -133,6 +133,13 @@ fn main() {
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { .. } = event {
                         save_window_state(&win);
+                        // Pop-out message windows close with the main window,
+                        // so the app does not keep running without it.
+                        for (label, popout) in win.webview_windows() {
+                            if label.starts_with("mail-") {
+                                let _ = popout.close();
+                            }
+                        }
                         // Signal all background tasks to stop
                         let _ = shutdown.send(());
                         // Brief grace period for background tasks
