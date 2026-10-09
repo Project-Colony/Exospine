@@ -2,7 +2,7 @@
 
 Exospine is a portable desktop email client. A Rust backend (Tauri v2) handles IMAP, SMTP, OAuth2 and local storage, and a vanilla JavaScript webview renders the interface.
 
-> **Status:** early development. There is no release yet, CI is being repaired, and the interface does not yet follow the Colony design system.
+> **Status:** early development. There is no release yet. CI builds and tests every change on Windows and is green, and the interface does not yet follow the Colony design system.
 
 ## What it does
 
@@ -14,7 +14,7 @@ Exospine is a portable desktop email client. A Rust backend (Tauri v2) handles I
 
 ## Build from source
 
-You need a stable Rust toolchain and the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform (WebView2 on Windows, WebKitGTK on Linux).
+You need Rust 1.90 or newer and the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform (WebView2 on Windows, WebKitGTK on Linux).
 
 ```bash
 cd src-tauri
