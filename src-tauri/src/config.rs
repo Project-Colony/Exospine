@@ -49,7 +49,16 @@ fn salt_path() -> PathBuf {
 
 /// Load or create a 32-byte random salt unique to this installation.
 /// The salt is stored in `<data_dir>/encryption.salt`.
+///
+/// Resolved once per process: concurrent first calls would otherwise each
+/// generate and write their own salt (or read a file another call has just
+/// truncated) and derive different keys.
 fn load_or_create_salt() -> [u8; 32] {
+    static SALT: std::sync::OnceLock<[u8; 32]> = std::sync::OnceLock::new();
+    *SALT.get_or_init(read_or_create_salt_file)
+}
+
+fn read_or_create_salt_file() -> [u8; 32] {
     let path = salt_path();
     if let Ok(data) = std::fs::read(&path) {
         if data.len() == 32 {
@@ -67,7 +76,7 @@ fn load_or_create_salt() -> [u8; 32] {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    if let Err(e) = std::fs::write(&path, &salt) {
+    if let Err(e) = std::fs::write(&path, salt) {
         tracing::error!("Failed to write encryption salt: {}", e);
     }
     salt
@@ -90,7 +99,7 @@ fn derive_encryption_key() -> [u8; 32] {
     hasher.update(b":");
     hasher.update(username.as_bytes());
     hasher.update(b":");
-    hasher.update(&installation_salt);
+    hasher.update(installation_salt);
     hasher.finalize().into()
 }
 

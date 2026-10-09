@@ -145,7 +145,7 @@ pub fn parse_email(raw: &[u8], account_id: &str, folder: &str) -> Result<MailEnt
     let unsubscribe_url: Option<String> = message
         .header("List-Unsubscribe")
         .and_then(|v| v.as_text())
-        .and_then(|raw| parse_list_unsubscribe(raw));
+        .and_then(parse_list_unsubscribe);
 
     // ── Importance / priority headers ────────────────────────────
     let importance = {
@@ -313,10 +313,8 @@ fn parse_list_unsubscribe(raw: &str) -> Option<String> {
                     if https_url.is_none() {
                         https_url = Some(url);
                     }
-                } else if url.starts_with("mailto:") {
-                    if mailto_url.is_none() {
-                        mailto_url = Some(url);
-                    }
+                } else if url.starts_with("mailto:") && mailto_url.is_none() {
+                    mailto_url = Some(url);
                 }
             }
         }

@@ -257,7 +257,7 @@ pub async fn fetch_new_mails(
         }
     }
 
-    entries.sort_by(|a, b| b.date.cmp(&a.date));
+    entries.sort_by_key(|a| std::cmp::Reverse(a.date));
     Ok(entries)
 }
 
@@ -329,7 +329,7 @@ pub async fn fetch_all_mails_batched(
         }
     }
 
-    entries.sort_by(|a, b| b.date.cmp(&a.date));
+    entries.sort_by_key(|a| std::cmp::Reverse(a.date));
     Ok(entries)
 }
 

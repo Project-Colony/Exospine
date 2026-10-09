@@ -47,7 +47,7 @@ pub async fn get_mails(
     };
 
     // Pagination boundary check: if requested offset exceeds total count, return empty
-    if cached_count > 0 && offset >= cached_count as u32 {
+    if cached_count > 0 && offset >= cached_count {
         tracing::debug!(
             "get_mails: page {} beyond total count {} — returning empty",
             page, cached_count

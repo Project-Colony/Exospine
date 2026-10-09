@@ -121,11 +121,7 @@ pub fn parse_exospine_url(url: &str) -> MailtoData {
         .unwrap_or(url);
 
     // Find query string after '?'
-    let query_part = if let Some(idx) = stripped.find('?') {
-        Some(&stripped[idx + 1..])
-    } else {
-        None
-    };
+    let query_part = stripped.find('?').map(|idx| &stripped[idx + 1..]);
 
     if let Some(query) = query_part {
         for pair in query.split('&') {

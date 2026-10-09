@@ -4,6 +4,9 @@ use rusqlite::params;
 use super::db::{parse_address, Database};
 use crate::app_state::MailEntry;
 
+/// (email, name, frequency, phone, company, notes)
+pub type ContactRow = (String, String, u32, String, String, String);
+
 impl Database {
     /// Upsert a contact: insert or update, incrementing frequency.
     pub fn upsert_contact(&self, email: &str, name: &str) -> Result<()> {
@@ -42,7 +45,7 @@ impl Database {
     }
 
     /// Get all contacts, ordered by name.
-    pub fn get_all_contacts(&self) -> Result<Vec<(String, String, u32, String, String, String)>> {
+    pub fn get_all_contacts(&self) -> Result<Vec<ContactRow>> {
         let mut stmt = self.conn().prepare(
             "SELECT email, name, frequency, phone, company, notes FROM contacts
              ORDER BY name ASC, email ASC",

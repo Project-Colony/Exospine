@@ -157,9 +157,6 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_messages_starred
                 ON messages(account_id, is_starred);
 
-            CREATE INDEX IF NOT EXISTS idx_messages_spam
-                ON messages(spam_score);
-
             CREATE INDEX IF NOT EXISTS idx_messages_uid
                 ON messages(account_id, folder, uid);",
         )?;
