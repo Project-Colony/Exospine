@@ -119,7 +119,7 @@ fn has_scheme(value: &str, schemes: &[&str]) -> bool {
 }
 
 /// Drop inline CSS declarations that fetch a resource (`url()`,
-/// `image-set()`, `src()`, or a backslash escape that could spell one) or
+/// `image-set()`, `src()`, or an escape or comment that could hide one) or
 /// take the element out of the message flow (`position`), so a quoted
 /// message cannot cover the compose window.
 fn filter_style(style: &str) -> String {
@@ -129,7 +129,7 @@ fn filter_style(style: &str) -> String {
             let declaration = declaration.to_ascii_lowercase();
             let property = declaration.split(':').next().unwrap_or_default().trim();
             property != "position"
-                && !["url(", "image-set(", "src(", "\\"]
+                && !["url(", "image-set(", "src(", "\\", "/*"]
                     .iter()
                     .any(|needle| declaration.contains(needle))
         })
@@ -232,7 +232,7 @@ mod tests {
     #[test]
     fn strips_style_blocks_and_remote_css() {
         let out = sanitize_html(
-            r#"<style>body{display:none}</style><p class="overlay" id="compose-body" style="color:red; background:url(https://t.example.com/p.gif); position:fixed">x</p>"#,
+            r#"<style>body{display:none}</style><p class="overlay" id="compose-body" style="color:red; background:url(https://t.example.com/p.gif); position:fixed; /**/position:absolute">x</p>"#,
         );
         assert_eq!(out, r#"<p style="color:red">x</p>"#);
     }
