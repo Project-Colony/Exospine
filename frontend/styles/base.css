@@ -1,3 +1,9 @@
+/* Ensure text is visible immediately while monospace fonts load. Kept out of
+   index.html: an inline <style> there makes Tauri add a style nonce to the
+   CSP, which disables 'unsafe-inline' for every inline style attribute. */
+@font-face { font-family: "Cascadia Code"; font-display: swap; src: local("Cascadia Code"); }
+@font-face { font-family: "Fira Code"; font-display: swap; src: local("Fira Code"); }
+
 /* --- Reset & base ------------------------------------------ */
 *, *::before, *::after {
   box-sizing: border-box;

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exospine</title>
+  <script type="module" src="js/mail_window.js"></script>
+  <!-- No <style> element here: Tauri would add a style nonce to the CSP, which
+       turns off 'unsafe-inline' for the message's own inline styles. -->
+</head>
+<body style="margin:0;display:flex;flex-direction:column;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1e1e1e;background:#fff;">
+  <header style="padding:16px 20px 12px;border-bottom:1px solid #ddd;font-size:13px;color:#666;">
+    <div id="mail-subject" style="font-size:20px;font-weight:bold;color:#1e1e1e;margin-bottom:8px;"></div>
+    <div id="mail-from"></div>
+    <div id="mail-to"></div>
+    <div id="mail-date"></div>
+  </header>
+  <iframe id="email-frame" sandbox="allow-same-origin" title="Email content" style="flex:1;width:100%;border:0;"></iframe>
+</body>
+</html>

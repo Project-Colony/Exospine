@@ -59,30 +59,38 @@ pub fn strip_tracking(html: &str) -> String {
     strip_tracking_params_from_links(&result)
 }
 
-/// Remove `<img>` tags that look like tracking pixels.
-fn strip_tracking_pixels(html: &str) -> String {
-    // Match <img> tags that have width="1" height="1" or width="0" height="0"
-    // or style containing width:0/1px, height:0/1px
-    let re_tiny = Regex::new(
+/// `<img>` tags that are 1x1 or 0x0 (width and height attributes, either order).
+static TINY_IMG: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
         r#"(?i)<img\b[^>]*?(?:(?:width\s*=\s*["']?[01](?:px)?["']?\s+height\s*=\s*["']?[01](?:px)?["']?)|(?:height\s*=\s*["']?[01](?:px)?["']?\s+width\s*=\s*["']?[01](?:px)?["']?))[^>]*/?\s*>"#,
     )
-    .expect("valid regex");
+    .expect("valid regex")
+});
 
-    let result = re_tiny.replace_all(html, "");
-
-    // Also match <img> with style containing display:none
-    let re_hidden = Regex::new(
+/// `<img>` tags hidden with `display:none` in their style.
+static HIDDEN_IMG: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
         r#"(?i)<img\b[^>]*?style\s*=\s*["'][^"']*display\s*:\s*none[^"']*["'][^>]*/?\s*>"#,
     )
-    .expect("valid regex");
+    .expect("valid regex")
+});
 
-    let result = re_hidden.replace_all(&result, "");
+/// `<img>` tags with a quoted `src`, captured in group 1.
+static IMG_SRC: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?i)<img\b[^>]*?src\s*=\s*["']([^"']*)["'][^>]*/?\s*>"#).expect("valid regex")
+});
+
+/// Quoted `href` attributes: prefix, URL, closing quote.
+static HREF: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"(?i)(href\s*=\s*["'])([^"']+)(["'])"#).expect("valid regex"));
+
+/// Remove `<img>` tags that look like tracking pixels.
+fn strip_tracking_pixels(html: &str) -> String {
+    let result = TINY_IMG.replace_all(html, "");
+    let result = HIDDEN_IMG.replace_all(&result, "");
 
     // Remove <img> tags whose src matches known tracking domains
-    let re_img = Regex::new(r#"(?i)<img\b[^>]*?src\s*=\s*["']([^"']*)["'][^>]*/?\s*>"#)
-        .expect("valid regex");
-
-    re_img
+    IMG_SRC
         .replace_all(&result, |caps: &regex::Captures| {
             let src = caps.get(1).map_or("", |m| m.as_str());
             if is_tracking_url(src) {
@@ -102,10 +110,7 @@ fn is_tracking_url(url: &str) -> bool {
 
 /// Strip tracking parameters from all `href` attributes in the HTML.
 fn strip_tracking_params_from_links(html: &str) -> String {
-    let re_href =
-        Regex::new(r#"(?i)(href\s*=\s*["'])([^"']+)(["'])"#).expect("valid regex");
-
-    re_href
+    HREF
         .replace_all(html, |caps: &regex::Captures| {
             let prefix = &caps[1];
             let url = &caps[2];

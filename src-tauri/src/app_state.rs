@@ -199,6 +199,8 @@ pub struct MailEntry {
     /// Full plain-text body (empty when loaded as header-only; loaded on demand from DB).
     pub body_text: String,
     /// Full HTML body, if available (None when loaded as header-only).
+    /// Stored raw; sanitized whenever it is sent to the webview.
+    #[serde(serialize_with = "crate::mail::html_render::serialize_sanitized")]
     pub body_html: Option<String>,
     /// Whether this message has been read.
     pub is_read: bool,

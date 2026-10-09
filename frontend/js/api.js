@@ -16,6 +16,12 @@ export const getMails = (accountId, folder, page, perPage) =>
 
 export const getMailBody = (mailId) => invoke('get_mail_body', { mailId });
 
+/** Open one message in its own window (mail.html, query built by the caller). */
+export const openMailWindow = (title, query) => invoke('open_mail_window', { title, query });
+
+/** Open an http(s) or mailto link in the system browser or mail client. */
+export const openExternal = (url) => invoke('plugin:shell|open', { path: url });
+
 export const getFolders = (accountId) => invoke('get_folders', { accountId });
 
 export const refreshFolder = (accountId, folder) =>

@@ -99,7 +99,8 @@ export function renderMailView(el, state, actions) {
   }
   const hasHtml = body && typeof body.html === 'string' && body.html.length > 0;
   const hasText = body && typeof body.text === 'string' && body.text.length > 0;
-  const hasRemoteImages = hasHtml && containsRemoteImages(body.html);
+  // The backend keeps blocked remote image URLs in data-remote-src.
+  const hasRemoteImages = hasHtml && body.html.includes('data-remote-src=');
 
   // Security data from backend
   const phishingWarnings = (body && body.phishing_warnings) || [];
@@ -437,18 +438,19 @@ export function renderMailView(el, state, actions) {
     }
   });
 
-  // Inject HTML into iframe (with remote images stripped by default)
+  // Inject the sanitized HTML into the sandboxed iframe (remote images blocked by default)
+  let remoteImagesShown = false;
   if (hasHtml) {
     const iframe = el.querySelector('#email-frame');
     if (iframe) {
-      const sanitized = hasRemoteImages ? stripRemoteImages(body.html) : body.html;
-      writeToIframe(iframe, sanitized);
+      openLinksExternally(iframe);
+      iframe.srcdoc = mailDocument(body.html);
 
       const showBtn = el.querySelector('#show-images-btn');
       if (showBtn) {
         showBtn.addEventListener('click', () => {
-          // Rewrite iframe with images allowed (no stripRemoteImages)
-          writeToIframe(iframe, body.html);
+          remoteImagesShown = true;
+          iframe.srcdoc = mailDocument(showRemoteImages(body.html), { allowRemoteImages: true });
           const banner = el.querySelector('#image-banner');
           if (banner) banner.style.display = 'none';
         });
@@ -642,7 +644,7 @@ export function renderMailView(el, state, actions) {
     'archive': () => { if (actions.onArchive) { actions.onArchive(mail); showToast('Email archived.', 'success'); } },
     'delete': () => { if (actions.onDelete) { actions.onDelete(mail); showToast('Email deleted.', 'success'); } },
     'mark-unread': () => { if (actions.onMarkUnread) { actions.onMarkUnread(mail); showToast('Email marked as unread.', 'success'); } },
-    'print': () => printEmail(mail, body),
+    'print': () => printEmail(mail, body, remoteImagesShown),
     'export': () => exportEmail(mail),
     'view-headers': () => viewHeaders(mail),
     'zoom-in': () => { _zoomLevel = Math.min(200, _zoomLevel + 10); applyZoom(); },
@@ -674,32 +676,16 @@ export function renderMailView(el, state, actions) {
       }
     },
     'open-new-window': () => {
-      const subject = mail.subject || '(No subject)';
-      const htmlContent = (body && body.html) || '';
-      const textContent = (body && body.text) || '';
-      const content = htmlContent || `<pre style="white-space:pre-wrap;font-family:sans-serif;">${esc(textContent)}</pre>`;
-      const fullHtml = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${esc(subject)}</title>
-<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:20px;color:#1e1e1e;background:#fff;}
-.mail-header{border-bottom:1px solid #ddd;padding-bottom:12px;margin-bottom:16px;}
-.mail-subject{font-size:20px;font-weight:bold;margin-bottom:8px;}
-.mail-meta{font-size:13px;color:#666;}</style></head><body>
-<div class="mail-header">
-  <div class="mail-subject">${esc(subject)}</div>
-  <div class="mail-meta">From: ${esc(mail.from || 'Unknown')}</div>
-  <div class="mail-meta">To: ${esc(mail.to || '')}</div>
-  <div class="mail-meta">Date: ${esc(mail.date || '')}</div>
-</div>
-<div class="mail-body">${content}</div>
-</body></html>`;
-      const newWin = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no');
-      if (newWin) {
-        newWin.document.write(fullHtml);
-        newWin.document.close();
-        newWin.document.title = subject;
-      } else {
-        showToast('Pop-up blocked. Please allow pop-ups for Exospine.', 'error');
-      }
+      const query = new URLSearchParams({
+        id: mail.id,
+        subject: mail.subject || '(No subject)',
+        from: mail.from || 'Unknown',
+        to: String(mail.to || ''),
+        date: formatFullDate(mail.date),
+        images: remoteImagesShown ? '1' : '',
+      });
+      api.openMailWindow(mail.subject || '(No subject)', query.toString())
+        .catch((err) => showToast(`Failed to open window: ${err}`, 'error'));
     },
   };
 
@@ -1186,23 +1172,27 @@ async function handleDownloadAttachment(mail, partIndex) {
 }
 
 /**
- * Print the current email.
+ * Print the current email from a hidden sandboxed iframe (no scripts).
  */
 // ===== SECTION: Print =====
-function printEmail(mail, body) {
+function printEmail(mail, body, remoteImagesShown) {
   if (!body) return;
-  const content = body.html || `<pre style="white-space:pre-wrap;font-family:sans-serif;">${esc(body.text || '')}</pre>`;
-  const w = window.open('', '_blank');
-  if (!w) {
-    showToast('Pop-up blocked. Please allow pop-ups.', 'error');
-    return;
-  }
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(mail.subject || '')}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:20px;font-size:14px;color:#1e1e1e;}img{max-width:100%;height:auto;}</style></head><body>${content}</body></html>`);
-  w.document.close();
-  w.onafterprint = () => w.close();
-  w.print();
-  // Fallback: close after 30s in case onafterprint doesn't fire
-  setTimeout(() => { try { w.close(); } catch {} }, 30000);
+  const content = body.html
+    ? (remoteImagesShown ? showRemoteImages(body.html) : body.html)
+    : `<pre style="white-space:pre-wrap;font-family:sans-serif;">${esc(body.text || '')}</pre>`;
+  const frame = document.createElement('iframe');
+  frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
+  frame.title = 'Print preview';
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  frame.addEventListener('load', () => {
+    const win = frame.contentWindow;
+    // print() blocks on some engines and not on others: clean up on afterprint, with a fallback
+    win.addEventListener('afterprint', () => frame.remove(), { once: true });
+    setTimeout(() => frame.remove(), 60000);
+    win.print();
+  }, { once: true });
+  frame.srcdoc = mailDocument(content, { allowRemoteImages: remoteImagesShown, title: mail.subject });
+  document.body.appendChild(frame);
 }
 
 /**
@@ -1223,68 +1213,66 @@ async function exportEmail(mail) {
 }
 
 /**
- * Write HTML content into a sandboxed iframe.
+ * Full document for a sandboxed mail iframe. `html` must be the sanitized
+ * body from the backend. Its own CSP blocks every remote resource unless the
+ * user chose to show remote images.
  */
 // ===== SECTION: Iframe & HTML Rendering =====
-function writeToIframe(iframe, htmlContent) {
-  // Strip <script> tags to prevent console spam from sandbox blocking
-  const cleaned = htmlContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  const lazyHtml = addLazyLoading(cleaned);
-
-  const wrapped = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body {
-          margin: 0;
-          padding: 16px 24px;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          font-size: 14px;
-          line-height: 1.6;
-          color: #1e1e1e;
-          word-break: break-word;
-          overflow-wrap: break-word;
-        }
-        img { max-width: 100%; height: auto; }
-        a { color: rgb(0, 120, 214); }
-        pre, code { font-family: "Cascadia Code", "Fira Code", Consolas, monospace; }
-        table { border-collapse: collapse; max-width: 100%; }
-      </style>
-    </head>
-    <body>${lazyHtml}</body>
-    </html>
-  `;
-  iframe.srcdoc = wrapped;
+export function mailDocument(html, { allowRemoteImages = false, title = '' } = {}) {
+  const imgSrc = allowRemoteImages ? 'data: https:' : 'data:';
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${esc(title)}</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src ${imgSrc}">
+  <style>
+    body {
+      margin: 0;
+      padding: 16px 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #1e1e1e;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+    img { max-width: 100%; height: auto; }
+    img[data-remote-src] { background: #eee; min-width: 16px; min-height: 16px; }
+    a { color: rgb(0, 120, 214); }
+    pre, code { font-family: "Cascadia Code", "Fira Code", Consolas, monospace; }
+    table { border-collapse: collapse; max-width: 100%; }
+  </style>
+</head>
+<body>${addLazyLoading(html)}</body>
+</html>`;
 }
 
 function addLazyLoading(html) {
   return html.replace(/<img(?![^>]*loading\s*=)/gi, '<img loading="lazy"');
 }
 
-// LRU cache for containsRemoteImages results (keyed by html string hash)
-const _remoteImgCache = new Map();
-const _REMOTE_IMG_CACHE_MAX = 50;
-
-function containsRemoteImages(html) {
-  // Use the first 200 chars + length as a cheap cache key
-  const key = html.length + ':' + html.slice(0, 200);
-  if (_remoteImgCache.has(key)) return _remoteImgCache.get(key);
-  const result = /<img[^>]+src\s*=\s*["']https?:\/\//i.test(html);
-  _remoteImgCache.set(key, result);
-  // LRU eviction
-  if (_remoteImgCache.size > _REMOTE_IMG_CACHE_MAX) {
-    _remoteImgCache.delete(_remoteImgCache.keys().next().value);
-  }
-  return result;
+/** Put blocked remote images back: the backend keeps their URL in data-remote-src. */
+export function showRemoteImages(html) {
+  // DOMParser documents are inert: nothing loads or runs while we rewrite.
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('img[data-remote-src]').forEach((img) => {
+    img.setAttribute('src', img.dataset.remoteSrc);
+    img.removeAttribute('data-remote-src');
+  });
+  return doc.body.innerHTML;
 }
 
-function stripRemoteImages(html) {
-  return html.replace(
-    /(<img[^>]+)src\s*=\s*["'](https?:\/\/[^"']*)["']/gi,
-    '$1src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'100\'%3E%3Crect fill=\'%23eee\' width=\'200\' height=\'100\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23999\' font-size=\'12\'%3EImage blocked%3C/text%3E%3C/svg%3E" data-original-src="$2"'
-  );
+/** Open links clicked in a mail iframe in the system browser, not inside the frame. */
+export function openLinksExternally(iframe) {
+  iframe.addEventListener('load', () => {
+    iframe.contentDocument?.addEventListener('click', (e) => {
+      const link = e.target.closest?.('a[href]');
+      if (!link) return;
+      e.preventDefault();
+      api.openExternal(link.href).catch((err) => showToast(`Failed to open link: ${err}`, 'error'));
+    });
+  });
 }
 
 // ===== SECTION: Attachment Helpers =====
@@ -1370,7 +1358,7 @@ async function viewHeaders(mail) {
 }
 
 // ===== SECTION: Utility Helpers =====
-function esc(str) {
+export function esc(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
   return d.innerHTML;

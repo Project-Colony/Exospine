@@ -133,6 +133,13 @@ fn main() {
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { .. } = event {
                         save_window_state(&win);
+                        // Pop-out message windows close with the main window,
+                        // so the app does not keep running without it.
+                        for (label, popout) in win.webview_windows() {
+                            if label.starts_with("mail-") {
+                                let _ = popout.close();
+                            }
+                        }
                         // Signal all background tasks to stop
                         let _ = shutdown.send(());
                         // Brief grace period for background tasks
@@ -325,6 +332,7 @@ fn main() {
             commands::mail_read::get_mail_body,
             commands::mail_read::get_mail_headers,
             commands::mail_read::open_eml_file,
+            commands::mail_read::open_mail_window,
             // Mail commands — sync
             commands::mail_sync::refresh_folder,
             commands::mail_sync::sync_all_mails,

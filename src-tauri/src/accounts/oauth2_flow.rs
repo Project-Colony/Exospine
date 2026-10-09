@@ -166,7 +166,8 @@ async fn listen_for_callback(expected_state: &str) -> Result<String> {
         let html = format!(
             "<html><body><h2>Authentication Failed</h2><p>{}: {}</p>\
              <p>You can close this tab.</p></body></html>",
-            err, description
+            ammonia::clean_text(&err),
+            ammonia::clean_text(&description)
         );
         let response = format!(
             "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",

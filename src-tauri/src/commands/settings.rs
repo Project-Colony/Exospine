@@ -87,7 +87,8 @@ pub async fn set_autostart(enabled: bool) -> Result<(), String> {
     {
         let exe = std::env::current_exe()
             .map_err(|e| format!("Failed to get exe path: {}", e))?;
-        let exe_str = exe.to_string_lossy().to_string();
+        // Quoted, so a path with spaces is not split into a program and arguments.
+        let exe_str = format!("\"{}\"", exe.display());
 
         if enabled {
             let output = std::process::Command::new("reg")

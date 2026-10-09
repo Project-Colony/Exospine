@@ -46,7 +46,9 @@ export function openRss() {
             ${items.length === 0 ? '<div class="mail-view-status-text">Select a feed to view items</div>' : ''}
             ${items.map(item => `
               <div class="rss-item">
-                <a href="${esc(item.link)}" target="_blank" rel="noopener" class="rss-item-link">${esc(item.title)}</a>
+                ${item.link
+                  ? `<a href="${esc(item.link)}" target="_blank" rel="noopener" class="rss-item-link">${esc(item.title)}</a>`
+                  : `<span class="rss-item-link">${esc(item.title)}</span>`}
                 ${item.pubDate ? `<div class="rss-item-date">${esc(item.pubDate)}</div>` : ''}
                 ${item.description ? `<div class="rss-item-desc">${esc(item.description.substring(0, 200))}${item.description.length > 200 ? '...' : ''}</div>` : ''}
               </div>
@@ -131,7 +133,7 @@ async function fetchFeed(url) {
     const title = channel.querySelector('title')?.textContent || '';
     const items = [...channel.querySelectorAll('item')].map(item => ({
       title: item.querySelector('title')?.textContent || '',
-      link: item.querySelector('link')?.textContent || '',
+      link: webLink(item.querySelector('link')?.textContent, url),
       description: item.querySelector('description')?.textContent || '',
       pubDate: item.querySelector('pubDate')?.textContent || '',
     }));
@@ -144,7 +146,7 @@ async function fetchFeed(url) {
     const title = feed.querySelector('title')?.textContent || '';
     const items = [...feed.querySelectorAll('entry')].map(entry => ({
       title: entry.querySelector('title')?.textContent || '',
-      link: entry.querySelector('link')?.getAttribute('href') || '',
+      link: webLink(entry.querySelector('link')?.getAttribute('href'), url),
       description: entry.querySelector('summary')?.textContent || entry.querySelector('content')?.textContent || '',
       pubDate: entry.querySelector('published')?.textContent || entry.querySelector('updated')?.textContent || '',
     }));
@@ -152,6 +154,17 @@ async function fetchFeed(url) {
   }
 
   throw new Error('Unknown feed format');
+}
+
+/** Feed links are untrusted: keep only http(s) URLs, resolved against the feed URL. */
+function webLink(raw, feedUrl) {
+  if (!raw?.trim()) return '';
+  try {
+    const link = new URL(raw.trim(), feedUrl);
+    return link.protocol === 'http:' || link.protocol === 'https:' ? link.href : '';
+  } catch {
+    return '';
+  }
 }
 
 function esc(s) {

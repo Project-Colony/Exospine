@@ -14,6 +14,7 @@ use crate::AppState;
 #[derive(Debug, Clone, Serialize)]
 pub struct MailBodyResponse {
     pub text: String,
+    #[serde(serialize_with = "crate::mail::html_render::serialize_sanitized")]
     pub html: Option<String>,
     pub phishing_warnings: Vec<PhishingWarning>,
     pub auth_status: Option<AuthStatus>,
@@ -271,4 +272,23 @@ pub async fn open_eml_file(path: String) -> Result<MailEntry, String> {
         .map_err(map_err_str("Failed to parse .eml file"))?;
 
     Ok(entry)
+}
+
+/// Open one message in its own window. The page (`mail.html`) loads the body
+/// through `get_mail_body`, so it shows the same sanitized HTML as the
+/// reading pane. `query` is the page's URL query (message id and header
+/// fields), built by the caller.
+#[tauri::command]
+pub async fn open_mail_window(
+    app: tauri::AppHandle,
+    title: String,
+    query: String,
+) -> Result<(), String> {
+    let url = tauri::WebviewUrl::App(format!("mail.html?{query}").into());
+    tauri::WebviewWindowBuilder::new(&app, format!("mail-{}", uuid::Uuid::new_v4()), url)
+        .title(title)
+        .inner_size(800.0, 600.0)
+        .build()
+        .map_err(map_err_str("Failed to open the message window"))?;
+    Ok(())
 }
