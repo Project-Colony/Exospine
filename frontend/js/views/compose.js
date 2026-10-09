@@ -903,8 +903,7 @@ function placeCursorAtStart(el) {
 
 /** Convert HTML to plain text (strip tags, decode entities). */
 function htmlToPlainText(html) {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
+  const tmp = parseInert(html);
 
   // Convert <br> to newlines
   tmp.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
@@ -941,7 +940,7 @@ function htmlToPlainText(html) {
     });
   });
 
-  let text = tmp.textContent || tmp.innerText || '';
+  let text = tmp.textContent || '';
   // Collapse multiple blank lines
   text = text.replace(/\n{3,}/g, '\n\n').trim();
   return text;
@@ -949,6 +948,8 @@ function htmlToPlainText(html) {
 
 /**
  * Prepare a reply prefill object.
+ * `body` is the get_mail_body response: its `html` is already sanitized by the
+ * backend, and it is the only message HTML that goes into the editor.
  */
 // ===== SECTION: Reply & Forward Prefills =====
 export function makeReplyPrefill(mail, body, replyAll = false) {
@@ -988,7 +989,7 @@ export function makeReplyPrefill(mail, body, replyAll = false) {
 }
 
 /**
- * Prepare a forward prefill object.
+ * Prepare a forward prefill object. Same sanitized `body` as makeReplyPrefill.
  */
 export function makeForwardPrefill(mail, body) {
   const subject = mail.subject || '';
@@ -1022,9 +1023,15 @@ export function makeForwardPrefill(mail, body) {
 }
 
 function stripHtml(html) {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || '';
+  return parseInert(html).textContent || '';
+}
+
+/**
+ * Parse HTML into the body of a DOMParser document. Unlike innerHTML on a
+ * detached element of this page, nothing in it loads or runs.
+ */
+function parseInert(html) {
+  return new DOMParser().parseFromString(html, 'text/html').body;
 }
 
 function esc(str) {

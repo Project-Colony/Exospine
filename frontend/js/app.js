@@ -207,7 +207,10 @@ function mailViewActions() {
 function safeRender(fn, fallbackEl) {
   try { fn(); } catch (e) {
     console.error('Render error:', e);
-    if (fallbackEl) fallbackEl.innerHTML = '<div style="padding:20px;color:red;">Something went wrong. <button onclick="location.reload()">Reload</button></div>';
+    if (fallbackEl) {
+      fallbackEl.innerHTML = '<div style="padding:20px;color:red;">Something went wrong. <button type="button">Reload</button></div>';
+      fallbackEl.querySelector('button').addEventListener('click', () => location.reload());
+    }
   }
 }
 

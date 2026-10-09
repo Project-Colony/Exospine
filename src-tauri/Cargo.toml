@@ -7,12 +7,17 @@ description = "Portable email client built with Rust + Tauri v2"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/Project-Colony/Exospine"
 
+[features]
+# Web inspector in release builds. Debug builds always have it; release
+# builds ship without it unless built with `--features devtools`.
+devtools = ["tauri/devtools"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # Tauri
-tauri = { version = "2.11.6", features = ["devtools"] }
+tauri = "2.11.6"
 tauri-plugin-shell = "2"
 
 # Async runtime

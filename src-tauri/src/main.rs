@@ -325,6 +325,7 @@ fn main() {
             commands::mail_read::get_mail_body,
             commands::mail_read::get_mail_headers,
             commands::mail_read::open_eml_file,
+            commands::mail_read::open_mail_window,
             // Mail commands — sync
             commands::mail_sync::refresh_folder,
             commands::mail_sync::sync_all_mails,

@@ -1,5 +1,6 @@
 // Exospine Service Worker — cache-first for static assets
-const CACHE_NAME = 'exospine-v2';
+// Cache-first: bump the name whenever cached files change, or users keep the old ones.
+const CACHE_NAME = 'exospine-v3';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
