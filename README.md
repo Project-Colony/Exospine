@@ -157,7 +157,7 @@ What Exospine keeps on your machine:
 
 | Data | Where |
 |---|---|
-| Passwords and OAuth refresh tokens | the OS keyring, under the service name `exospine`, one entry per account |
+| Passwords and OAuth refresh tokens | the OS keyring, under the service name `exospine` |
 | Settings (`config.toml`), the account list without any secret (`accounts.json`), the mail cache (`mail.db`, SQLite) and the window position (`window_state.json`) | `exospine/` in the configuration directory: `~/.config/exospine/` on Linux, `~/Library/Application Support/exospine/` on macOS, `%APPDATA%\exospine\` on Windows; in portable mode, `data/` next to the executable |
 | Mail filter rules (`rules.json`) and the security log (`security.log`, which records OAuth sign-ins with the account address and failed sign-ins) | `exospine/` in the configuration directory, also in portable mode |
 | Attachments you save | `Exospine/` in your Downloads folder |

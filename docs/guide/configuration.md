@@ -25,9 +25,18 @@ The data directory is `exospine/` in the platform configuration directory, or
 | Windows | `%APPDATA%\` |
 
 Passwords and OAuth refresh tokens are not in any of these files. They are in
-the OS keyring under the service name `exospine`, one entry per account: the
-Secret Service on Linux (GNOME Keyring, KWallet), the Credential Manager on
-Windows and the Keychain on macOS.
+the OS keyring under the service name `exospine`: the Secret Service on Linux
+(GNOME Keyring, KWallet), the Credential Manager on Windows and the Keychain on
+macOS. A password account has one entry named after its account ID, an OAuth
+account one named `<account ID>:refresh-token`. OAuth access tokens are only
+ever kept in memory.
+
+Older versions encrypted `accounts.json` and kept OAuth refresh tokens in it.
+On the first start after an upgrade, Exospine moves those tokens to the keyring,
+rewrites the file as plain JSON and deletes the old `encryption.salt`. If
+`accounts.json` cannot be read, it is renamed to
+`accounts.json.unreadable-<time>` instead of being overwritten, and Exospine
+says so at startup.
 
 Saved attachments go to `Exospine/` in your Downloads folder.
 
