@@ -109,26 +109,47 @@ static CUSTOM: ProviderConfig = ProviderConfig {
     auth_method: AuthMethod::Basic,
 };
 
-/// Build an OAuth2Config for the given account based on its email domain.
+/// Server configuration of a known provider, whatever the address domain
+/// (a Google Workspace or Microsoft 365 address can use any domain).
+pub fn config_for(provider: Provider) -> ProviderConfig {
+    match provider {
+        Provider::Gmail => GMAIL.clone(),
+        Provider::Outlook => OUTLOOK.clone(),
+        Provider::Yahoo => YAHOO.clone(),
+        Provider::ICloud => ICLOUD.clone(),
+        Provider::ProtonMail => PROTONMAIL.clone(),
+        Provider::Fastmail => FASTMAIL.clone(),
+        Provider::Custom => CUSTOM.clone(),
+    }
+}
+
+/// Build an OAuth2Config for the given account.
 /// Returns `None` if the account is not OAuth2.
 pub fn oauth2_config_for_account(
     account: &crate::app_state::Account,
     config: &crate::config::Config,
 ) -> Option<crate::accounts::oauth2::OAuth2Config> {
-    if !matches!(account.auth_method, crate::app_state::AuthMethod::OAuth2 { .. }) {
+    if !matches!(account.auth_method, crate::app_state::AuthMethod::OAuth2) {
         return None;
     }
-    let provider_cfg = detect_provider(&account.email);
-    let (client_id, client_secret) = match provider_cfg.provider {
-        Provider::Gmail => (config.google_client_id.clone(), config.google_client_secret.clone()),
-        Provider::Outlook => (config.microsoft_client_id.clone(), config.microsoft_client_secret.clone()),
-        _ => (config.google_client_id.clone(), config.google_client_secret.clone()),
+    let (provider, client_id, client_secret) = if is_microsoft_oauth(account) {
+        (Provider::Outlook, &config.microsoft_client_id, &config.microsoft_client_secret)
+    } else {
+        (Provider::Gmail, &config.google_client_id, &config.google_client_secret)
     };
     Some(crate::accounts::oauth2::config_for_provider(
-        provider_cfg.provider,
-        client_id,
-        client_secret,
+        provider,
+        client_id.clone(),
+        client_secret.clone(),
     ))
+}
+
+/// Whether an OAuth2 account signed in with Microsoft. The address domain
+/// does not tell a Microsoft 365 address on a custom domain apart, but the
+/// IMAP host set at sign-in does.
+fn is_microsoft_oauth(account: &crate::app_state::Account) -> bool {
+    detect_provider(&account.email).provider == Provider::Outlook
+        || account.imap_host == OUTLOOK.imap_host
 }
 
 /// Detect the email provider from an email address.
@@ -162,5 +183,36 @@ pub fn detect_provider(email: &str) -> ProviderConfig {
                 CUSTOM.clone()
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app_state::{Account, AuthMethod};
+
+    fn oauth_account(email: &str, provider: Provider) -> Account {
+        Account {
+            email: email.into(),
+            imap_host: config_for(provider).imap_host.into(),
+            auth_method: AuthMethod::OAuth2,
+            ..Default::default()
+        }
+    }
+
+    /// A Microsoft 365 or Google Workspace address on a custom domain
+    /// refreshes its token with the provider it signed in with.
+    #[test]
+    fn oauth_refresh_follows_the_sign_in_provider() {
+        let config = crate::config::Config::default();
+        let token_url = |account: &Account| {
+            oauth2_config_for_account(account, &config).unwrap().token_url
+        };
+        let microsoft = token_url(&oauth_account("ada@outlook.com", Provider::Outlook));
+        let google = token_url(&oauth_account("ada@gmail.com", Provider::Gmail));
+        assert_ne!(microsoft, google);
+        assert_eq!(token_url(&oauth_account("ada@corp.example", Provider::Outlook)), microsoft);
+        assert_eq!(token_url(&oauth_account("ada@corp.example", Provider::Gmail)), google);
+        assert!(oauth2_config_for_account(&Account::default(), &config).is_none());
     }
 }

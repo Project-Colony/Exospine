@@ -144,7 +144,7 @@ pub async fn secure_wipe(state: State<'_, AppState>) -> Result<(), String> {
     {
         let accounts = lock_or_recover(&state.accounts);
         for acct in accounts.iter() {
-            let _ = crate::accounts::keyring_store::delete_password(&acct.id);
+            crate::accounts::keyring_store::delete_account_secrets(&acct.id);
             crate::app_state::remove_credential(&acct.id);
         }
     }

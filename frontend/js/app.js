@@ -1003,6 +1003,13 @@ async function init() {
   // Load accounts first — critical path
   await loadAccounts();
 
+  // A problem with the account list found at startup (file set aside, keyring
+  // unreachable) is shown once.
+  try {
+    const problem = await api.takeAccountsProblem();
+    if (problem) showToast(problem, 'error', 15000);
+  } catch {}
+
   if (state.accounts.length === 0) {
     // Load settings for theming even on onboarding
     try {

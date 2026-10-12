@@ -40,7 +40,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 reqwest = { version = "0.12", default-features = false, features = ["native-tls", "json"] }
 
 # Security
-keyring = { version = "3", features = ["sync-secret-service", "vendored"] }
+keyring = { version = "3", features = ["sync-secret-service", "vendored", "windows-native", "apple-native"] }
 rustls = { version = "0.23.45", features = ["ring"] }
 tokio-rustls = "0.26"
 webpki-roots = "0.26"
@@ -57,7 +57,7 @@ regex = "1"
 # Security — zeroize secrets in memory
 zeroize = "1"
 
-# Encryption for accounts.json at rest
+# Reads accounts.json files that older versions encrypted
 aes-gcm = "0.10"
 sha2 = "0.10"
 

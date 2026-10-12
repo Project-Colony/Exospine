@@ -75,11 +75,9 @@ pub enum AuthMethod {
     /// Standard username + password (or app-specific password).
     #[default]
     Basic,
-    /// OAuth2 with a stored refresh token.
-    OAuth2 {
-        /// The OAuth2 refresh token used to obtain new access tokens.
-        refresh_token: String,
-    },
+    /// OAuth2. The refresh token lives in the OS keyring (see
+    /// `accounts::keyring_store`), never in the account itself.
+    OAuth2,
 }
 
 

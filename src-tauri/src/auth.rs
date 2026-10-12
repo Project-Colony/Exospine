@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
+use crate::accounts::keyring_store;
 use crate::app_state::{self, Account};
 use crate::config::Config;
 
@@ -22,7 +23,8 @@ fn get_token_refresh_lock(account_id: &str) -> std::sync::Arc<tokio::sync::Mutex
 
 /// Try to refresh an OAuth2 token for the given account.
 /// Returns the new access token on success, or an error message.
-/// Also stores the rotated refresh token if one is returned.
+/// The refresh token is read from the OS keyring, and a rotated one is
+/// written back there, so accounts.json never holds it.
 /// Uses a per-account lock to prevent concurrent double-refreshes.
 pub async fn try_refresh_oauth_token(
     account: &Account,
@@ -32,13 +34,16 @@ pub async fn try_refresh_oauth_token(
     // we wait for it and then return the already-refreshed credential.
     let lock = get_token_refresh_lock(&account.id);
     let _guard = lock.lock().await;
-    let refresh_token = match &account.auth_method {
-        app_state::AuthMethod::OAuth2 { refresh_token } => refresh_token.clone(),
-        _ => return Err("Account is not OAuth2".to_string()),
-    };
 
     let oauth_cfg = crate::accounts::provider::oauth2_config_for_account(account, config)
         .ok_or_else(|| "Account is not OAuth2 or provider not supported".to_string())?;
+
+    let id = account.id.clone();
+    let refresh_token =
+        tokio::task::spawn_blocking(move || keyring_store::get_refresh_token(&id))
+            .await
+            .map_err(|e| format!("Task join error: {}", e))?
+            .map_err(|e| format!("No refresh token for {}: {:#}", account.email, e))?;
 
     let token_resp = crate::accounts::oauth2::refresh_token(&oauth_cfg, &refresh_token)
         .await
@@ -47,19 +52,16 @@ pub async fn try_refresh_oauth_token(
     // Store the new access token
     app_state::store_credential(&account.id, &token_resp.access_token);
 
-    // If the provider rotated the refresh token, persist it
-    if let Some(ref new_rt) = token_resp.refresh_token {
-        if *new_rt != refresh_token {
-            tracing::info!("OAuth2 refresh token rotated for {}", account.email);
-            // Update the in-memory account list and persist to disk
-            let mut accounts = crate::config::load_accounts();
-            if let Some(acct) = accounts.iter_mut().find(|a| a.id == account.id) {
-                acct.auth_method = app_state::AuthMethod::OAuth2 {
-                    refresh_token: new_rt.clone(),
-                };
-                crate::config::save_accounts(&accounts);
-                tracing::info!("Persisted rotated refresh token for {}", account.email);
-            }
+    // A provider that rotates refresh tokens (Microsoft does) may revoke the
+    // old one, so the new one must reach the keyring.
+    if let Some(new_rt) = token_resp.refresh_token.filter(|rt| *rt != refresh_token) {
+        match keyring_store::store_refresh_token(&account.id, &new_rt) {
+            Ok(()) => tracing::info!("OAuth2 refresh token rotated for {}", account.email),
+            Err(e) => tracing::error!(
+                "Failed to store the rotated refresh token for {}: {:#}",
+                account.email,
+                e
+            ),
         }
     }
 

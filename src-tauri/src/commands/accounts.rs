@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
+use crate::accounts::provider::Provider;
 use crate::app_state::{lock_or_recover, map_err_str, remove_credential, store_credential, Account};
 use crate::AppState;
 
@@ -17,7 +18,8 @@ pub struct ProviderInfo {
     pub auth_method: String,
 }
 
-/// Return the list of configured accounts.
+/// Return the list of configured accounts. `Account` holds no secret:
+/// passwords and refresh tokens stay in the OS keyring.
 #[tauri::command]
 pub async fn get_accounts(state: State<'_, AppState>) -> Result<Vec<Account>, String> {
     tracing::debug!("get_accounts");
@@ -40,38 +42,37 @@ pub async fn detect_provider(email: String) -> Result<ProviderInfo, String> {
     })
 }
 
-/// Begin an OAuth2 flow for a given provider.
-/// Returns the access_token, refresh_token, and user email/name.
-#[derive(Debug, Serialize)]
-pub struct OAuthResult {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub email: String,
-    pub name: String,
+/// Take the problem met while reading accounts.json at startup, if any.
+/// The UI asks once it is ready: an event sent before its listeners exist
+/// would be lost.
+#[tauri::command]
+pub fn take_accounts_problem(state: State<'_, AppState>) -> Option<String> {
+    lock_or_recover(&state.accounts_problem).take()
 }
 
+/// Run the OAuth2 sign-in for a provider and add the account.
+/// The tokens never reach the webview: the refresh token goes to the OS
+/// keyring, the access token to memory, and only the account is returned.
 #[tauri::command]
 pub async fn start_oauth(
     state: State<'_, AppState>,
     provider: String,
-) -> Result<OAuthResult, String> {
+) -> Result<Account, String> {
     tracing::info!("start_oauth: provider={}", provider);
 
     let prov = match provider.to_lowercase().as_str() {
-        "gmail" | "google" => crate::accounts::provider::Provider::Gmail,
-        "outlook" | "microsoft" | "hotmail" | "exchange" | "office365" => {
-            crate::accounts::provider::Provider::Outlook
-        }
+        "gmail" | "google" => Provider::Gmail,
+        "outlook" | "microsoft" | "hotmail" | "exchange" | "office365" => Provider::Outlook,
         _ => return Err(format!("Unsupported OAuth provider: {}", provider)),
     };
 
     let (client_id, client_secret) = {
         let config = lock_or_recover(&state.config);
         match prov {
-            crate::accounts::provider::Provider::Gmail => {
+            Provider::Gmail => {
                 (config.google_client_id.clone(), config.google_client_secret.clone())
             }
-            crate::accounts::provider::Provider::Outlook => {
+            Provider::Outlook => {
                 (config.microsoft_client_id.clone(), config.microsoft_client_secret.clone())
             }
             _ => return Err("Unsupported provider".to_string()),
@@ -95,24 +96,17 @@ pub async fn start_oauth(
             format!("OAuth flow failed: {}", e)
         })?;
 
-    let refresh_token = token.refresh_token.clone().unwrap_or_default();
-
     // Fetch user info from the provider's userinfo endpoint
-    let (email, name) = match prov {
-        crate::accounts::provider::Provider::Gmail => {
-            match crate::accounts::oauth2::fetch_google_userinfo(&token.access_token).await {
-                Ok(info) => (info.email, info.name),
-                Err(_) => (String::new(), String::new()),
-            }
+    let userinfo = match prov {
+        Provider::Gmail => {
+            crate::accounts::oauth2::fetch_google_userinfo(&token.access_token).await
         }
-        crate::accounts::provider::Provider::Outlook => {
-            // Microsoft Graph /me endpoint works for both consumer Outlook and Exchange Online / Office 365
-            match crate::accounts::oauth2::fetch_microsoft_userinfo(&token.access_token).await {
-                Ok(info) => (info.email, info.name),
-                Err(_) => (String::new(), String::new()),
-            }
-        }
-        _ => (String::new(), String::new()),
+        // Microsoft Graph /me endpoint works for both consumer Outlook and Exchange Online / Office 365
+        _ => crate::accounts::oauth2::fetch_microsoft_userinfo(&token.access_token).await,
+    };
+    let (email, name) = match userinfo {
+        Ok(info) if !info.email.is_empty() => (info.email, info.name),
+        _ => return Err("The provider did not return the account email address.".to_string()),
     };
 
     crate::storage::audit_log::log_event(
@@ -120,72 +114,41 @@ pub async fn start_oauth(
         &format!("email={}, provider={}", email, provider),
     );
 
-    tracing::info!("start_oauth: completed for email={}", email);
-    Ok(OAuthResult {
-        access_token: token.access_token,
-        refresh_token,
-        email,
-        name,
-    })
-}
-
-/// Finalize adding an OAuth account.
-#[derive(Debug, Deserialize)]
-pub struct AddOAuthAccountParams {
-    pub name: String,
-    pub email: String,
-    pub access_token: String,
-    pub refresh_token: String,
-    pub imap_host: String,
-    pub imap_port: u16,
-    pub smtp_host: String,
-    pub smtp_port: u16,
-}
-
-#[tauri::command]
-pub async fn add_oauth_account(
-    state: State<'_, AppState>,
-    params: AddOAuthAccountParams,
-) -> Result<Account, String> {
-    tracing::info!("add_oauth_account: email={}", params.email);
-
+    let servers = crate::accounts::provider::config_for(prov);
     let account = crate::accounts::setup::create_oauth_account(
         crate::accounts::setup::OAuthAccountParams {
-            name: &params.name,
-            email: &params.email,
-            access_token: &params.access_token,
-            refresh_token: &params.refresh_token,
-            imap_host: &params.imap_host,
-            imap_port: params.imap_port,
-            smtp_host: &params.smtp_host,
-            smtp_port: params.smtp_port,
+            name: &name,
+            email: &email,
+            refresh_token: token.refresh_token.as_deref().unwrap_or_default(),
+            imap_host: servers.imap_host,
+            imap_port: servers.imap_port,
+            smtp_host: servers.smtp_host,
+            smtp_port: servers.smtp_port,
         },
     )
-    .await
     .map_err(map_err_str("Failed to create OAuth account"))?;
 
-    // Store access token in memory too
-    store_credential(&account.id, &params.access_token);
+    store_credential(&account.id, &token.access_token);
+    register_account(&state, &account);
 
-    // Add to state and persist
+    tracing::info!("start_oauth: account {} created for {}", account.id, email);
+    Ok(account)
+}
+
+/// Add a new account to the running state, accounts.json and the database.
+fn register_account(state: &AppState, account: &Account) {
     {
         let mut accounts = lock_or_recover(&state.accounts);
         accounts.push(account.clone());
         crate::config::save_accounts(&accounts);
     }
 
-    // Save to DB
-    {
-        let db_guard = lock_or_recover(&state.db);
-        if let Some(ref db) = *db_guard {
-            if let Err(e) = db.save_account(&account) {
-                tracing::error!("add_oauth_account: DB save failed: {}", e);
-            }
+    let db_guard = lock_or_recover(&state.db);
+    if let Some(ref db) = *db_guard {
+        if let Err(e) = db.save_account(account) {
+            tracing::error!("Failed to save account {} to the database: {}", account.id, e);
         }
     }
-
-    tracing::info!("add_oauth_account: account {} created", account.id);
-    Ok(account)
 }
 
 /// Add a basic auth account.
@@ -221,23 +184,7 @@ pub async fn add_account(
 
     // Store password in memory
     store_credential(&account.id, &params.password);
-
-    // Add to state and persist
-    {
-        let mut accounts = lock_or_recover(&state.accounts);
-        accounts.push(account.clone());
-        crate::config::save_accounts(&accounts);
-    }
-
-    // Save to DB
-    {
-        let db_guard = lock_or_recover(&state.db);
-        if let Some(ref db) = *db_guard {
-            if let Err(e) = db.save_account(&account) {
-                tracing::error!("add_account: DB save failed: {}", e);
-            }
-        }
-    }
+    register_account(&state, &account);
 
     tracing::info!("add_account: account {} created", account.id);
     Ok(account)
@@ -252,7 +199,7 @@ pub async fn remove_account(
     tracing::info!("remove_account: account_id={}", account_id);
 
     // Delete from keyring
-    let _ = crate::accounts::keyring_store::delete_password(&account_id);
+    crate::accounts::keyring_store::delete_account_secrets(&account_id);
 
     // Clean up in-memory credentials
     remove_credential(&account_id);
@@ -316,4 +263,23 @@ pub async fn test_connection(params: TestConnectionParams) -> Result<(), String>
 
     tracing::info!("test_connection: both IMAP and SMTP passed");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app_state::AuthMethod;
+
+    /// `get_accounts` hands `Account` to the webview as is.
+    #[test]
+    fn account_sent_to_webview_has_no_secret() {
+        let account = Account {
+            id: "acct-1".into(),
+            email: "ada@example.com".into(),
+            auth_method: AuthMethod::OAuth2,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&account).unwrap().to_lowercase();
+        assert!(!json.contains("token") && !json.contains("password") && !json.contains("secret"));
+    }
 }
