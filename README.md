@@ -1,38 +1,169 @@
+<div align="center">
+
 # Exospine
 
-Exospine is a portable desktop email client. A Rust backend (Tauri v2) handles IMAP, SMTP, OAuth2 and local storage, and a vanilla JavaScript webview renders the interface.
+**A portable desktop email client for IMAP, Gmail and Outlook accounts.**
 
-> **Status:** early development. There is no release yet. CI builds and tests every change on Windows and is green, and the interface does not yet follow the Colony design system.
+</div>
+
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
+[![Colony app](https://img.shields.io/badge/Colony-network-purple)](https://github.com/Project-Colony/Colony)
+[![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20windows%20%7C%20macOS-lightgrey)](#installation)
+
+Reading mail usually means a browser tab per provider or a full mail suite with a
+profile tied to one machine. Exospine is one small program for all of your
+accounts: a Rust backend (Tauri v2) speaks IMAP, SMTP and OAuth2 and keeps a local
+cache, and a plain JavaScript webview renders the mail after the backend has
+cleaned it.
+
+> **Status:** early development. CI builds and tests every change on Linux,
+> Windows and macOS. Releases are built, signed and published by release-please
+> and the Colony signing workflow; the first signed release has not been cut yet.
+> Sign-in, sync and the keyring have not yet been re-tested against real Gmail,
+> Outlook and IMAP accounts since the 2026-10 security and layout changes, and the
+> interface does not yet follow the Colony design system.
+
+## Why Exospine
+
+- **One window for every account.** Gmail and Outlook / Office 365 through their
+  OAuth2 sign-in, and any other IMAP/SMTP server with a password or app password,
+  side by side instead of one webmail tab each.
+- **Mail is cleaned before you see it.** Email HTML is sanitized in the backend,
+  so no window ever receives scripts, forms or event handlers from a message, and
+  remote images (the usual read-tracking pixels) stay blocked until you ask for
+  them.
+- **Secrets stay in the operating system.** Passwords and OAuth tokens live in the
+  OS keyring, not in a file next to your mail.
+- **Portable when you need it.** Drop a `portable.txt` next to the executable and
+  the program keeps its settings, accounts and mail cache beside it.
 
 ## What it does
 
 - IMAP sync with IDLE push and SMTP sending, for several accounts at once
-- Gmail and Outlook / Office 365 sign-in through OAuth2; other IMAP/SMTP providers with a password or app password
-- Passwords and OAuth refresh tokens kept in the OS keyring (Windows Credential Manager, macOS Keychain, or a Secret Service provider such as GNOME Keyring or KWallet on Linux). The interface never receives a token or a stored password, and the account list in `accounts.json` holds no secrets. TLS through rustls
+- Gmail and Outlook / Office 365 sign-in through OAuth2 in your own browser;
+  other providers with a password or app password
+- Email HTML sanitized in the backend for every view: the reader, reply and
+  forward, print and the pop-out window
+- Remote images blocked until you click **Show images**
+- Warnings for phishing links, look-alike (homograph) sender domains, failed
+  SPF/DKIM checks and a Reply-To that differs from the sender
+- Passwords and OAuth refresh tokens in the OS keyring on Linux (Secret Service),
+  Windows (Credential Manager) and macOS (Keychain)
 - Local SQLite mail cache with search
-- Portable mode: put a `portable.txt` file next to the executable and all configuration and data go to a `data/` folder beside it. Passwords and tokens stay in the keyring of the machine where they were entered, so a portable copy asks for them again on another machine
+- Calendar, contacts, tasks, notes, templates and RSS feeds alongside the mail
+- Portable mode: a `portable.txt` file next to the executable puts the settings,
+  the account list, the mail cache and the window state in a `data/` folder
+  beside it
 
-## Build from source
+## Installation
 
-You need Rust 1.90 or newer and the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform (WebView2 on Windows, WebKitGTK on Linux).
+### Via Colony (recommended)
+
+Search for **Exospine** in [Colony](https://github.com/Project-Colony/Colony) and
+install it. Updates arrive through the launcher.
+
+### Direct binary download
+
+Grab the asset for your platform from the
+[latest release](../../releases/latest):
+
+| Platform | Asset |
+|---|---|
+| Linux | `exospine-linux` |
+| Windows | `exospine-windows.exe` |
+| macOS (Apple Silicon) | `exospine-macos` |
+| macOS (Intel) | `exospine-macos-x86` |
 
 ```bash
-cd src-tauri
+chmod +x exospine-linux && ./exospine-linux
+```
+
+The Linux binary needs WebKitGTK 4.1 at runtime (`webkit2gtk-4.1` on Arch,
+`libwebkit2gtk-4.1-0` on Debian and Ubuntu). Windows needs the WebView2 runtime,
+which Windows 10 and 11 already include.
+
+### Build from source
+
+```bash
+git clone https://github.com/Project-Colony/Exospine
+cd Exospine
 cargo build --release
 ```
 
-The binary is `src-tauri/target/release/exospine-tauri` (`exospine-tauri.exe` on Windows).
+Requires Rust 1.90 or newer and the
+[Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your
+platform (WebKitGTK 4.1 on Linux, WebView2 on Windows). The binary is
+`target/release/exospine` (`exospine.exe` on Windows). `cargo run` starts a debug
+build, which also has the web inspector.
 
-For development, install the Tauri CLI (`cargo install tauri-cli --version "^2"`) and run `cargo tauri dev`.
+## Documentation
 
-## Configuration
+Full documentation is in [docs/](docs/). Start at
+[docs/README.md](docs/README.md).
 
-Settings live in `config.toml` inside the platform configuration directory: `~/.config/exospine/` on Linux, `~/Library/Application Support/exospine/` on macOS, `%APPDATA%\exospine\` on Windows, or `data/` in portable mode.
+## Code signing policy
 
-Gmail and Outlook sign-in need your own OAuth2 client credentials. Set them in `config.toml` (`google_client_id`, `google_client_secret`, `microsoft_client_id`, `microsoft_client_secret`) or through the environment variables `EXOSPINE_GOOGLE_CLIENT_ID`, `EXOSPINE_GOOGLE_CLIENT_SECRET`, `EXOSPINE_MICROSOFT_CLIENT_ID` and `EXOSPINE_MICROSOFT_CLIENT_SECRET`. A variable overrides the file for the running session only and is never written to `config.toml`.
+Every release asset is signed by the Project Colony organisation in CI, never on
+a developer machine. Next to each asset on the release page:
 
-Accounts are listed in `accounts.json` in the same directory. Older versions encrypted this file and kept OAuth refresh tokens in it: Exospine moves those tokens to the keyring and rewrites the file as plain JSON on first start. If the file cannot be read, it is renamed to `accounts.json.unreadable-<time>` instead of being overwritten, and Exospine says so at startup. If it cannot be renamed, or its tokens cannot reach the keyring, the file is left as it is and accounts cannot be added or removed for that session. Secure wipe deletes these copies with the keyring entries of the accounts they list.
+| File | What it is |
+|---|---|
+| `<asset>.sig` | an ed25519 signature over the asset, made with the organisation's release key |
+| `<asset>.meta` | three lines binding the asset to its file name, its sha256 and the release version |
+| `<asset>.meta.sig` | an ed25519 signature over the `.meta` |
+
+The private key is an organisation secret, used only by the shared
+[sign-and-publish workflow](https://github.com/Project-Colony/Project-Colony-Resources/blob/main/.github/workflows/sign-and-publish.yml)
+in a job that builds nothing; the jobs that compile Exospine never see it.
+Colony checks all three files before it installs or updates Exospine, and
+refuses a release older than the one installed. To check a download yourself
+with OpenSSL 3 (the same commands work for every asset):
+
+```bash
+cat > colony-release.pub <<'EOF'
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEARNjg3Nn8H6/aBg1unwGjkUTcrdTxERNefVaqU8cFu0s=
+-----END PUBLIC KEY-----
+EOF
+a=exospine-linux
+openssl pkeyutl -verify -pubin -inkey colony-release.pub -rawin -in "$a" -sigfile "$a.sig"
+openssl pkeyutl -verify -pubin -inkey colony-release.pub -rawin -in "$a.meta" -sigfile "$a.meta.sig"
+cat "$a.meta"     # version=<tag>, asset=<file name>, sha256=<digest>
+sha256sum "$a"    # the digest must equal the sha256 line
+```
+
+How releases are built, signed and published:
+[design/releases.md](https://github.com/Project-Colony/Project-Colony-Resources/blob/main/design/releases.md#5-signing).
+
+## Privacy
+
+Exospine sends no telemetry, no analytics and no crash reports. It talks only to
+the servers below, and only for the action named.
+
+| Connection | When, and what is sent |
+|---|---|
+| Your IMAP and SMTP servers | syncing, searching and sending mail for the accounts you add, with the credentials of that account; a read receipt only when you click to send it |
+| `accounts.google.com`, `oauth2.googleapis.com` | Gmail sign-in in your browser, then the token exchange and token refreshes |
+| `www.googleapis.com/oauth2/v2/userinfo` | once at Gmail sign-in, to read the account's address and name |
+| `login.microsoftonline.com` | Outlook / Office 365 sign-in in your browser, then the token exchange and token refreshes |
+| `graph.microsoft.com/v1.0/me` | once at Outlook sign-in, to read the account's address and name |
+| `127.0.0.1:8844` | a listener on your own machine, open only during an OAuth sign-in, that receives the browser's redirect |
+| RSS feeds you add | fetching those feeds |
+| Image and content hosts named in an email | only after you click **Show images** on that message |
+
+Links you click in a message open in your default browser, not in Exospine.
+
+What Exospine keeps on your machine:
+
+| Data | Where |
+|---|---|
+| Passwords and OAuth refresh tokens | the OS keyring, under the service name `exospine`, one entry per account |
+| Settings (`config.toml`), the account list without any secret (`accounts.json`), the mail cache (`mail.db`, SQLite) and the window position (`window_state.json`) | `exospine/` in the configuration directory: `~/.config/exospine/` on Linux, `~/Library/Application Support/exospine/` on macOS, `%APPDATA%\exospine\` on Windows; in portable mode, `data/` next to the executable |
+| Mail filter rules (`rules.json`) and the security log (`security.log`, which records OAuth sign-ins with the account address and failed sign-ins) | `exospine/` in the configuration directory, also in portable mode |
+| Attachments you save | `Exospine/` in your Downloads folder |
+| The PIN lock hash, calendar events, RSS feed list, templates, labels, the offline action queue and display preferences | the webview's local storage, in the webview profile that Tauri keeps for the app identifier `com.mothersphere.exospine` |
+| Start with Windows, when you turn it on | an `Exospine` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` |
 
 ## License
 
-Exospine is free software, licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE).
+GPL-3.0-or-later. See [LICENSE](LICENSE).

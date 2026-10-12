@@ -9,6 +9,9 @@ function getInvoke() {
 }
 const invoke = (...args) => getInvoke()(...args);
 
+/** The running build's version, from Cargo.toml. */
+export const getAppVersion = () => invoke('plugin:app|version');
+
 export const getAccounts = () => invoke('get_accounts');
 
 export const getMails = (accountId, folder, page, perPage) =>

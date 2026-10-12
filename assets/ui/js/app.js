@@ -980,11 +980,6 @@ async function showPinLockScreen() {
 // Boot
 // ---------------------------------------------------------------------------
 async function init() {
-  // Register service worker for offline caching
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  }
-
   // PIN lock screen — block until unlocked
   const pinOk = await showPinLockScreen();
   if (!pinOk) return;

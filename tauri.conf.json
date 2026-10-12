@@ -1,9 +1,8 @@
 {
   "productName": "Exospine",
-  "version": "0.2.0",
   "identifier": "com.mothersphere.exospine",
   "build": {
-    "frontendDist": "../frontend"
+    "frontendDist": "assets/ui"
   },
   "app": {
     "windows": [
@@ -18,5 +17,15 @@
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src ipc: http://ipc.localhost https:; frame-src 'self' blob: data:"
     }
+  },
+  "bundle": {
+    "icon": [
+      "assets/icons/icon.png",
+      "assets/icons/32x32.png",
+      "assets/icons/128x128.png",
+      "assets/icons/128x128@2x.png",
+      "assets/icons/icon.icns",
+      "assets/icons/icon.ico"
+    ]
   }
 }

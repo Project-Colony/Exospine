@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::ffi::OsStr;
 use std::sync::Mutex;
 
 mod accounts;
@@ -40,7 +41,38 @@ fn get_pending_mailto() -> Option<MailtoData> {
     guard.take()
 }
 
+/// Whether the first command-line argument asks for the version only.
+fn is_version_request(first_arg: Option<&OsStr>) -> bool {
+    first_arg.is_some_and(|arg| arg == OsStr::new("--version") || arg == OsStr::new("-V"))
+}
+
+/// Release builds on Windows are GUI-subsystem programs with no console of
+/// their own, so `--version` would print nowhere. Borrow the console of the
+/// shell that started us, when there is one.
+#[cfg(all(windows, not(debug_assertions)))]
+fn attach_parent_console() {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn AttachConsole(process_id: u32) -> i32;
+    }
+    const ATTACH_PARENT_PROCESS: u32 = u32::MAX;
+    // SAFETY: AttachConsole takes a plain integer and has no preconditions;
+    // failure (no parent console) is harmless and ignored.
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+}
+
 fn main() {
+    // Answer `--version` before Tauri or logging start, so it never opens a
+    // window: the release workflow smoke-tests every binary this way.
+    if is_version_request(std::env::args_os().nth(1).as_deref()) {
+        #[cfg(all(windows, not(debug_assertions)))]
+        attach_parent_console();
+        println!("exospine {}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+
     // Check if launched with a mailto: or exospine:// argument
     for arg in std::env::args().skip(1) {
         if arg.starts_with("mailto:") {
@@ -447,4 +479,23 @@ fn main() {
             }
             std::process::exit(1);
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn version_flags_are_recognised() {
+        assert!(is_version_request(Some(OsStr::new("--version"))));
+        assert!(is_version_request(Some(OsStr::new("-V"))));
+    }
+
+    #[test]
+    fn other_arguments_start_the_app() {
+        assert!(!is_version_request(None));
+        for arg in ["-v", "--Version", "version", "mailto:a@example.com", "exospine://compose"] {
+            assert!(!is_version_request(Some(OsStr::new(arg))), "{arg}");
+        }
+    }
 }

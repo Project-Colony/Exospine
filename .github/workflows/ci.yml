@@ -6,10 +6,26 @@ permissions:
 
 jobs:
   test:
-    runs-on: windows-latest
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable branch
+      # Pinned to master with `toolchain:` rather than to the `stable` branch:
+      # that branch is rebased onto every master commit, so a SHA pinned on it
+      # stops being reachable from any branch.
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master, 2026-10-09
+        with:
+          toolchain: stable
+          components: clippy
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev pkg-config
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -17,22 +33,22 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            src-tauri/target/
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('src-tauri/Cargo.lock') }}
+            target/
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-test-
-      - run: cd src-tauri && cargo test
-      - run: cd src-tauri && cargo clippy -- -D warnings
+      - run: cargo test
+      - run: cargo clippy --all-targets -- -D warnings
 
-  # Builds on the declared floor, so rust-version in src-tauri/Cargo.toml is
-  # tested rather than guessed. The floor is 1.90 because Tauri 2.12 and muda
-  # 0.20 require it. Keep the toolchain and the cache key below in sync with it.
+  # Builds on the declared floor, so rust-version in Cargo.toml is tested
+  # rather than guessed. The floor is 1.90 because Tauri 2.12 and muda 0.20
+  # require it. Keep the toolchain and the cache key below in sync with it.
   build:
     runs-on: windows-latest
     needs: test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable branch
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master, 2026-10-09
         with:
           toolchain: "1.90"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -42,8 +58,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            src-tauri/target/
-          key: ${{ runner.os }}-cargo-build-1.90-${{ hashFiles('src-tauri/Cargo.lock') }}
+            target/
+          key: ${{ runner.os }}-cargo-build-1.90-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-1.90-
-      - run: cd src-tauri && cargo build --release
+      - run: cargo build --release

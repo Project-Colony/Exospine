@@ -345,7 +345,7 @@ export async function openSettings(state, actions) {
           </div>
         </div>
         <div class="settings-section settings-section-about">
-          <div class="font-bolder mb-4" style="font-size:18px;">Exospine v0.2.0</div>
+          <div class="font-bolder mb-4" style="font-size:18px;" id="settings-about-version">Exospine</div>
           <div class="text-sm text-dim mb-6">Built with Rust + Tauri</div>
           <div class="mb-6"><a href="https://github.com/Project-Colony/Exospine" target="_blank" rel="noopener" class="text-accent text-sm">GitHub Repository</a></div>
           <div class="text-xs text-dim">&copy; 2026 MotherSphere</div>
@@ -362,6 +362,14 @@ export async function openSettings(state, actions) {
     overlay.hidden = true;
     overlay.innerHTML = '';
   };
+
+  // Cargo.toml holds the one version number; the window asks the app for it.
+  api.getAppVersion()
+    .then((version) => {
+      const el = overlay.querySelector('#settings-about-version');
+      if (el) el.textContent = `Exospine v${version}`;
+    })
+    .catch(() => {});
 
   overlay.querySelector('#settings-close').addEventListener('click', close);
   overlay.querySelector('#settings-cancel').addEventListener('click', close);

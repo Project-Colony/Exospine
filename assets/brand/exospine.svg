@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Provisional mark: the Colony hexagon in Exospine's identity tint (amber)
+       with an envelope. Replace once the real logo exists. -->
+  <polygon points="512,52 910.4,282 910.4,742 512,972 113.6,742 113.6,282"
+           fill="#d4a030" stroke="#d4a030" stroke-width="40" stroke-linejoin="round"/>
+  <g fill="none" stroke="#2a1f0a" stroke-width="48" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="272" y="352" width="480" height="320" rx="36"/>
+    <polyline points="296,384 512,544 728,384"/>
+  </g>
+</svg>
