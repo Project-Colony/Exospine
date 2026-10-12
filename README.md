@@ -8,7 +8,7 @@ Exospine is a portable desktop email client. A Rust backend (Tauri v2) handles I
 
 - IMAP sync with IDLE push and SMTP sending, for several accounts at once
 - Gmail and Outlook / Office 365 sign-in through OAuth2; other IMAP/SMTP providers with a password or app password
-- Passwords and OAuth refresh tokens kept in the OS keyring (Windows Credential Manager, macOS Keychain, or a Secret Service provider such as GNOME Keyring or KWallet on Linux). They never reach the interface, and the account list in `accounts.json` holds no secrets. TLS through rustls
+- Passwords and OAuth refresh tokens kept in the OS keyring (Windows Credential Manager, macOS Keychain, or a Secret Service provider such as GNOME Keyring or KWallet on Linux). The interface never receives a token or a stored password, and the account list in `accounts.json` holds no secrets. TLS through rustls
 - Local SQLite mail cache with search
 - Portable mode: put a `portable.txt` file next to the executable and all configuration and data go to a `data/` folder beside it. Passwords and tokens stay in the keyring of the machine where they were entered, so a portable copy asks for them again on another machine
 
