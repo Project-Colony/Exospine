@@ -109,13 +109,27 @@ static CUSTOM: ProviderConfig = ProviderConfig {
     auth_method: AuthMethod::Basic,
 };
 
+/// Server configuration of a known provider, whatever the address domain
+/// (a Google Workspace or Microsoft 365 address can use any domain).
+pub fn config_for(provider: Provider) -> ProviderConfig {
+    match provider {
+        Provider::Gmail => GMAIL.clone(),
+        Provider::Outlook => OUTLOOK.clone(),
+        Provider::Yahoo => YAHOO.clone(),
+        Provider::ICloud => ICLOUD.clone(),
+        Provider::ProtonMail => PROTONMAIL.clone(),
+        Provider::Fastmail => FASTMAIL.clone(),
+        Provider::Custom => CUSTOM.clone(),
+    }
+}
+
 /// Build an OAuth2Config for the given account based on its email domain.
 /// Returns `None` if the account is not OAuth2.
 pub fn oauth2_config_for_account(
     account: &crate::app_state::Account,
     config: &crate::config::Config,
 ) -> Option<crate::accounts::oauth2::OAuth2Config> {
-    if !matches!(account.auth_method, crate::app_state::AuthMethod::OAuth2 { .. }) {
+    if !matches!(account.auth_method, crate::app_state::AuthMethod::OAuth2) {
         return None;
     }
     let provider_cfg = detect_provider(&account.email);

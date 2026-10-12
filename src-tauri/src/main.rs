@@ -24,6 +24,8 @@ use window_state::{restore_window_state, save_window_state};
 /// Global Tauri-managed application state.
 pub struct AppState {
     pub accounts: Mutex<Vec<Account>>,
+    /// Problem met while reading accounts.json, until the UI has shown it.
+    pub accounts_problem: Mutex<Option<String>>,
     pub db: Mutex<Option<Database>>,
     pub config: Mutex<Config>,
     pub settings: Mutex<AppSettings>,
@@ -81,7 +83,8 @@ fn main() {
     };
 
     // Load persisted accounts
-    let accounts = config::load_accounts();
+    let config::LoadedAccounts { accounts, problem: accounts_problem, .. } =
+        config::load_accounts();
 
     // Restore credentials from keyring into in-memory store
     for acct in &accounts {
@@ -90,18 +93,13 @@ fn main() {
         }
     }
 
-    // OAuth2 token refresh data: collected here, spawned in .setup() to avoid blocking startup.
-    let oauth_refresh_tasks: Vec<_> = accounts
+    // OAuth2 accounts get a fresh access token in .setup(), so startup does not wait for it.
+    let oauth_accounts: Vec<Account> = accounts
         .iter()
-        .filter_map(|acct| {
-            if let app_state::AuthMethod::OAuth2 { ref refresh_token } = acct.auth_method {
-                let oauth_cfg = accounts::provider::oauth2_config_for_account(acct, &config)?;
-                Some((acct.id.clone(), acct.email.clone(), refresh_token.clone(), oauth_cfg))
-            } else {
-                None
-            }
-        })
+        .filter(|acct| acct.auth_method == app_state::AuthMethod::OAuth2)
+        .cloned()
         .collect();
+    let refresh_config = config.clone();
 
     // Open SQLite database
     let db = Database::open().ok();
@@ -111,6 +109,7 @@ fn main() {
 
     let state = AppState {
         accounts: Mutex::new(accounts),
+        accounts_problem: Mutex::new(accounts_problem),
         db: Mutex::new(db),
         config: Mutex::new(config),
         settings: Mutex::new(settings),
@@ -149,32 +148,16 @@ fn main() {
             }
 
             // Refresh OAuth2 tokens in background (non-blocking)
-            for (acct_id, acct_email, rt_token, oauth_cfg) in oauth_refresh_tasks {
+            for acct in oauth_accounts {
+                let config = refresh_config.clone();
                 tauri::async_runtime::spawn(async move {
-                    match crate::accounts::oauth2::refresh_token(&oauth_cfg, &rt_token).await {
-                        Ok(token_resp) => {
-                            tracing::info!(
-                                "Refreshed OAuth2 token for account {} (access_token len={})",
-                                acct_email,
-                                token_resp.access_token.len()
-                            );
-                            app_state::store_credential(&acct_id, &token_resp.access_token);
-                            if let Some(ref new_rt) = token_resp.refresh_token {
-                                if *new_rt != rt_token {
-                                    tracing::info!(
-                                        "OAuth2 refresh token rotated for account {}",
-                                        acct_email
-                                    );
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            tracing::error!(
-                                "Failed to refresh OAuth2 token for account {}: {}",
-                                acct_email,
-                                e
-                            );
-                        }
+                    match auth::try_refresh_oauth_token(&acct, &config).await {
+                        Ok(_) => tracing::info!("Refreshed OAuth2 token for account {}", acct.email),
+                        Err(e) => tracing::error!(
+                            "Failed to refresh OAuth2 token for account {}: {}",
+                            acct.email,
+                            e
+                        ),
                     }
                 });
             }
@@ -321,7 +304,7 @@ fn main() {
             commands::accounts::get_accounts,
             commands::accounts::detect_provider,
             commands::accounts::start_oauth,
-            commands::accounts::add_oauth_account,
+            commands::accounts::take_accounts_problem,
             commands::accounts::add_account,
             commands::accounts::remove_account,
             commands::accounts::test_connection,

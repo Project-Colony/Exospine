@@ -128,7 +128,6 @@ pub async fn create_account(
 pub struct OAuthAccountParams<'a> {
     pub name: &'a str,
     pub email: &'a str,
-    pub access_token: &'a str,
     pub refresh_token: &'a str,
     pub imap_host: &'a str,
     pub imap_port: u16,
@@ -136,12 +135,18 @@ pub struct OAuthAccountParams<'a> {
     pub smtp_port: u16,
 }
 
-/// Create an [`Account`] for an OAuth2-authenticated provider.
-pub async fn create_oauth_account(params: OAuthAccountParams<'_>) -> Result<Account> {
+/// Create an [`Account`] for an OAuth2-authenticated provider and store its
+/// refresh token in the OS keyring. The short-lived access token is the
+/// caller's to keep in memory.
+pub fn create_oauth_account(params: OAuthAccountParams<'_>) -> Result<Account> {
+    if params.refresh_token.is_empty() {
+        anyhow::bail!("The provider did not return a refresh token");
+    }
+
     let id = uuid::Uuid::new_v4().to_string();
 
-    keyring_store::store_password(&id, params.access_token)
-        .context("Failed to store OAuth access token securely")?;
+    keyring_store::store_refresh_token(&id, params.refresh_token)
+        .context("Failed to store OAuth refresh token securely")?;
 
     let account = Account {
         id,
@@ -153,9 +158,7 @@ pub async fn create_oauth_account(params: OAuthAccountParams<'_>) -> Result<Acco
         smtp_port: params.smtp_port,
         username: params.email.to_owned(),
         use_tls: true,
-        auth_method: crate::app_state::AuthMethod::OAuth2 {
-            refresh_token: params.refresh_token.to_owned(),
-        },
+        auth_method: crate::app_state::AuthMethod::OAuth2,
         folders: Vec::new(),
         signature: String::new(),
         signature_html: None,

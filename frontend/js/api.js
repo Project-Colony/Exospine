@@ -58,9 +58,11 @@ export const getSettings = () => invoke('get_settings');
 
 export const saveSettings = (settings) => invoke('save_settings', { settings });
 
+/** Sign in with an OAuth provider and add the account. Resolves to the new account. */
 export const startOauth = (provider) => invoke('start_oauth', { provider });
 
-export const addOauthAccount = (params) => invoke('add_oauth_account', { params });
+/** Problem met while reading the account list at startup, or null. Reported once. */
+export const takeAccountsProblem = () => invoke('take_accounts_problem');
 
 export const addBasicAccount = (params) => invoke('add_account', { params });
 

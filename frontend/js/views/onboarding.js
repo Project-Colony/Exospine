@@ -128,26 +128,11 @@ export function openOnboarding({ isFirstRun = false, onAccountAdded }) {
       btn.textContent = 'Redirecting\u2026';
       try {
         showToast('OAuth flow started. Complete it in the browser.', 'info');
-        const result = await api.startOauth(provider);
-        // startOauth returns { access_token, refresh_token, email, name }
-        if (result && result.email) {
-          // Add the OAuth account
-          // Detect IMAP/SMTP settings from provider
-          const providerInfo = await api.detectProvider(result.email);
-          await api.addOauthAccount({
-            access_token: result.access_token,
-            refresh_token: result.refresh_token,
-            email: result.email,
-            name: result.name,
-            imap_host: providerInfo?.imap_host || 'imap.gmail.com',
-            imap_port: providerInfo?.imap_port || 993,
-            smtp_host: providerInfo?.smtp_host || 'smtp.gmail.com',
-            smtp_port: providerInfo?.smtp_port || 587,
-          });
-          showToast(`Account ${result.email} added!`, 'success');
-          close();
-          if (onAccountAdded) onAccountAdded();
-        }
+        // The backend keeps the tokens and returns only the new account.
+        const account = await api.startOauth(provider);
+        showToast(`Account ${account.email} added!`, 'success');
+        close();
+        if (onAccountAdded) onAccountAdded();
       } catch (err) {
         showToast(`OAuth failed: ${err}`, 'error');
         btn.disabled = false;

@@ -8,9 +8,9 @@ Exospine is a portable desktop email client. A Rust backend (Tauri v2) handles I
 
 - IMAP sync with IDLE push and SMTP sending, for several accounts at once
 - Gmail and Outlook / Office 365 sign-in through OAuth2; other IMAP/SMTP providers with a password or app password
-- Passwords and tokens kept in the OS keyring, the accounts file encrypted at rest, TLS through rustls
+- Passwords and OAuth refresh tokens kept in the OS keyring (Windows Credential Manager, macOS Keychain, or a Secret Service provider such as GNOME Keyring or KWallet on Linux). They never reach the interface, and the account list in `accounts.json` holds no secrets. TLS through rustls
 - Local SQLite mail cache with search
-- Portable mode: put a `portable.txt` file next to the executable and all configuration and data go to a `data/` folder beside it
+- Portable mode: put a `portable.txt` file next to the executable and all configuration and data go to a `data/` folder beside it. Passwords and tokens stay in the keyring of the machine where they were entered, so a portable copy asks for them again on another machine
 
 ## Build from source
 
@@ -29,7 +29,9 @@ For development, install the Tauri CLI (`cargo install tauri-cli --version "^2"`
 
 Settings live in `config.toml` inside the platform configuration directory: `~/.config/exospine/` on Linux, `~/Library/Application Support/exospine/` on macOS, `%APPDATA%\exospine\` on Windows, or `data/` in portable mode.
 
-Gmail and Outlook sign-in need your own OAuth2 client credentials. Set them in `config.toml` (`google_client_id`, `google_client_secret`, `microsoft_client_id`, `microsoft_client_secret`) or through the environment variables `EXOSPINE_GOOGLE_CLIENT_ID`, `EXOSPINE_GOOGLE_CLIENT_SECRET`, `EXOSPINE_MICROSOFT_CLIENT_ID` and `EXOSPINE_MICROSOFT_CLIENT_SECRET`, which take precedence.
+Gmail and Outlook sign-in need your own OAuth2 client credentials. Set them in `config.toml` (`google_client_id`, `google_client_secret`, `microsoft_client_id`, `microsoft_client_secret`) or through the environment variables `EXOSPINE_GOOGLE_CLIENT_ID`, `EXOSPINE_GOOGLE_CLIENT_SECRET`, `EXOSPINE_MICROSOFT_CLIENT_ID` and `EXOSPINE_MICROSOFT_CLIENT_SECRET`. A variable overrides the file for the running session only and is never written to `config.toml`.
+
+Accounts are listed in `accounts.json` in the same directory. Older versions encrypted this file and kept OAuth refresh tokens in it: Exospine moves those tokens to the keyring and rewrites the file as plain JSON on first start. If the file cannot be read, it is renamed to `accounts.json.unreadable-<time>` instead of being overwritten, and Exospine says so at startup.
 
 ## License
 

@@ -172,7 +172,7 @@ pub async fn connect_with_retry(
     password: &str,
     max_retries: u32,
 ) -> Result<ImapSession> {
-    let use_oauth2 = matches!(account.auth_method, crate::app_state::AuthMethod::OAuth2 { .. });
+    let use_oauth2 = matches!(account.auth_method, crate::app_state::AuthMethod::OAuth2);
     let mut delay_secs = 2u64;
 
     for attempt in 0..=max_retries {
