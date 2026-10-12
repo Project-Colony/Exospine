@@ -63,3 +63,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-1.90-
       - run: cargo build --release
+      # The release workflow smoke-tests every artifact this way. A Windows
+      # release build is a GUI-subsystem program, the case most likely to print
+      # nothing, so check it on every change rather than at release time.
+      - name: Smoke-test --version
+        shell: bash
+        run: ./target/release/exospine.exe --version | grep '^exospine [0-9]'
