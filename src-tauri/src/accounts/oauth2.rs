@@ -74,6 +74,9 @@ pub struct TokenResponse {
     pub expires_in: u64,
     #[serde(default)]
     pub token_type: String,
+    /// OpenID Connect ID token, sent with the `openid` scope.
+    #[serde(default)]
+    pub id_token: Option<String>,
 }
 
 // ── URL helpers ──────────────────────────────────────────────────────
@@ -204,51 +207,33 @@ pub struct OAuthUserInfo {
     pub name: String,
 }
 
-/// Fetch user info from Microsoft Graph (`/me` endpoint).
-/// Works for both consumer Outlook.com and Exchange Online / Office 365 accounts.
-/// Requires the `openid profile email` scopes.
-pub async fn fetch_microsoft_userinfo(access_token: &str) -> Result<OAuthUserInfo> {
-    let client = reqwest::Client::new();
-    let response = client
-        .get("https://graph.microsoft.com/v1.0/me")
-        .header("Authorization", format!("Bearer {}", access_token))
-        .timeout(std::time::Duration::from_secs(15))
-        .send()
-        .await
-        .context("Failed to fetch Microsoft userinfo")?;
+/// Read the account address and name from the ID token that Microsoft sends
+/// with the `openid profile email` scopes. The access token is for
+/// outlook.office365.com, so Microsoft Graph would reject it. The ID token
+/// comes straight from the token endpoint over TLS, which OpenID Connect
+/// accepts in place of checking its signature.
+pub fn microsoft_userinfo_from_id_token(id_token: &str) -> Result<OAuthUserInfo> {
+    use base64::Engine as _;
 
-    let status = response.status();
-    let body = response
-        .text()
-        .await
-        .context("Failed to read Microsoft userinfo response body")?;
-
-    if !status.is_success() {
-        anyhow::bail!("Microsoft /me endpoint returned {}: {}", status, body);
-    }
-
-    // Microsoft Graph returns { displayName, mail, userPrincipalName, ... }
     #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct MsGraphMe {
+    struct Claims {
         #[serde(default)]
-        display_name: String,
+        email: String,
         #[serde(default)]
-        mail: String,
+        preferred_username: String,
         #[serde(default)]
-        user_principal_name: String,
+        name: String,
     }
 
-    let me: MsGraphMe = serde_json::from_str(&body)
-        .with_context(|| format!("Failed to parse Microsoft /me response: {}", body))?;
+    let payload = id_token.split('.').nth(1).context("The ID token is not a JWT")?;
+    let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload)
+        .context("Failed to decode the ID token")?;
+    let claims: Claims =
+        serde_json::from_slice(&payload).context("Failed to parse the ID token claims")?;
 
-    let email = if me.mail.is_empty() { me.user_principal_name } else { me.mail };
-
-    tracing::info!("Fetched Microsoft userinfo: email={}, name={}", email, me.display_name);
-    Ok(OAuthUserInfo {
-        email,
-        name: me.display_name,
-    })
+    let email = if claims.email.is_empty() { claims.preferred_username } else { claims.email };
+    Ok(OAuthUserInfo { email, name: claims.name })
 }
 
 pub async fn fetch_google_userinfo(access_token: &str) -> Result<OAuthUserInfo> {

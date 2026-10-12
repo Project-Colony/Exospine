@@ -176,7 +176,10 @@ impl Config {
     }
 
     /// Delete accounts.json, any copy set aside as unreadable and the key
-    /// salt of older versions (used by secure wipe).
+    /// salt of older versions (used by secure wipe). The keyring entries of
+    /// the accounts these files name go too, as a copy set aside holds
+    /// accounts that are not in memory. An encrypted copy of an older
+    /// version cannot be read, so the entries of its accounts remain.
     pub fn delete_accounts_file(&self) -> anyhow::Result<()> {
         ACCOUNTS_READ_ONLY.store(false, Ordering::Relaxed);
         let Ok(entries) = std::fs::read_dir(data_dir()) else {
@@ -185,6 +188,11 @@ impl Config {
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
+            if name.starts_with(ACCOUNTS_FILE) {
+                for id in account_ids_in(&entry.path()) {
+                    crate::accounts::keyring_store::delete_account_secrets(&id);
+                }
+            }
             if name.starts_with(ACCOUNTS_FILE) || name == LEGACY_SALT_FILE {
                 std::fs::remove_file(entry.path())?;
                 tracing::info!("Deleted {}", entry.path().display());
@@ -210,6 +218,18 @@ const LEGACY_SALT_FILE: &str = "encryption.salt";
 /// be set aside after a failed read, or it still holds refresh tokens that
 /// could not be moved to the keyring.
 static ACCOUNTS_READ_ONLY: AtomicBool = AtomicBool::new(false);
+
+/// Refuse to add or remove an account while accounts.json cannot be saved:
+/// the change would be lost at the next start, and a removed account would
+/// come back without its keyring entries.
+pub fn ensure_accounts_writable() -> Result<(), String> {
+    if ACCOUNTS_READ_ONLY.load(Ordering::Relaxed) {
+        return Err("Your account list cannot be saved this session (see the warning shown at \
+                    startup), so accounts cannot be added or removed."
+            .to_string());
+    }
+    Ok(())
+}
 
 /// The account list read at startup.
 pub struct LoadedAccounts {
@@ -338,6 +358,19 @@ fn set_aside(path: &Path, reason: &str) -> LoadedAccounts {
             }
         }
     }
+}
+
+/// The account ids in an accounts.json, or none when it is not plain JSON.
+fn account_ids_in(path: &Path) -> Vec<String> {
+    let json: serde_json::Value = std::fs::read(path)
+        .ok()
+        .and_then(|data| serde_json::from_slice(&data).ok())
+        .unwrap_or_default();
+    json.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|account| account["id"].as_str().map(str::to_owned))
+        .collect()
 }
 
 /// Remove the OAuth refresh tokens that older versions kept in accounts.json
@@ -545,6 +578,18 @@ mod tests {
             .collect();
         assert_eq!(kept.len(), 1);
         assert_eq!(std::fs::read(kept[0].path()).unwrap(), garbage);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn account_ids_come_from_plain_json_only() {
+        let dir = temp_dir();
+        let plain = dir.join("accounts.json.unreadable-1");
+        std::fs::write(&plain, LEGACY_JSON).unwrap();
+        assert_eq!(account_ids_in(&plain), ["acct-1"]);
+        let garbage = dir.join("accounts.json.unreadable-2");
+        std::fs::write(&garbage, b"\x00\x01not json").unwrap();
+        assert!(account_ids_in(&garbage).is_empty());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

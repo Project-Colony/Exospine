@@ -59,6 +59,7 @@ pub async fn start_oauth(
     provider: String,
 ) -> Result<Account, String> {
     tracing::info!("start_oauth: provider={}", provider);
+    crate::config::ensure_accounts_writable()?;
 
     let prov = match provider.to_lowercase().as_str() {
         "gmail" | "google" => Provider::Gmail,
@@ -96,17 +97,22 @@ pub async fn start_oauth(
             format!("OAuth flow failed: {}", e)
         })?;
 
-    // Fetch user info from the provider's userinfo endpoint
     let userinfo = match prov {
         Provider::Gmail => {
             crate::accounts::oauth2::fetch_google_userinfo(&token.access_token).await
         }
-        // Microsoft Graph /me endpoint works for both consumer Outlook and Exchange Online / Office 365
-        _ => crate::accounts::oauth2::fetch_microsoft_userinfo(&token.access_token).await,
+        _ => crate::accounts::oauth2::microsoft_userinfo_from_id_token(
+            token.id_token.as_deref().unwrap_or_default(),
+        ),
     };
     let (email, name) = match userinfo {
         Ok(info) if !info.email.is_empty() => (info.email, info.name),
-        _ => return Err("The provider did not return the account email address.".to_string()),
+        other => {
+            if let Err(e) = other {
+                tracing::error!("start_oauth: cannot read the account identity: {:#}", e);
+            }
+            return Err("The provider did not return the account email address.".to_string());
+        }
     };
 
     crate::storage::audit_log::log_event(
@@ -169,6 +175,7 @@ pub async fn add_account(
     params: AddAccountParams,
 ) -> Result<Account, String> {
     tracing::info!("add_account: email={}", params.email);
+    crate::config::ensure_accounts_writable()?;
 
     let account = crate::accounts::setup::create_account(
         &params.name,
@@ -197,6 +204,7 @@ pub async fn remove_account(
     account_id: String,
 ) -> Result<(), String> {
     tracing::info!("remove_account: account_id={}", account_id);
+    crate::config::ensure_accounts_writable()?;
 
     // Delete from keyring
     crate::accounts::keyring_store::delete_account_secrets(&account_id);
@@ -281,5 +289,21 @@ mod tests {
         };
         let json = serde_json::to_string(&account).unwrap().to_lowercase();
         assert!(!json.contains("token") && !json.contains("password") && !json.contains("secret"));
+    }
+
+    #[test]
+    fn microsoft_identity_comes_from_the_id_token() {
+        use base64::Engine as _;
+        let encode = |json: &str| base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(json);
+        let jwt = |claims: &str| format!("{}.{}.sig", encode(r#"{"alg":"RS256"}"#), encode(claims));
+        let from = |claims: &str| {
+            crate::accounts::oauth2::microsoft_userinfo_from_id_token(&jwt(claims)).unwrap()
+        };
+
+        let info = from(r#"{"email":"ada@contoso.com","preferred_username":"ada@x.onmicrosoft.com","name":"Ada"}"#);
+        assert_eq!((info.email.as_str(), info.name.as_str()), ("ada@contoso.com", "Ada"));
+        // Work accounts often send no email claim.
+        assert_eq!(from(r#"{"preferred_username":"ada@contoso.com"}"#).email, "ada@contoso.com");
+        assert!(crate::accounts::oauth2::microsoft_userinfo_from_id_token("").is_err());
     }
 }
