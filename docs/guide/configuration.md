@@ -36,7 +36,9 @@ On the first start after an upgrade, Exospine moves those tokens to the keyring,
 rewrites the file as plain JSON and deletes the old `encryption.salt`. If
 `accounts.json` cannot be read, it is renamed to
 `accounts.json.unreadable-<time>` instead of being overwritten, and Exospine
-says so at startup.
+says so at startup. If a token cannot be moved because the keyring is not
+reachable, the file is left as it is and changes to your accounts are not saved
+until a later start can reach the keyring.
 
 Saved attachments go to `Exospine/` in your Downloads folder.
 
