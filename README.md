@@ -152,6 +152,10 @@ the servers below, and only for the action named.
 | Image and content hosts named in an email | only after you click **Show images** on that message |
 
 Links you click in a message open in your default browser, not in Exospine.
+Gmail sign-in is covered by the
+[Google Privacy Policy](https://policies.google.com/privacy), Outlook sign-in by
+the [Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement),
+and your mail server and the feeds you add by their operators' own policies.
 
 What Exospine keeps on your machine:
 
