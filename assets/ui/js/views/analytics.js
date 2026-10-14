@@ -122,7 +122,7 @@ function renderAnalytics(data) {
     const pct = (count / maxByHour) * 100;
     html += `
       <div class="analytics-chart-bar-wrapper" title="${esc(t('hour_count', { hour: h, count }))}">
-        <div style="width:100%;max-width:16px;background:rgb(0,180,160);border-radius:2px 2px 0 0;height:${pct}%;min-height:${count > 0 ? 2 : 0}px;"></div>
+        <div style="width:100%;max-width:16px;background:var(--colony-accent-icon);border-radius:2px 2px 0 0;height:${pct}%;min-height:${count > 0 ? 2 : 0}px;"></div>
       </div>
     `;
   }
@@ -150,7 +150,7 @@ function renderAnalytics(data) {
             <span class="analytics-sender-count">${count}</span>
           </div>
           <div class="analytics-bar-track">
-            <div style="width:${pct}%;height:100%;background:rgb(160,90,220);border-radius:3px;"></div>
+            <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;"></div>
           </div>
         </div>
       `;
@@ -223,8 +223,8 @@ function renderWeeklyHeatmap(data) {
       const val = grid[d][h];
       const intensity = maxCell > 0 ? val / maxCell : 0;
       const bg = intensity > 0
-        ? `rgba(0,180,160,${0.15 + intensity * 0.85})`
-        : 'rgba(0,0,0,0.05)';
+        ? `color-mix(in srgb, var(--colony-accent-icon) ${Math.round((0.15 + intensity * 0.85) * 100)}%, transparent)`
+        : 'var(--tint-1)';
       html += `<div style="aspect-ratio:1;background:${bg};border-radius:2px;min-height:12px;" title="${esc(t('heatmap_cell', { day: dayNames[d], hour: h, count: val }))}"></div>`;
     }
   }

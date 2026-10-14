@@ -1,12 +1,16 @@
 // Exospine: interface strings in English and French.
 //
 // English is the canonical locale (en.js); fr.js has exactly the same keys,
-// which scripts/check-i18n.mjs verifies in CI.
+// which scripts/check-i18n.mjs verifies in CI. The strings every Colony
+// program shares (the Preferences skeleton, theme and accent names) come from
+// the vendored Colony tokens and are never redefined here.
 
+import colony from '../../vendor/colony/themes.js';
 import en from './en.js';
 import fr from './fr.js';
 
 const TABLES = { en, fr };
+const SHARED = colony.labels;
 const SUPPORTED = Object.keys(TABLES);
 
 let currentLang = 'en';
@@ -58,7 +62,7 @@ export function getLanguage() {
 
 /** The string for `key` in the current language, or undefined. */
 function lookup(key) {
-  return TABLES[currentLang][key] ?? en[key];
+  return TABLES[currentLang][key] ?? SHARED[currentLang][key] ?? en[key] ?? SHARED.en[key];
 }
 
 /**

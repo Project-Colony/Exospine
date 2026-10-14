@@ -379,34 +379,55 @@ function collapseQuotedText(text) {
   return text;
 }
 
+// The fonts of the window, for the documents below: an iframe inherits no
+// stylesheet and no CSS variable from its parent.
+const FONTS_CSS = new URL('../../../styles/fonts.css', import.meta.url).href;
+
+/** The window's text font, text scale and contrast ends, as plain values. */
+function documentStyle() {
+  const root = getComputedStyle(document.documentElement);
+  const value = (name) => root.getPropertyValue(name).trim();
+  return {
+    font: value('--font') || 'monospace',
+    scale: parseFloat(value('--font-scale')) || 1,
+    ink: value('--colony-ink') || 'CanvasText',
+    paper: value('--colony-paper') || 'Canvas',
+  };
+}
+
 /**
  * Full document for a sandboxed mail iframe. `html` must be the sanitized
  * body from the backend. Its own CSP blocks every remote resource unless the
- * user chose to show remote images.
+ * user chose to show remote images; it allows only the app's own fonts.
+ * A message is written for a light page, so it is shown on the Colony paper
+ * colour with the ink colour, in the window's font and text size.
  */
 export function mailDocument(html, { allowRemoteImages = false, title = '' } = {}) {
   const imgSrc = allowRemoteImages ? 'data: https:' : 'data:';
+  const { font, scale, ink, paper } = documentStyle();
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>${esc(title)}</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src ${imgSrc}">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src ${imgSrc}">
+  <link rel="stylesheet" href="${esc(FONTS_CSS)}">
   <style>
+    html { color-scheme: light; }
     body {
       margin: 0;
       padding: 16px 24px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      font-size: 14px;
+      font-family: ${font};
+      font-size: ${14 * scale}px;
       line-height: 1.6;
-      color: #1e1e1e;
+      color: ${ink};
+      background: ${paper};
       word-break: break-word;
       overflow-wrap: break-word;
     }
     img { max-width: 100%; height: auto; }
-    img[data-remote-src] { background: #eee; min-width: 16px; min-height: 16px; }
-    a { color: rgb(0, 120, 214); }
-    pre, code { font-family: "Cascadia Code", "Fira Code", Consolas, monospace; }
+    img[data-remote-src] { background: color-mix(in srgb, ${ink} 8%, transparent); min-width: 16px; min-height: 16px; }
+    pre, code { font-family: ${font}; }
     table { border-collapse: collapse; max-width: 100%; }
   </style>
 </head>

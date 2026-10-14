@@ -4,21 +4,17 @@ import { formatDate } from '../../date_format.js';
 import { esc } from '../../html.js';
 import { t, tn } from '../../i18n/index.js';
 import { loadDisplayRules } from '../settings.js';
+import { ACCENTS, accentFor } from '../../appearance.js';
 import { list } from './state.js';
 
-// ── Predefined categories with colors ──────────────────────────────
+// ── Predefined categories, each with an accent ─────────────────────
 export const CATEGORIES = [
-  { name: 'Important', color: '#e74c3c' },
-  { name: 'Work', color: '#3498db' },
-  { name: 'Personal', color: '#2ecc71' },
-  { name: 'Finance', color: '#f39c12' },
-  { name: 'Travel', color: '#9b59b6' },
+  { name: 'Important', accent: 'red' },
+  { name: 'Work', accent: 'blue' },
+  { name: 'Personal', accent: 'green' },
+  { name: 'Finance', accent: 'amber' },
+  { name: 'Travel', accent: 'violet' },
 ];
-
-// Category color lookup (includes Spam)
-const CATEGORY_COLORS = {};
-CATEGORIES.forEach((c) => { CATEGORY_COLORS[c.name] = c.color; });
-CATEGORY_COLORS['Spam'] = '#95a5a6';
 
 /** A category's name for display; the stored name stays the English one. */
 export function categoryLabel(name) {
@@ -27,26 +23,21 @@ export function categoryLabel(name) {
   return label === key ? name : label;
 }
 
-function getCategoryColor(name) {
-  return CATEGORY_COLORS[name] || '#7f8c8d';
+/** Background and text colours of a category badge; Spam and unknown ones stay neutral. */
+export function categoryStyle(name) {
+  const accent = CATEGORIES.find((c) => c.name === name)?.accent;
+  return accent
+    ? `background:var(--accent-${accent});color:var(--on-accent-${accent})`
+    : 'background:var(--colony-btn-default);color:var(--colony-text-primary)';
 }
 
-// ── Account colors for unified inbox left border ────────────────
-const ACCOUNT_COLORS = [
-  'rgb(0, 120, 214)',
-  'rgb(160, 90, 220)',
-  'rgb(220, 80, 60)',
-  'rgb(40, 167, 69)',
-  'rgb(230, 150, 0)',
-  'rgb(0, 180, 160)',
-];
 
 /** Return a CSS class name for the account color border (CSP-safe). */
 function getAccountColorClass(accountEmail, accounts) {
   if (!accountEmail || !accounts || accounts.length <= 1) return '';
   const idx = accounts.findIndex(a => a.email === accountEmail);
   if (idx < 0) return '';
-  return 'acct-color-' + (idx % ACCOUNT_COLORS.length);
+  return 'acct-color-' + (idx % ACCENTS.length);
 }
 
 function renderCategoryBadges(mail) {
@@ -55,7 +46,7 @@ function renderCategoryBadges(mail) {
   return cats
     .map(
       (c) =>
-        `<span class="mail-category-badge" style="background:${getCategoryColor(c)}" title="${esc(categoryLabel(c))}">${esc(categoryLabel(c))}</span>`
+        `<span class="mail-category-badge" style="${categoryStyle(c)}" title="${esc(categoryLabel(c))}">${esc(categoryLabel(c))}</span>`
     )
     .join('');
 }
@@ -99,11 +90,8 @@ export function renderThreadHeader(thread, expanded) {
 function senderAvatar(from) {
   const name = (from || '').split('<')[0].trim() || from || '';
   const initial = name[0]?.toUpperCase() || '?';
-  const colors = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e'];
-  let hash = 0;
-  for (const c of (from || '')) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
-  const color = colors[Math.abs(hash) % colors.length];
-  return `<div class="mail-avatar" style="background:${color}">${esc(initial)}</div>`;
+  const accent = accentFor(from);
+  return `<div class="mail-avatar" style="background:var(--accent-${accent});color:var(--on-accent-${accent})">${esc(initial)}</div>`;
 }
 
 function renderImportanceIcon(mail) {

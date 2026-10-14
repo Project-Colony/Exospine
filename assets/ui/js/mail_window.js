@@ -2,10 +2,12 @@
 // The body comes from get_mail_body, so it is the same sanitized HTML as the reading pane.
 import { getMailBody } from './api.js';
 import { esc } from './html.js';
+import { restoreAppearance } from './appearance.js';
 import { setLanguage, t } from './i18n/index.js';
 import { mailDocument, openLinksExternally, showRemoteImages } from './views/mail_view/index.js';
 
 const params = new URLSearchParams(location.search);
+restoreAppearance();
 setLanguage(params.get('lang'));
 document.getElementById('mail-subject').textContent = params.get('subject') || '';
 for (const field of ['from', 'to', 'date']) {

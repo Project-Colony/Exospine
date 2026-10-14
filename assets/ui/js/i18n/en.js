@@ -72,7 +72,6 @@ export default {
   template_ooo: 'Out of office',
 
   // Settings
-  settings_title: 'Preferences',
   appearance: 'Appearance',
   theme: 'Theme',
   dark: 'Dark',

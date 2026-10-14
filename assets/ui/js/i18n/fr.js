@@ -72,7 +72,6 @@ export default {
   template_ooo: 'Absence du bureau',
 
   // Settings
-  settings_title: 'Préférences',
   appearance: 'Apparence',
   theme: 'Thème',
   dark: 'Sombre',

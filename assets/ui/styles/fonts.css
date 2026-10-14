@@ -1,0 +1,75 @@
+/* ============================================================
+   Exospine: fonts
+   ============================================================
+   JetBrainsMono Nerd Font for all text, OpenDyslexic in its place when the
+   dyslexia font is on, Font Awesome 6 Free for icons outside the Nerd Font.
+   Every font-family in the stylesheets is one of the variables below, so the
+   dyslexia font replaces the text font everywhere at once. */
+
+@font-face {
+  font-family: 'JetBrainsMono Nerd Font';
+  src: url('../fonts/JetBrainsMonoNerdFont/JetBrainsMonoNerdFont-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrainsMono Nerd Font';
+  src: url('../fonts/JetBrainsMonoNerdFont/JetBrainsMonoNerdFont-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrainsMono Nerd Font';
+  src: url('../fonts/JetBrainsMonoNerdFont/JetBrainsMonoNerdFont-Bold.woff2') format('woff2');
+  font-weight: 600 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* One face for every weight, as colony-ui uses it: no synthesized bold. */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('../fonts/OpenDyslexic/OpenDyslexic-Regular.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Font Awesome 6 Free';
+  src: url('../fonts/FontAwesome/fa-solid-900.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* Nerd Font glyphs are always drawn in the Nerd Font: OpenDyslexic has none. */
+  --font-glyph: 'JetBrainsMono Nerd Font', monospace;
+  --font-icon: 'Font Awesome 6 Free';
+  --font: var(--font-glyph);
+  --font-mono: var(--font);
+}
+
+:root[data-dyslexia="on"] {
+  --font: 'OpenDyslexic', var(--font-glyph);
+}
+
+/* An icon from the Nerd Font, written as a codepoint (see js/icons.js). */
+.icon {
+  font-family: var(--font-glyph);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  display: inline-block;
+}
+
+/* An icon from Font Awesome Solid. */
+.icon-fa {
+  font-family: var(--font-icon);
+  font-weight: 900;
+}

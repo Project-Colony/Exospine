@@ -32,8 +32,7 @@ pub struct AppState {
 pub fn build() -> AppState {
     let config = Config::load();
     let settings = AppSettings {
-        theme: config.theme.clone(),
-        font_size: config.font_size,
+        appearance: config.appearance.clone(),
         check_interval_secs: config.check_interval_secs,
         show_notifications: config.show_notifications,
         reading_pane: config.reading_pane.clone(),
@@ -410,10 +409,9 @@ impl Default for ComposeDraft {
 /// Persisted application settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
-    /// Theme name (e.g. "dark", "light").
-    pub theme: String,
-    /// Base font size in pixels.
-    pub font_size: u16,
+    /// Theme, accent, text sizes and the accessibility toggles.
+    #[serde(flatten)]
+    pub appearance: crate::appearance::Appearance,
     /// How often to check for new mail, in seconds.
     pub check_interval_secs: u64,
     /// Whether to show desktop notifications for new mail.
@@ -437,8 +435,7 @@ fn default_importance() -> String {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            theme: "dark".to_string(),
-            font_size: 14,
+            appearance: Default::default(),
             check_interval_secs: 300,
             show_notifications: true,
             reading_pane: "right".to_string(),

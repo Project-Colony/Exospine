@@ -3,13 +3,16 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::app_state::Account;
+use crate::appearance::Appearance;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub window_width: u32,
     pub window_height: u32,
-    pub theme: String,
-    pub font_size: u16,
+    /// Theme, accent, text sizes and the accessibility toggles, under the
+    /// Colony field names.
+    #[serde(flatten)]
+    pub appearance: Appearance,
     pub check_interval_secs: u64,
     pub show_notifications: bool,
     #[serde(default = "default_reading_pane")]
@@ -51,8 +54,7 @@ impl Default for Config {
         Self {
             window_width: 1200,
             window_height: 800,
-            theme: "dark".to_string(),
-            font_size: 14,
+            appearance: Appearance::default(),
             check_interval_secs: 300,
             show_notifications: true,
             reading_pane: "right".to_string(),
@@ -630,10 +632,22 @@ mod tests {
     }
 
     #[test]
+    fn a_0_2_config_toml_moves_to_the_colony_fields() {
+        let old = "window_width = 1200\nwindow_height = 800\ntheme = \"light\"\nfont_size = 16\n\
+                   check_interval_secs = 300\nshow_notifications = true\n";
+        let config: Config = toml::from_str(old).unwrap();
+        assert_eq!(config.appearance.selected_variant, "light");
+        assert_eq!(config.appearance.font_size, crate::appearance::FontSize::Large);
+        let saved = config.to_file_toml().unwrap();
+        assert!(!saved.lines().any(|line| line.starts_with("theme")), "{saved}");
+        assert!(saved.contains("selected_variant = \"light\""));
+        assert!(saved.contains("font_size = \"large\""));
+    }
+
+    #[test]
     fn test_config_default() {
         let config = Config::default();
-        assert_eq!(config.theme, "dark");
-        assert_eq!(config.font_size, 14);
+        assert_eq!(config.appearance, Appearance::default());
         assert_eq!(config.check_interval_secs, 300);
         assert!(config.show_notifications);
         assert_eq!(config.reading_pane, "right");
@@ -643,8 +657,11 @@ mod tests {
     #[test]
     fn test_config_toml_roundtrip() {
         let config = Config {
-            theme: "light".to_string(),
-            font_size: 16,
+            appearance: Appearance {
+                selected_theme: "nord".to_string(),
+                high_contrast: true,
+                ..Default::default()
+            },
             check_interval_secs: 120,
             show_notifications: false,
             reading_pane: "bottom".to_string(),
@@ -654,8 +671,7 @@ mod tests {
         };
         let toml_str = toml::to_string_pretty(&config).expect("Serialize failed");
         let parsed: Config = toml::from_str(&toml_str).expect("Deserialize failed");
-        assert_eq!(parsed.theme, "light");
-        assert_eq!(parsed.font_size, 16);
+        assert_eq!(parsed.appearance, config.appearance);
         assert_eq!(parsed.check_interval_secs, 120);
         assert!(!parsed.show_notifications);
         assert_eq!(parsed.reading_pane, "bottom");

@@ -330,7 +330,7 @@ export async function openSettings(state, actions) {
                 </div>
                 <div class="flex-row-center gap-6" style="padding-left:8px;">
                   <label class="text-xxs text-dim">Notification sound:</label>
-                  <select class="s-acct-sound" data-acct-sound-id="${esc(acc.id || String(i))}" style="font-size:12px;">
+                  <select class="s-acct-sound" data-acct-sound-id="${esc(acc.id || String(i))}" style="font-size:calc(var(--font-scale) * 12px);">
                     <option value="" ${acctSound === '' ? 'selected' : ''}>Global default</option>
                     <option value="default" ${acctSound === 'default' ? 'selected' : ''}>Default beep</option>
                     <option value="chime" ${acctSound === 'chime' ? 'selected' : ''}>Chime</option>
@@ -346,7 +346,7 @@ export async function openSettings(state, actions) {
           </div>
         </div>
         <div class="settings-section settings-section-about">
-          <div class="font-bolder mb-4" style="font-size:18px;" id="settings-about-version">Exospine</div>
+          <div class="font-bolder mb-4" style="font-size:calc(var(--font-scale) * 18px);" id="settings-about-version">Exospine</div>
           <div class="text-sm text-dim mb-6">Built with Rust + Tauri</div>
           <div class="mb-6"><a href="https://github.com/Project-Colony/Exospine" target="_blank" rel="noopener" class="text-accent text-sm">GitHub Repository</a></div>
           <div class="text-xs text-dim">&copy; 2026 MotherSphere</div>

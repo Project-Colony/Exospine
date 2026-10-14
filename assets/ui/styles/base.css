@@ -1,9 +1,3 @@
-/* Ensure text is visible immediately while monospace fonts load. Kept out of
-   index.html: an inline <style> there makes Tauri add a style nonce to the
-   CSP, which disables 'unsafe-inline' for every inline style attribute. */
-@font-face { font-family: "Cascadia Code"; font-display: swap; src: local("Cascadia Code"); }
-@font-face { font-family: "Fira Code"; font-display: swap; src: local("Fira Code"); }
-
 /* --- Reset & base ------------------------------------------ */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -37,25 +31,9 @@ input, select, textarea, button {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.15);
+  background: var(--tint-3);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.25);
-}
-#mail-view ::-webkit-scrollbar-thumb,
-.settings-body ::-webkit-scrollbar-thumb,
-.overlay-panel ::-webkit-scrollbar-thumb,
-.compose-editor ::-webkit-scrollbar-thumb,
-.contacts-list-scroll ::-webkit-scrollbar-thumb,
-.contacts-detail-pane ::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.15);
-}
-#mail-view ::-webkit-scrollbar-thumb:hover,
-.settings-body ::-webkit-scrollbar-thumb:hover,
-.overlay-panel ::-webkit-scrollbar-thumb:hover,
-.compose-editor ::-webkit-scrollbar-thumb:hover,
-.contacts-list-scroll ::-webkit-scrollbar-thumb:hover,
-.contacts-detail-pane ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.25);
+  background: var(--tint-4);
 }

@@ -5,6 +5,7 @@ import * as api from '../../api.js';
 import { showToast } from '../../components/toast.js';
 import { esc } from '../../html.js';
 import { getLanguage, t, tn } from '../../i18n/index.js';
+import { accentFor } from '../../appearance.js';
 import { handleDownloadAttachment, openAttachmentPreview } from './attachments.js';
 import { mailDocument, openLinksExternally, showRemoteImages } from './render.js';
 import {
@@ -544,10 +545,7 @@ export function wireMailView(el, mail, body, state, actions) {
       const nameMatch = fromRaw.match(/^([^<]+)</);
       const name = nameMatch ? nameMatch[1].trim() : email;
       const initial = (name || '?')[0].toUpperCase();
-      const colors = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e'];
-      let hash = 0;
-      for (const c of email) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
-      const color = colors[Math.abs(hash) % colors.length];
+      const accent = accentFor(email);
 
       // Feature 8: Count emails from this sender in current state
       let emailCount = 0;
@@ -559,7 +557,7 @@ export function wireMailView(el, mail, body, state, actions) {
       }
 
       profileCard.innerHTML = `
-        <div class="sender-card-avatar" style="background:${color}">${esc(initial)}</div>
+        <div class="sender-card-avatar" style="background:var(--accent-${accent});color:var(--on-accent-${accent})">${esc(initial)}</div>
         <div class="sender-card-info">
           <div class="sender-card-name">${esc(name)}</div>
           <div class="sender-card-email">${esc(email)}</div>
@@ -612,7 +610,7 @@ function printEmail(mail, body, remoteImagesShown) {
   if (!body) return;
   const content = body.html
     ? (remoteImagesShown ? showRemoteImages(body.html) : body.html)
-    : `<pre style="white-space:pre-wrap;font-family:sans-serif;">${esc(body.text || '')}</pre>`;
+    : `<pre style="white-space:pre-wrap;font-family:inherit;">${esc(body.text || '')}</pre>`;
   const frame = document.createElement('iframe');
   frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
   frame.title = t('print_preview');

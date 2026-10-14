@@ -17,6 +17,11 @@ export { makeForwardPrefill, makeReplyPrefill } from './prefill.js';
 // Undo Send: the send waiting out its 5 seconds
 let _sendTimeout = null;
 
+/** The near-black ink of the Colony tokens: the text colour picker starts there. */
+function inkColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--colony-ink').trim();
+}
+
 /**
  * Open the compose overlay.
  * @param {object} [prefill]  optional { to, cc, bcc, subject, body, bodyHtml, accountId } for reply/forward
@@ -96,7 +101,7 @@ export async function openCompose(prefill = {}, onSent = null) {
             <option value="3">${t('size_normal')}</option>
             <option value="5">${t('size_large')}</option>
           </select>
-          <input type="color" data-cmd="foreColor" title="${t('text_color')}" class="toolbar-color" value="#000000" aria-label="${t('text_color')}" />
+          <input type="color" data-cmd="foreColor" title="${t('text_color')}" class="toolbar-color" value="${inkColor()}" aria-label="${t('text_color')}" />
           <span class="toolbar-sep" aria-hidden="true"></span>
           <button type="button" data-cmd="justifyLeft" title="${t('align_left')}" aria-label="${t('align_left')}">\u2261</button>
           <button type="button" data-cmd="justifyCenter" title="${t('align_center')}" aria-label="${t('align_center')}">\u2550</button>

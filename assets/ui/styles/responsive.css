@@ -6,10 +6,10 @@
   left: 10px;
   z-index: var(--z-sticky);
   background: var(--sidebar-bg);
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid var(--tint-3);
   border-radius: var(--radius);
   color: var(--sidebar-text);
-  font-size: 20px;
+  font-size: calc(var(--font-scale) * 20px);
   padding: 4px 10px;
   cursor: pointer;
   line-height: 1;
@@ -133,11 +133,11 @@
    ============================================================ */
 [dir="rtl"] #sidebar {
   border-right: none;
-  border-left: 1px solid rgba(255,255,255,0.06);
+  border-left: 1px solid var(--tint-2);
 }
 [dir="rtl"] #mail-list {
   border-right: none;
-  border-left: 1px solid rgba(255,255,255,0.06);
+  border-left: 1px solid var(--tint-2);
 }
 [dir="rtl"] #app {
   flex-direction: row-reverse;
@@ -155,7 +155,7 @@
 }
 [dir="rtl"] .sidebar-account-item.active {
   border-left-color: transparent;
-  border-right-color: var(--accent, rgb(0,120,214));
+  border-right-color: var(--accent);
 }
 [dir="rtl"] .mail-item-unread-dot {
   left: auto;

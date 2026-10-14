@@ -1,64 +1,78 @@
 /* ============================================================
-   Exospine — CSS Variables & Design Tokens
-   ============================================================ */
+   Exospine: CSS variables
+   ============================================================
+   Every colour comes from the active Colony palette (--colony-*, set by
+   vendor/colony/colony-themes.css for [data-colony-theme] and by
+   js/appearance.js for the accent override, high contrast, --colony-ink,
+   --colony-paper and the --on-accent* label colours). This file only gives
+   the palette the names the stylesheets use; it defines no colour of its own.
+   Sizes go through --font-scale (Appearance typography size times
+   Accessibility text size), set by js/appearance.js. */
 
 :root {
-  --sidebar-bg: rgb(36, 41, 51);
-  --sidebar-hover: rgb(46, 52, 64);
-  --sidebar-active: rgb(56, 63, 78);
-  --sidebar-text: rgb(200, 205, 215);
-  --sidebar-text-dim: rgb(140, 148, 165);
-  --sidebar-width: 200px;
+  --font-scale: 1;
 
-  --list-bg: rgb(42, 47, 58);
-  --list-hover: rgb(52, 58, 72);
-  --list-active: rgb(0, 120, 214);
-  --list-active-bg: rgba(0, 120, 214, 0.18);
-  --list-border: rgb(55, 62, 76);
-  --list-width: 350px;
-  --list-text: rgb(210, 215, 225);
-  --list-text-dim: rgb(170, 178, 195);
+  /* Surfaces: the sidebar is the deepest, the list and the reading pane sit
+     on the primary background, headers and cards one step up. */
+  --sidebar-bg: var(--colony-bg-sidebar);
+  --sidebar-hover: var(--colony-bg-card-hover);
+  --sidebar-active: var(--colony-accent-blue);
+  --sidebar-text: var(--colony-text-primary);
+  --sidebar-text-dim: var(--colony-text-muted);
+  --sidebar-width: calc(var(--font-scale) * 200px);
 
-  --pane-bg: rgb(255, 255, 255);
-  --pane-text: rgb(30, 30, 30);
-  --pane-text-dim: rgb(100, 105, 115);
-  --pane-border: rgb(225, 228, 232);
-  --pane-header-bg: rgb(248, 249, 251);
+  --list-bg: var(--colony-bg-primary);
+  --list-hover: var(--colony-bg-card-hover);
+  --list-active: var(--colony-accent-blue);
+  --list-active-bg: var(--colony-bg-selected);
+  --list-border: var(--colony-divider);
+  --list-width: calc(var(--font-scale) * 350px);
+  --list-text: var(--colony-text-primary);
+  --list-text-dim: var(--colony-text-muted);
 
-  --accent: rgb(0, 120, 214);
-  --accent-hover: rgb(0, 100, 190);
-  --accent-light: rgba(0, 120, 214, 0.12);
-  --danger: rgb(220, 53, 69);
-  --danger-hover: rgb(195, 40, 55);
-  --success: rgb(40, 167, 69);
-  --warning: rgb(255, 193, 7);
-  --star-color: rgb(255, 193, 7);
+  --pane-bg: var(--colony-bg-primary);
+  --pane-text: var(--colony-text-primary);
+  --pane-text-dim: var(--colony-text-muted);
+  --pane-border: var(--colony-border-subtle);
+  --pane-header-bg: var(--colony-bg-card);
 
-  --overlay-bg: rgba(0, 0, 0, 0.55);
+  --accent: var(--colony-accent-blue);
+  --accent-hover: color-mix(in srgb, var(--colony-accent-blue) 85%, var(--colony-ink));
+  --accent-light: color-mix(in srgb, var(--colony-accent-blue) 14%, transparent);
+  --danger: var(--colony-error);
+  --danger-hover: var(--colony-btn-trash-hover);
+  --success: var(--colony-success);
+  --warning: var(--colony-warning);
+  --star-color: var(--colony-warning);
+
+  /* Tints over whatever surface they sit on: the text colour, so they lighten
+     a dark theme and darken a light one. */
+  --tint-1: color-mix(in srgb, var(--colony-text-primary) 4%, transparent);
+  --tint-2: color-mix(in srgb, var(--colony-text-primary) 8%, transparent);
+  --tint-3: color-mix(in srgb, var(--colony-text-primary) 14%, transparent);
+  --tint-4: color-mix(in srgb, var(--colony-text-primary) 24%, transparent);
+
+  --overlay-bg: color-mix(in srgb, var(--colony-ink) 55%, transparent);
+  --scrim-strong: color-mix(in srgb, var(--colony-ink) 88%, transparent);
   --radius: 6px;
   --radius-sm: 4px;
   --radius-lg: 10px;
-  --shadow: 0 2px 12px rgba(0,0,0,0.25);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.35);
+  --shadow: 0 2px 12px color-mix(in srgb, var(--colony-ink) 25%, transparent);
+  --shadow-lg: 0 8px 32px color-mix(in srgb, var(--colony-ink) 35%, transparent);
   --transition: 150ms ease;
 
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
-  --font-size: 14px;
+  --separator: var(--colony-divider);
+  --border: var(--colony-border-subtle);
+  --text-muted: var(--colony-text-muted);
 
-  --separator: var(--pane-border);
-  --border: var(--pane-border);
-  --text-muted: var(--pane-text-dim);
+  --toast-success: var(--colony-success);
+  --toast-error: var(--colony-error);
+  --toast-info: var(--colony-accent-blue);
 
-  --toast-success: rgb(40, 167, 69);
-  --toast-error: rgb(220, 53, 69);
-  --toast-info: rgb(0, 120, 214);
-
-  /* Info & note colors */
-  --info: #007bff;
-  --note-bg: #fef9e7;
-  --note-text: #7d6608;
-  --note-border: #f9e79f;
+  --info: var(--colony-accent-blue);
+  --note-bg: var(--colony-warning-bg);
+  --note-text: var(--colony-text-primary);
+  --note-border: var(--colony-warning);
 
   /* Spacing tokens */
   --space-1: 4px;
@@ -69,13 +83,14 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  /* Font scale tokens */
-  --font-xs: 10px;
-  --font-sm: 12px;
-  --font-base: 14px;
-  --font-lg: 16px;
-  --font-xl: 20px;
-  --font-2xl: 24px;
+  /* Text sizes: every size is a base size times --font-scale. */
+  --font-xs: calc(var(--font-scale) * 10px);
+  --font-sm: calc(var(--font-scale) * 12px);
+  --font-base: calc(var(--font-scale) * 14px);
+  --font-lg: calc(var(--font-scale) * 16px);
+  --font-xl: calc(var(--font-scale) * 20px);
+  --font-2xl: calc(var(--font-scale) * 24px);
+  --font-size: var(--font-base);
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;

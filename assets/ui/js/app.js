@@ -20,7 +20,7 @@ import { toastError } from './components/toast_helpers.js';
 import { setupOfflineMode } from './offline.js';
 import { handleArchive, handleDelete, handleMarkRead, handleMarkUnread, toggleMailStar, handleFlagMail, handleUnflagMail, handleSweepSender, handleReportSpam, handleReportNotSpam, handleAddCategory, handleRemoveCategory, setMailActionCallbacks } from './mail_actions.js';
 import { handleBatchArchive, handleBatchDelete, handleBatchMarkRead, handleBatchMove, setBatchOpsCallbacks } from './batch_ops.js';
-import { applyTheme } from './theme.js';
+import { applyAppearance, restoreAppearance } from './appearance.js';
 import { setupKeyboardShortcuts, setShortcutCallbacks } from './shortcuts.js';
 import { playNotificationSound, setSoundEnabled, updateUnreadTitle } from './notifications_ui.js';
 import { setupConnectionStatus, setupResizablePanels } from './panels.js';
@@ -83,6 +83,8 @@ function applyLanguage(preference) {
   api.setUiLanguage(getLanguage()).catch(() => {});
 }
 setLanguage(localStorage.getItem('exospine_language') || 'auto');
+// The appearance of the last run, until the settings load.
+restoreAppearance();
 
 // ---------------------------------------------------------------------------
 // Hamburger menu (responsive)
@@ -117,7 +119,7 @@ function sidebarActions() {
     onOpenSettings: () => openSettings(state, {
       onSaved: (s) => {
         state.settings = s;
-        applyTheme(s.theme);
+        applyAppearance(s);
         applyLanguage(s.language);
         // Update sound notification setting
         if (s.sound_notifications !== undefined) {
@@ -896,14 +898,14 @@ async function showPinLockScreen() {
 
     lockEl.hidden = false;
     lockEl.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:var(--sidebar-bg, #1a1a2e);color:var(--pane-text, #e0e0e0);">
-        <div style="font-size:28px;font-weight:700;margin-bottom:8px;">Exospine</div>
-        <div style="font-size:14px;color:var(--pane-text-dim, #888);margin-bottom:24px;">${t('pin_prompt')}</div>
-        <div id="pin-error" style="color:#e53935;font-size:13px;min-height:20px;margin-bottom:8px;"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:var(--sidebar-bg);color:var(--pane-text);">
+        <div style="font-size:calc(var(--font-scale) * 28px);font-weight:700;margin-bottom:8px;">Exospine</div>
+        <div style="font-size:calc(var(--font-scale) * 14px);color:var(--pane-text-dim);margin-bottom:24px;">${t('pin_prompt')}</div>
+        <div id="pin-error" style="color:var(--colony-error);font-size:calc(var(--font-scale) * 13px);min-height:20px;margin-bottom:8px;"></div>
         <input type="password" id="pin-input" maxlength="6" inputmode="numeric" pattern="[0-9]*"
-          style="width:180px;text-align:center;font-size:24px;letter-spacing:8px;padding:10px;border:2px solid var(--pane-border, #333);border-radius:8px;background:var(--pane-bg, #222);color:var(--pane-text, #eee);outline:none;"
+          style="width:180px;text-align:center;font-size:calc(var(--font-scale) * 24px);letter-spacing:8px;padding:10px;border:2px solid var(--pane-border);border-radius:8px;background:var(--colony-bg-input);color:var(--pane-text);outline:none;"
           placeholder="****" />
-        <button id="pin-submit" style="margin-top:16px;padding:8px 32px;font-size:14px;font-weight:600;background:var(--accent, #0078d6);color:#fff;border:none;border-radius:6px;cursor:pointer;">
+        <button id="pin-submit" style="margin-top:16px;padding:8px 32px;font-size:calc(var(--font-scale) * 14px);font-weight:600;background:var(--accent);color:var(--on-accent);border:none;border-radius:6px;cursor:pointer;">
           ${t('unlock')}
         </button>
       </div>
@@ -1005,7 +1007,7 @@ async function init() {
     // Load settings for theming even on onboarding
     try {
       state.settings = await api.getSettings();
-      applyTheme(state.settings.theme);
+      applyAppearance(state.settings);
       applyLanguage(state.settings.language);
     } catch {}
     openOnboarding({ isFirstRun: true, onAccountAdded: reloadAccounts });
@@ -1036,7 +1038,7 @@ async function init() {
   // Load settings after mail list is visible — non-blocking
   try {
     state.settings = await api.getSettings();
-    applyTheme(state.settings.theme);
+    applyAppearance(state.settings);
     applyLanguage(state.settings.language);
   } catch {
     // Settings not available yet, use defaults

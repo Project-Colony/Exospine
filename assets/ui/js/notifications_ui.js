@@ -115,10 +115,14 @@ export function updateFavicon(unreadCount) {
   canvas.height = 32;
   const ctx = canvas.getContext('2d');
 
+  // Colours of the active palette: the canvas cannot read CSS variables itself.
+  const css = getComputedStyle(document.documentElement);
+  const color = (name) => css.getPropertyValue(name).trim();
+
   // Draw base icon (simple envelope shape)
-  ctx.fillStyle = '#00bcd4';
+  ctx.fillStyle = color('--colony-accent-blue');
   ctx.fillRect(2, 6, 28, 20);
-  ctx.fillStyle = '#00838f';
+  ctx.fillStyle = color('--colony-accent-icon');
   ctx.beginPath();
   ctx.moveTo(2, 6);
   ctx.lineTo(16, 18);
@@ -135,13 +139,13 @@ export function updateFavicon(unreadCount) {
 
     ctx.beginPath();
     ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = '#e53935';
+    ctx.fillStyle = color('--colony-error');
     ctx.fill();
-    ctx.strokeStyle = '#1a1a2e';
+    ctx.strokeStyle = color('--colony-bg-sidebar');
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = color('--on-error');
     ctx.font = `bold ${text.length > 2 ? 8 : 10}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

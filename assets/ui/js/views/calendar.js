@@ -2,16 +2,13 @@
 
 import { showToast } from '../components/toast.js';
 import { esc } from '../html.js';
+import { accentKeyAt, storedColor, storedColorStyle } from '../appearance.js';
 import { getLanguage, t, tn } from '../i18n/index.js';
 
 const overlay = document.getElementById('settings-overlay');
 
 const STORAGE_KEY = 'exospine_calendar_events';
 
-const EVENT_COLORS = [
-  '#0078d6', '#a05adc', '#dc503c', '#28a745',
-  '#e69600', '#00b4a0', '#ff6b6b', '#6c5ce7',
-];
 
 function loadEvents() {
   try {
@@ -51,7 +48,7 @@ function parseICS(icsText) {
           endDate: current.dtend ? parseICSDate(current.dtend) : null,
           time: parseICSTime(current.dtstart),
           endTime: current.dtend ? parseICSTime(current.dtend) : null,
-          color: EVENT_COLORS[Math.floor(Math.random() * EVENT_COLORS.length)],
+          color: accentKeyAt(events.length),
           source: 'ics',
         });
       }
@@ -128,7 +125,7 @@ export function openCalendar() {
       const isSelected = selectedDay === d;
       let pillsHtml = '';
       for (const ev of dayEvents.slice(0, 3)) {
-        pillsHtml += `<div class="calendar-event-pill" style="background:${esc(ev.color || '#0078d6')}" title="${esc(ev.subject)}">${esc(truncate(ev.subject, 12))}</div>`;
+        pillsHtml += `<div class="calendar-event-pill" style="${esc(storedColorStyle(ev.color))}" title="${esc(ev.subject)}">${esc(truncate(ev.subject, 12))}</div>`;
       }
       if (dayEvents.length > 3) {
         pillsHtml += `<div class="calendar-event-pill calendar-event-more">+${dayEvents.length - 3}</div>`;
@@ -152,7 +149,7 @@ export function openCalendar() {
           ${dayEvents.length === 0 ? `<div class="calendar-no-events">${t('no_events')}</div>` : ''}
           ${dayEvents.map(ev => `
             <div class="calendar-event-item">
-              <div class="calendar-event-color" style="background:${esc(ev.color || '#0078d6')}"></div>
+              <div class="calendar-event-color" style="background:${esc(storedColor(ev.color))}"></div>
               <div class="calendar-event-info">
                 <div class="calendar-event-subject">${esc(ev.subject)}</div>
                 ${ev.time ? `<div class="calendar-event-time">${esc(ev.time)}${ev.endTime ? ' - ' + esc(ev.endTime) : ''}</div>` : ''}
@@ -324,7 +321,7 @@ export function openCalendar() {
           time: time || '',
           endTime: endTime || '',
           description: desc,
-          color: EVENT_COLORS[evts.length % EVENT_COLORS.length],
+          color: accentKeyAt(evts.length),
           source: 'manual',
         });
         saveEvents(evts);

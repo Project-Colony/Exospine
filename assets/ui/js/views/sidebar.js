@@ -5,6 +5,7 @@ import { showContextMenu } from '../components/context_menu.js';
 import * as api from '../api.js';
 import { getLanguage, t } from '../i18n/index.js';
 import { esc } from '../html.js';
+import { ACCENTS, accentKeyAt, storedColor } from '../appearance.js';
 
 // ===== SECTION: Constants & Folder Icons =====
 const FOLDER_ICONS = {
@@ -24,15 +25,6 @@ const FOLDER_ICONS = {
   '[Gmail]/Starred':          '\u2B50',
   '[Gmail]/Important':        '\u2757',
 };
-
-const ACCOUNT_COLORS = [
-  'rgb(0, 120, 214)',
-  'rgb(160, 90, 220)',
-  'rgb(220, 80, 60)',
-  'rgb(40, 167, 69)',
-  'rgb(230, 150, 0)',
-  'rgb(0, 180, 160)',
-];
 
 // ── Search Folders (Virtual Folders) ────────────────────────────────
 
@@ -58,7 +50,6 @@ function saveCustomSearchFolders(folders) {
 }
 
 // ── Shared Labels (cross-account, localStorage) ─────────────────
-const LABEL_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e', '#d35400', '#16a085'];
 
 // ===== SECTION: Labels =====
 function loadLabels() {
@@ -92,7 +83,7 @@ function toggleMailLabel(labelName, mailId) {
 }
 
 /** Export for use by other views (label assignment). */
-export { loadLabels, saveLabels, getMailIdsForLabel, toggleMailLabel, LABEL_COLORS };
+export { loadLabels, saveLabels, getMailIdsForLabel, toggleMailLabel };
 
 
 // ── Folder order persistence (drag reorder) ─────────────────────
@@ -173,7 +164,6 @@ export function renderSidebar(el, state, actions) {
     state.activeAccount = Math.max(0, state.accounts.length - 1);
   }
   const account = state.accounts[state.activeAccount];
-  const color = ACCOUNT_COLORS[state.activeAccount % ACCOUNT_COLORS.length];
   const initial = account ? (account.name || account.email || '?')[0].toUpperCase() : '?';
 
   let html = '';
@@ -183,12 +173,11 @@ export function renderSidebar(el, state, actions) {
     html += `<div class="sidebar-account-switcher" role="listbox" aria-label="${t('account_switcher')}">`;
     for (let i = 0; i < state.accounts.length; i++) {
       const acc = state.accounts[i];
-      const accColor = ACCOUNT_COLORS[i % ACCOUNT_COLORS.length];
       const accInitial = (acc.name || acc.email || '?')[0].toUpperCase();
       const isActive = i === state.activeAccount;
       html += `
         <div class="sidebar-account-item${isActive ? ' active' : ''}" data-account-index="${i}" role="option" aria-selected="${isActive}" tabindex="0">
-          <div class="sidebar-account-icon acct-color-${i % ACCOUNT_COLORS.length}" aria-hidden="true">${accInitial}</div>
+          <div class="sidebar-account-icon acct-color-${i % ACCENTS.length}" aria-hidden="true">${accInitial}</div>
           <div class="sidebar-account-item-info">
             <div class="sidebar-account-name">${esc(acc.name || acc.email)}</div>
             <div class="sidebar-account-email">${esc(acc.email || '')}</div>
@@ -201,7 +190,7 @@ export function renderSidebar(el, state, actions) {
     // Single account header
     html += `
       <div class="sidebar-account" role="banner" aria-label="${t('current_account')}">
-        <div class="sidebar-account-icon acct-color-${state.activeAccount % ACCOUNT_COLORS.length}" aria-hidden="true">${initial}</div>
+        <div class="sidebar-account-icon acct-color-${state.activeAccount % ACCENTS.length}" aria-hidden="true">${initial}</div>
         <div>
           <div class="sidebar-account-name">${esc(account.name || account.email)}</div>
           <div class="sidebar-account-email">${esc(account.email || '')}</div>
@@ -335,7 +324,7 @@ export function renderSidebar(el, state, actions) {
     const isActive = state._activeLabel === label.name;
     html += `
       <div class="sidebar-folder sidebar-label-item${isActive ? ' active' : ''}" data-label-name="${esc(label.name)}" role="option" aria-selected="${isActive}" tabindex="0">
-        <span class="sidebar-label-dot" style="background:${label.color || '#7f8c8d'}" aria-hidden="true"></span>
+        <span class="sidebar-label-dot" style="background:${esc(storedColor(label.color, 'var(--colony-text-dimmer)'))}" aria-hidden="true"></span>
         <span class="sidebar-folder-label">${esc(label.name)}</span>
         <button class="sidebar-label-delete" data-delete-label="${esc(label.name)}" title="${t('delete_label')}" aria-label="${esc(t('delete_label_named', { name: label.name }))}">\u00D7</button>
       </div>
@@ -518,8 +507,7 @@ export function renderSidebar(el, state, actions) {
         showToast(t('label_exists'), 'error');
         return;
       }
-      const colorIdx = existing.length % LABEL_COLORS.length;
-      existing.push({ name: name.trim(), color: LABEL_COLORS[colorIdx] });
+      existing.push({ name: name.trim(), color: accentKeyAt(existing.length) });
       saveLabels(existing);
       _sidebarCacheKey = null;
       renderSidebar(el, state, actions);

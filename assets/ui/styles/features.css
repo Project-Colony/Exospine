@@ -1,109 +1,4 @@
-/* --- Light theme ------------------------------------------- */
-[data-theme="light"] {
-  --sidebar-bg: rgb(240, 242, 246);
-  --sidebar-hover: rgb(228, 230, 236);
-  --sidebar-active: rgb(215, 218, 228);
-  --sidebar-text: rgb(40, 45, 55);
-  --sidebar-text-dim: rgb(100, 108, 125);
 
-  --list-bg: rgb(248, 249, 252);
-  --list-hover: rgb(238, 240, 246);
-  --list-active-bg: rgba(0, 120, 214, 0.12);
-  --list-border: rgb(225, 228, 232);
-  --list-text: rgb(30, 35, 45);
-  --list-text-dim: rgb(100, 108, 125);
-
-  --pane-bg: rgb(255, 255, 255);
-  --pane-text: rgb(30, 30, 30);
-  --pane-text-dim: rgb(100, 105, 115);
-  --pane-border: rgb(225, 228, 232);
-  --pane-header-bg: rgb(248, 249, 251);
-}
-
-[data-theme="light"] html,
-[data-theme="light"] body {
-  background: var(--sidebar-bg);
-}
-
-[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.15);
-}
-[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.25);
-}
-
-[data-theme="light"] .mail-list-search {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.12);
-  color: var(--list-text);
-}
-[data-theme="light"] .mail-list-search::placeholder {
-  color: var(--list-text-dim);
-}
-
-[data-theme="light"] .mail-list-btn {
-  border-color: rgba(0,0,0,0.15);
-  color: var(--list-text-dim);
-}
-[data-theme="light"] .mail-list-btn:hover {
-  background: rgba(0,0,0,0.04);
-  color: var(--list-text);
-  border-color: rgba(0,0,0,0.25);
-}
-
-[data-theme="light"] .mail-item.unread .mail-item-from {
-  color: var(--list-text);
-}
-
-[data-theme="light"] .skeleton-line {
-  background: rgba(0,0,0,0.06);
-}
-
-[data-theme="light"] .mail-list-loadmore button {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.12);
-  color: var(--list-text-dim);
-}
-[data-theme="light"] .mail-list-loadmore button:hover {
-  background: rgba(0,0,0,0.08);
-  color: var(--list-text);
-}
-
-[data-theme="light"] .spinner {
-  border-color: rgba(0,0,0,0.12);
-  border-top-color: var(--accent);
-}
-
-[data-theme="light"] .sidebar-folder.active {
-  color: var(--list-text);
-}
-
-[data-theme="light"] .settings-toggle-track {
-  background: rgb(200, 203, 210);
-}
-
-[data-theme="light"] .sync-progress-bar {
-  background: rgba(0,0,0,0.06);
-}
-
-[data-theme="light"] .hamburger-btn {
-  background: var(--sidebar-bg);
-  border-color: rgba(0,0,0,0.12);
-  color: var(--list-text);
-}
-
-/* --- Light theme: context menu ------------------------------ */
-[data-theme="light"] .context-menu {
-  background: var(--pane-bg);
-  border-color: rgba(0,0,0,0.12);
-}
-[data-theme="light"] .context-menu-separator {
-  background: rgba(0,0,0,0.08);
-}
-[data-theme="light"] .mail-view-attachment-item {
-  background: rgba(0,0,0,0.03);
-  border-color: rgba(0,0,0,0.1);
-}
 
 /* ============================================================
    Attachment bar (Feature 1)
@@ -117,7 +12,7 @@
 }
 
 .mail-view-attachments-header {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   font-weight: 600;
   color: var(--pane-text-dim);
   margin-bottom: 6px;
@@ -133,11 +28,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0,0,0,0.04);
+  background: var(--tint-1);
   border: 1px solid var(--pane-border);
   border-radius: var(--radius);
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   max-width: 250px;
 }
 
@@ -155,7 +50,7 @@
 .mail-view-attachment-size {
   color: var(--pane-text-dim);
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
 }
 
 .mail-view-attachment-download {
@@ -164,7 +59,7 @@
   cursor: pointer;
   padding: 2px 4px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--accent);
   flex-shrink: 0;
   transition: background var(--transition);
@@ -179,7 +74,7 @@
 .headers-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: color-mix(in srgb, var(--colony-ink) 60%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -187,14 +82,14 @@
 }
 
 .headers-modal {
-  background: var(--list-bg, rgb(42,47,58));
-  border: 1px solid var(--list-border, rgb(55,62,76));
+  background: var(--list-bg);
+  border: 1px solid var(--list-border);
   border-radius: 8px;
   width: min(90vw, 720px);
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--colony-ink) 40%, transparent);
 }
 
 .headers-modal-header {
@@ -202,26 +97,26 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--list-border, rgb(55,62,76));
+  border-bottom: 1px solid var(--list-border);
 }
 
 .headers-modal-title {
-  font-size: 15px;
+  font-size: calc(var(--font-scale) * 15px);
   font-weight: 600;
-  color: var(--list-text, rgb(210,215,225));
+  color: var(--list-text);
 }
 
 .headers-modal-close {
   background: none;
   border: none;
-  color: var(--list-text-dim, rgb(170,178,195));
-  font-size: 20px;
+  color: var(--list-text-dim);
+  font-size: calc(var(--font-scale) * 20px);
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
 }
 .headers-modal-close:hover {
-  color: var(--list-text, rgb(210,215,225));
+  color: var(--list-text);
 }
 
 .headers-modal-body {
@@ -231,17 +126,17 @@
 }
 
 .headers-modal-content {
-  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: calc(var(--font-scale) * 12px);
   line-height: 1.5;
-  color: var(--list-text, rgb(210,215,225));
+  color: var(--list-text);
   white-space: pre-wrap;
   word-break: break-all;
   margin: 0;
 }
 
 .headers-modal-content .header-highlight {
-  color: rgb(0, 180, 255);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -252,44 +147,21 @@
   margin-top: 8px;
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid var(--list-border, rgb(55,62,76));
+  border: 1px solid var(--list-border);
   border-radius: 6px;
-  background: rgba(0,0,0,0.15);
+  background: var(--tint-3);
 }
 
 .settings-security-log-entry {
   padding: 6px 12px;
-  font-size: 12px;
-  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
-  color: var(--list-text-dim, rgb(170,178,195));
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: calc(var(--font-scale) * 12px);
+  font-family: var(--font-mono);
+  color: var(--list-text-dim);
+  border-bottom: 1px solid var(--tint-1);
   line-height: 1.5;
 }
 .settings-security-log-entry:last-child {
   border-bottom: none;
-}
-
-/* Light theme overrides for headers modal */
-[data-theme="light"] .headers-modal {
-  background: var(--pane-bg);
-  border-color: rgba(0,0,0,0.12);
-}
-[data-theme="light"] .headers-modal-title {
-  color: var(--pane-text);
-}
-[data-theme="light"] .headers-modal-content {
-  color: var(--pane-text);
-}
-[data-theme="light"] .headers-modal-content .header-highlight {
-  color: rgb(0, 100, 200);
-}
-[data-theme="light"] .settings-security-log {
-  background: rgba(0,0,0,0.03);
-  border-color: rgba(0,0,0,0.1);
-}
-[data-theme="light"] .settings-security-log-entry {
-  color: var(--pane-text-dim);
-  border-bottom-color: rgba(0,0,0,0.06);
 }
 
 /* ============================================================
@@ -303,24 +175,24 @@
   flex-shrink: 0;
   width: 20px;
   text-align: center;
-  font-size: 10px;
-  color: var(--list-text-dim, rgb(170,178,195));
+  font-size: calc(var(--font-scale) * 10px);
+  color: var(--list-text-dim);
   align-self: center;
   margin-left: 4px;
   margin-right: 2px;
 }
 
 .thread-count {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   font-weight: 600;
-  color: var(--accent, rgb(0,120,214));
+  color: var(--accent);
   margin-left: 4px;
   margin-right: 4px;
 }
 
 .mail-item.thread-child {
   padding-left: 32px;
-  background: rgba(255,255,255,0.02);
+  background: var(--tint-1);
 }
 
 .mail-item.thread-child::before {
@@ -330,15 +202,7 @@
   top: 0;
   bottom: 0;
   width: 2px;
-  background: var(--pane-border, rgba(255,255,255,0.06));
-}
-
-[data-theme="light"] .mail-item.thread-child {
-  background: rgba(0,0,0,0.015);
-}
-
-[data-theme="light"] .mail-item.thread-child::before {
-  background: rgba(0,0,0,0.08);
+  background: var(--pane-border);
 }
 
 /* ============================================================
@@ -346,11 +210,10 @@
    ============================================================ */
 .mail-category-badge {
   display: inline-block;
-  font-size: 10px;
+  font-size: calc(var(--font-scale) * 10px);
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 8px;
-  color: #fff;
   margin-left: 4px;
   vertical-align: middle;
   line-height: 16px;
@@ -362,7 +225,7 @@
    ============================================================ */
 .mail-spam-indicator {
   color: var(--danger);
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   margin-right: 4px;
   vertical-align: middle;
 }
@@ -375,9 +238,9 @@
    Thread toggle button active state
    ============================================================ */
 .mail-list-btn.active {
-  background: var(--accent-light, rgba(0,120,214,0.15));
-  color: var(--accent, rgb(0,120,214));
-  border-color: var(--accent, rgb(0,120,214));
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 /* ============================================================
@@ -390,9 +253,9 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--accent, rgb(0, 120, 214));
-  color: #fff;
-  font-size: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: calc(var(--font-scale) * 10px);
   font-weight: 700;
   margin-right: 6px;
   flex-shrink: 0;
@@ -403,18 +266,18 @@
    Sidebar — unified inbox + search folders
    ============================================================ */
 .sidebar-folder.unified-inbox .sidebar-folder-icon {
-  font-size: 16px;
+  font-size: calc(var(--font-scale) * 16px);
 }
 .sidebar-section-title {
   padding: 12px 16px 4px;
-  font-size: 10px;
+  font-size: calc(var(--font-scale) * 10px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--sidebar-text-dim);
 }
 .sidebar-search-folders .sidebar-folder {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   padding: 4px 16px;
 }
 .sidebar-search-folder-delete {
@@ -422,7 +285,7 @@
   border: none;
   color: var(--sidebar-text-dim);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   padding: 0 4px;
   opacity: 0.5;
 }
@@ -455,173 +318,8 @@
   overflow-y: auto;
 }
 .compose-templates-dropdown .compose-template-item:hover {
-  background: var(--list-hover, rgba(0,0,0,0.05));
+  background: var(--list-hover);
 }
-
-
-/* ============================================================
-   High Contrast Theme
-   ============================================================ */
-[data-theme="high-contrast"] {
-  --sidebar-bg: #000000;
-  --sidebar-hover: #1a1a1a;
-  --sidebar-active: #333333;
-  --sidebar-text: #ffffff;
-  --sidebar-text-dim: #cccccc;
-
-  --list-bg: #000000;
-  --list-hover: #1a1a1a;
-  --list-active: #ffdd00;
-  --list-active-bg: rgba(255, 221, 0, 0.2);
-  --list-border: #ffffff;
-  --list-text: #ffffff;
-  --list-text-dim: #cccccc;
-
-  --pane-bg: #000000;
-  --pane-text: #ffffff;
-  --pane-text-dim: #cccccc;
-  --pane-border: #ffffff;
-  --pane-header-bg: #0a0a0a;
-
-  --accent: #ffdd00;
-  --accent-hover: #ffc800;
-  --accent-light: rgba(255, 221, 0, 0.2);
-  --danger: #ff4444;
-  --danger-hover: #ff2222;
-  --success: #00ff00;
-  --warning: #ffdd00;
-  --star-color: #ffdd00;
-
-  --overlay-bg: rgba(0, 0, 0, 0.85);
-}
-
-[data-theme="high-contrast"] html,
-[data-theme="high-contrast"] body {
-  background: #000000;
-  color: #ffffff;
-}
-
-[data-theme="high-contrast"] * {
-  border-color: #ffffff !important;
-}
-
-[data-theme="high-contrast"] .sidebar-folder.active {
-  background: #333333;
-  color: #ffdd00;
-  border-left: 3px solid #ffdd00;
-}
-
-[data-theme="high-contrast"] .mail-item {
-  border-bottom: 2px solid #ffffff;
-}
-
-[data-theme="high-contrast"] .mail-item.selected {
-  background: rgba(255, 221, 0, 0.15);
-  outline: 2px solid #ffdd00;
-}
-
-[data-theme="high-contrast"] .mail-item:hover {
-  background: #1a1a1a;
-}
-
-[data-theme="high-contrast"] .mail-item.unread .mail-item-from {
-  color: #ffdd00;
-  font-weight: 700;
-}
-
-[data-theme="high-contrast"] .btn-primary {
-  background: #ffdd00;
-  color: #000000;
-  border: 2px solid #ffffff;
-  font-weight: 700;
-}
-
-[data-theme="high-contrast"] .btn-primary:hover {
-  background: #ffc800;
-}
-
-[data-theme="high-contrast"] .btn-ghost {
-  color: #ffffff;
-  border: 2px solid #ffffff;
-}
-
-[data-theme="high-contrast"] .btn-ghost:hover {
-  background: #333333;
-}
-
-[data-theme="high-contrast"] a {
-  color: #ffdd00;
-  text-decoration: underline;
-}
-
-[data-theme="high-contrast"] :focus {
-  outline: 3px solid #ffdd00 !important;
-  outline-offset: 2px;
-}
-
-[data-theme="high-contrast"] .mail-view-toolbar-btn {
-  border: 2px solid #ffffff;
-  color: #ffffff;
-}
-
-[data-theme="high-contrast"] .mail-view-toolbar-btn:hover {
-  background: #333333;
-  color: #ffdd00;
-}
-
-[data-theme="high-contrast"] .mail-view-toolbar-btn.danger {
-  color: #ff4444;
-  border-color: #ff4444;
-}
-
-[data-theme="high-contrast"] .mail-list-search {
-  background: #000000;
-  border: 2px solid #ffffff;
-  color: #ffffff;
-}
-
-[data-theme="high-contrast"] .overlay-panel {
-  background: #000000;
-  border: 2px solid #ffffff;
-}
-
-[data-theme="high-contrast"] .sidebar-folder-badge {
-  background: #ffdd00;
-  color: #000000;
-  font-weight: 700;
-}
-
-[data-theme="high-contrast"] .compose-editor {
-  background: #000000;
-  color: #ffffff;
-  border: 2px solid #ffffff;
-}
-
-[data-theme="high-contrast"] input,
-[data-theme="high-contrast"] select,
-[data-theme="high-contrast"] textarea {
-  background: #000000;
-  color: #ffffff;
-  border: 2px solid #ffffff;
-}
-
-[data-theme="high-contrast"] .settings-toggle-track {
-  background: #333333;
-  border: 2px solid #ffffff;
-}
-
-[data-theme="high-contrast"] ::-webkit-scrollbar-thumb {
-  background: #ffffff;
-}
-
-[data-theme="high-contrast"] ::-webkit-scrollbar-track {
-  background: #000000;
-}
-
-[data-theme="high-contrast"] .mail-view-body iframe {
-  background: #000000;
-}
-
 
 /* ============================================================
    Polish features: Read receipts, Importance, Flags, etc.
@@ -633,16 +331,16 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 24px;
-  background: rgba(0, 120, 214, 0.1);
+  background: color-mix(in srgb, var(--colony-accent-blue) 10%, transparent);
   border-bottom: 1px solid var(--pane-border);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--accent);
   flex-shrink: 0;
 }
 
 /* --- Importance icons in mail list ------------------------- */
 .mail-importance-icon {
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   flex-shrink: 0;
   width: 16px;
   text-align: center;
@@ -672,12 +370,12 @@
   right: 0;
   height: 24px;
   background: var(--sidebar-bg);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--tint-2);
   display: flex;
   align-items: center;
   padding: 0 12px;
   z-index: var(--z-dropdown);
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--sidebar-text-dim);
 }
 .connection-status {
@@ -716,7 +414,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 14px 0;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   font-family: var(--font-mono);
   color: var(--pane-text);
   line-height: 1.6;
@@ -736,53 +434,6 @@
   flex-shrink: 0;
 }
 
-
-/* --- Light theme overrides for new features ---------------- */
-[data-theme="light"] .status-bar {
-  background: var(--sidebar-bg);
-  border-top-color: rgba(0,0,0,0.08);
-}
-[data-theme="light"] .mail-view-receipt-banner {
-  background: rgba(0, 120, 214, 0.08);
-}
-[data-theme="light"] .panel-splitter:hover {
-  background: var(--accent);
-}
-
-/* ============================================================
-   Light theme overrides for new features
-   ============================================================ */
-[data-theme="light"] .lightbox-overlay {
-  background: rgba(0,0,0,0.75);
-}
-[data-theme="light"] .attachment-preview-section {
-  background: rgba(0,0,0,0.02);
-}
-[data-theme="light"] .quoted-text-toggle {
-  color: var(--accent);
-  background: var(--accent-light);
-  border-color: var(--accent);
-}
-
-/* ============================================================
-   High contrast theme overrides for accessibility
-   ============================================================ */
-[data-theme="high-contrast"] .skip-link {
-  background: #000;
-  color: #ff0;
-  border: 2px solid #ff0;
-}
-[data-theme="high-contrast"] :focus-visible {
-  outline: 3px solid #ff0;
-  outline-offset: 2px;
-}
-[data-theme="high-contrast"] .quoted-text-toggle {
-  border-width: 2px;
-}
-[data-theme="high-contrast"] .lightbox-close:focus {
-  outline: 3px solid #ff0;
-}
-
 /* ============================================================
    Calendar View
    ============================================================ */
@@ -797,7 +448,7 @@
 }
 .calendar-month-title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: calc(var(--font-scale) * 16px);
   min-width: 180px;
   text-align: center;
 }
@@ -814,7 +465,7 @@
   background: var(--sidebar-bg);
   color: var(--sidebar-text-dim);
   text-align: center;
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   font-weight: 600;
   padding: 6px 0;
   text-transform: uppercase;
@@ -845,7 +496,7 @@
   background: var(--accent-light);
 }
 .calendar-day-num {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   font-weight: 600;
   color: var(--pane-text);
   display: block;
@@ -860,8 +511,7 @@
   gap: 1px;
 }
 .calendar-event-pill {
-  font-size: 10px;
-  color: #fff;
+  font-size: calc(var(--font-scale) * 10px);
   padding: 1px 4px;
   border-radius: 2px;
   white-space: nowrap;
@@ -871,7 +521,7 @@
 }
 .calendar-event-more {
   background: var(--pane-text-dim) !important;
-  font-size: 9px;
+  font-size: calc(var(--font-scale) * 9px);
 }
 .calendar-day-detail {
   margin-top: 16px;
@@ -882,13 +532,13 @@
 }
 .calendar-day-detail-title {
   font-weight: 600;
-  font-size: 15px;
+  font-size: calc(var(--font-scale) * 15px);
   margin-bottom: 10px;
   color: var(--pane-text);
 }
 .calendar-no-events {
   color: var(--pane-text-dim);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   margin-bottom: 8px;
 }
 .calendar-event-item {
@@ -914,15 +564,15 @@
 }
 .calendar-event-subject {
   font-weight: 500;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--pane-text);
 }
 .calendar-event-time {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   color: var(--pane-text-dim);
 }
 .calendar-event-desc {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   color: var(--pane-text-dim);
   margin-top: 2px;
   white-space: pre-wrap;
@@ -931,7 +581,7 @@
   background: none;
   border: none;
   color: var(--danger);
-  font-size: 18px;
+  font-size: calc(var(--font-scale) * 18px);
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
@@ -957,7 +607,7 @@
   background: var(--pane-bg);
   color: var(--pane-text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
 }
 .calendar-input:focus {
   outline: none;
@@ -991,7 +641,7 @@
   flex: 1;
 }
 .contacts-group-letter {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   font-weight: 700;
   color: var(--accent);
   padding: 8px 12px 4px;
@@ -1020,12 +670,12 @@
   height: 32px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   flex-shrink: 0;
 }
 .contacts-item-info {
@@ -1034,14 +684,14 @@
 }
 .contacts-item-name {
   font-weight: 500;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--pane-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .contacts-item-email {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--pane-text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -1063,21 +713,21 @@
   height: 56px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 24px;
+  font-size: calc(var(--font-scale) * 24px);
   flex-shrink: 0;
 }
 .contacts-detail-name {
   font-weight: 600;
-  font-size: 18px;
+  font-size: calc(var(--font-scale) * 18px);
   color: var(--pane-text);
 }
 .contacts-detail-email {
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--pane-text-dim);
 }
 .contacts-detail-fields {
@@ -1091,7 +741,7 @@
   gap: 2px;
 }
 .contacts-field-label {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   font-weight: 600;
   color: var(--pane-text-dim);
   text-transform: uppercase;
@@ -1101,7 +751,7 @@
 }
 .contacts-empty {
   color: var(--pane-text-dim);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   padding: 24px;
   text-align: center;
 }

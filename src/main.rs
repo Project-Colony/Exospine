@@ -5,6 +5,7 @@ use std::ffi::OsStr;
 
 mod accounts;
 mod app_state;
+mod appearance;
 pub mod auth;
 mod background;
 mod commands;

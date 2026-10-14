@@ -14,7 +14,7 @@
   justify-content: center;
   flex: 1;
   color: var(--pane-text-dim);
-  font-size: 15px;
+  font-size: calc(var(--font-scale) * 15px);
 }
 
 /* ── Security banners ──────────────────────────────────────────────── */
@@ -24,41 +24,41 @@
   align-items: center;
   gap: 8px;
   padding: 8px 24px;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   line-height: 1.4;
   border-bottom: 1px solid var(--pane-border);
 }
 
 .mail-security-ok {
-  background: rgba(40, 167, 69, 0.12);
+  background: color-mix(in srgb, var(--colony-success) 12%, transparent);
   color: var(--success);
 }
 
 .mail-security-warn {
-  background: rgba(255, 193, 7, 0.15);
+  background: color-mix(in srgb, var(--colony-warning) 15%, transparent);
   color: var(--warning);
 }
 
 .mail-security-danger {
-  background: rgba(220, 53, 69, 0.12);
+  background: color-mix(in srgb, var(--colony-error) 12%, transparent);
   color: var(--danger);
 }
 
 .mail-security-info {
-  background: rgba(0, 123, 255, 0.10);
+  background: color-mix(in srgb, var(--colony-accent-blue) 10%, transparent);
   color: var(--info);
 }
 
 .mail-security-icon {
-  font-size: 16px;
+  font-size: calc(var(--font-scale) * 16px);
   flex-shrink: 0;
 }
 
 .mail-security-phishing-details {
   padding: 4px 24px 8px;
-  background: rgba(220, 53, 69, 0.06);
+  background: color-mix(in srgb, var(--colony-error) 6%, transparent);
   border-bottom: 1px solid var(--pane-border);
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
 }
 
 .mail-security-phishing-item {
@@ -102,7 +102,7 @@
 }
 
 .mail-view-subject {
-  font-size: 20px;
+  font-size: calc(var(--font-scale) * 20px);
   font-weight: 700;
   color: var(--pane-text);
   margin-bottom: 10px;
@@ -120,7 +120,7 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
 }
 
 .mail-view-meta-label {
@@ -136,7 +136,7 @@
 
 .mail-view-date {
   color: var(--pane-text-dim);
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   margin-top: 6px;
 }
 
@@ -157,7 +157,7 @@
   color: var(--pane-text-dim);
   cursor: pointer;
   padding: 5px 12px;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   font-family: var(--font);
   display: flex;
   align-items: center;
@@ -165,9 +165,9 @@
   transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
 .mail-view-toolbar-btn:hover {
-  background: rgba(0,0,0,0.04);
+  background: var(--tint-1);
   color: var(--pane-text);
-  border-color: rgba(0,0,0,0.2);
+  border-color: var(--tint-4);
 }
 .mail-view-toolbar-btn.danger:hover {
   color: var(--danger);
@@ -186,7 +186,7 @@
   padding: 8px 24px;
   background: var(--note-bg);
   border-bottom: 1px solid var(--note-border);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--note-text);
   flex-shrink: 0;
 }
@@ -197,13 +197,13 @@
   border-radius: var(--radius-sm);
   color: var(--note-text);
   padding: 3px 10px;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   font-family: var(--font);
   cursor: pointer;
   transition: background var(--transition);
 }
 .mail-view-image-banner button:hover {
-  background: rgba(0,0,0,0.05);
+  background: var(--tint-1);
 }
 
 .mail-view-body {
@@ -223,7 +223,7 @@
   padding: 20px 24px;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   line-height: 1.6;
   color: var(--pane-text);
   overflow-y: auto;

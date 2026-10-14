@@ -1,6 +1,7 @@
 // Checks the interface strings: en and fr have the same keys, no empty value
-// and the same {placeholders}, and every t('key') / tn('key', n) / data-i18n
-// attribute in the UI names a key that exists. With --verbose it also
+// and the same {placeholders}, none of them redefines a shared Colony label
+// (vendored from Project-Colony-Resources), and every t('key') /
+// tn('key', n) / data-i18n attribute in the UI names a key that exists. With --verbose it also
 // lists the French strings much longer than their English one, so the layout
 // can be checked against them.
 //
@@ -13,6 +14,9 @@ import { pathToFileURL } from 'node:url';
 const UI = 'assets/ui';
 const { default: en } = await import(pathToFileURL(`${UI}/js/i18n/en.js`));
 const { default: fr } = await import(pathToFileURL(`${UI}/js/i18n/fr.js`));
+const { default: colony } = await import(pathToFileURL(`${UI}/vendor/colony/themes.js`));
+const shared = colony.labels.en;
+const known = (key) => key in en || key in shared;
 
 const errors = [];
 const warnings = [];
@@ -22,6 +26,7 @@ for (const [lang, table, other] of [['en', en, fr], ['fr', fr, en]]) {
   for (const [key, value] of Object.entries(table)) {
     if (!(key in other)) errors.push(`${key} is in ${lang} only`);
     if (typeof value !== 'string' || !value.trim()) errors.push(`${lang}.${key} is empty`);
+    if (key in shared) errors.push(`${lang}.${key} redefines a shared Colony label`);
   }
 }
 for (const key of Object.keys(en)) {
@@ -50,15 +55,15 @@ const files = [];
 for (const file of files) {
   const src = readFileSync(file, 'utf8');
   for (const m of src.matchAll(/\bt\(\s*'([\w.]+)'/g)) {
-    if (!(m[1] in en)) errors.push(`${file}: t('${m[1]}') has no string`);
+    if (!known(m[1])) errors.push(`${file}: t('${m[1]}') has no string`);
   }
   for (const m of src.matchAll(/\btn\(\s*'([\w.]+)'/g)) {
     for (const form of ['one', 'other']) {
-      if (!(`${m[1]}_${form}` in en)) errors.push(`${file}: tn('${m[1]}') has no ${m[1]}_${form}`);
+      if (!known(`${m[1]}_${form}`)) errors.push(`${file}: tn('${m[1]}') has no ${m[1]}_${form}`);
     }
   }
   for (const m of src.matchAll(/data-i18n(?:-[\w-]+)?="([\w.]+)"/g)) {
-    if (!(m[1] in en)) errors.push(`${file}: data-i18n "${m[1]}" has no string`);
+    if (!known(m[1])) errors.push(`${file}: data-i18n "${m[1]}" has no string`);
   }
 }
 

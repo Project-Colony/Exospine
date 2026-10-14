@@ -220,7 +220,7 @@ function showCategoryMenu(x, y, mail, actions) {
   const menuItems = CATEGORIES.map((cat) => {
     const has = currentCats.includes(cat.name);
     return {
-      label: `<span class="category-dot" style="background:${cat.color}"></span>${has ? '\u2714 ' : ''}${categoryLabel(cat.name)}`,
+      label: `<span class="category-dot" style="background:var(--accent-${cat.accent})"></span>${has ? '\u2714 ' : ''}${categoryLabel(cat.name)}`,
       html: true,
       action: () => {
         if (has) {

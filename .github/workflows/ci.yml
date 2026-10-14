@@ -40,14 +40,17 @@ jobs:
       - run: cargo test
       - run: cargo clippy --all-targets -- -D warnings
 
-  # The interface ships in English and French: both locales must have the
-  # same keys, and every key the UI uses must exist. Node is preinstalled on
-  # the runner, so no setup action is needed.
-  i18n:
+  # The web UI: English and French with the same keys, every key the UI uses
+  # defined, the logic of the appearance and i18n modules, and the Colony
+  # tokens identical to the pinned Project-Colony-Resources commit. Node is
+  # preinstalled on the runner, so no setup action is needed.
+  ui:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: node scripts/check-i18n.mjs
+      - run: node scripts/test-ui.mjs
+      - run: scripts/sync-colony-tokens.sh --check
 
   # Builds on the declared floor, so rust-version in Cargo.toml is tested
   # rather than guessed. The floor is 1.90 because Tauri 2.12 and muda 0.20

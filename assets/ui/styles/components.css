@@ -3,7 +3,7 @@
   border: none;
   border-radius: var(--radius);
   padding: 7px 16px;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   font-weight: 600;
   font-family: var(--font);
   cursor: pointer;
@@ -15,14 +15,14 @@
 }
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 .btn-danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-error);
 }
 .btn-danger:hover:not(:disabled) {
   background: var(--danger-hover);
@@ -33,12 +33,12 @@
   border: 1px solid var(--pane-border);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(0,0,0,0.04);
+  background: var(--tint-1);
   color: var(--pane-text);
 }
 .btn-sm {
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
 }
 
 /* --- Toast ------------------------------------------------- */
@@ -59,9 +59,8 @@
   gap: 8px;
   padding: 10px 18px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   font-weight: 500;
-  color: #fff;
   box-shadow: var(--shadow);
   pointer-events: auto;
   animation: toast-scale-in 0.25s ease;
@@ -72,21 +71,22 @@
   from { opacity: 0; transform: scale(0.85) translateX(20px); }
   to   { opacity: 1; transform: scale(1) translateX(0); }
 }
-.toast.success { background: var(--toast-success); }
-.toast.error { background: var(--toast-error); }
-.toast.info { background: var(--toast-info); }
+.toast.success { background: var(--toast-success); color: var(--on-success); }
+.toast.error { background: var(--toast-error); color: var(--on-error); }
+.toast.info { background: var(--toast-info); color: var(--on-accent); }
+.toast.warning { background: var(--colony-warning); color: var(--on-warning); }
 
 .toast-dismiss {
   background: none;
   border: none;
-  color: rgba(255,255,255,0.7);
+  color: var(--tint-4);
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(var(--font-scale) * 16px);
   padding: 0 2px;
   margin-left: 4px;
 }
 .toast-dismiss:hover {
-  color: #fff;
+  color: inherit;
 }
 
 @keyframes toast-out {
@@ -118,14 +118,14 @@
 }
 
 .dialog-title {
-  font-size: 16px;
+  font-size: calc(var(--font-scale) * 16px);
   font-weight: 700;
   color: var(--pane-text);
   margin-bottom: 8px;
 }
 
 .dialog-message {
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   color: var(--pane-text-dim);
   margin-bottom: 20px;
   line-height: 1.5;
@@ -146,7 +146,7 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   padding: 4px 0;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--pane-text);
 }
 
@@ -163,7 +163,7 @@
 }
 .context-menu-item.danger:hover,
 .context-menu-item.danger:focus {
-  background: rgba(220, 53, 69, 0.1);
+  background: color-mix(in srgb, var(--colony-error) 10%, transparent);
   color: var(--danger);
 }
 
@@ -204,7 +204,7 @@
   padding: 8px 12px;
   border: 1px solid var(--pane-border);
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   font-family: var(--font);
   color: var(--pane-text);
   background: var(--pane-bg);
@@ -219,8 +219,8 @@
   border: none;
   border-radius: var(--radius);
   background: var(--accent);
-  color: #fff;
-  font-size: 13px;
+  color: var(--on-accent);
+  font-size: calc(var(--font-scale) * 13px);
   font-family: var(--font);
   cursor: pointer;
   white-space: nowrap;
@@ -247,7 +247,7 @@
   color: var(--pane-text);
   text-align: center;
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   font-weight: 600;
   font-family: var(--font);
 }
@@ -258,7 +258,7 @@
 .compose-attachments {
   border-top: 1px solid var(--pane-border);
   padding: 8px 16px;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
 }
 .compose-attachments-label {
   font-weight: 600;
@@ -278,7 +278,7 @@
   border: 1px solid var(--accent);
   border-radius: 16px;
   padding: 3px 10px;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   color: var(--pane-text);
   max-width: 220px;
 }
@@ -297,7 +297,7 @@
   border: none;
   color: var(--danger);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   padding: 0 2px;
   line-height: 1;
 }
@@ -316,9 +316,9 @@
   left: 0;
   z-index: var(--z-dialog);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   padding: 8px 16px;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   font-weight: 600;
   text-decoration: none;
   border-radius: 0 0 var(--radius) 0;
@@ -326,7 +326,7 @@
 }
 .skip-link:focus {
   top: 0;
-  outline: 2px solid #fff;
+  outline: 2px solid var(--on-accent);
   outline-offset: 2px;
 }
 
@@ -364,9 +364,8 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
   font-weight: 700;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   margin-right: 6px;
   flex-shrink: 0;
 }
@@ -379,7 +378,7 @@ button:focus-visible {
   align-items: center;
   gap: 16px;
   padding: 4px 16px;
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--pane-text-dim);
   border-top: 1px solid var(--pane-border);
   background: var(--pane-header-bg);
@@ -410,11 +409,11 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
   left: 8px;
   z-index: var(--z-toast);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: var(--radius-sm);
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   cursor: pointer;
   font-family: var(--font);
   box-shadow: var(--shadow);
@@ -440,7 +439,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
   background: var(--list-bg);
   border-radius: var(--radius-sm);
   padding: 2px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--colony-ink) 30%, transparent);
 }
 
 .mail-item:hover .mail-item-quick-actions {
@@ -454,7 +453,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
   border-radius: var(--radius-sm);
   color: var(--list-text-dim);
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   width: 28px;
   height: 28px;
   display: flex;
@@ -465,9 +464,9 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .quick-action-btn:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--tint-2);
   color: var(--list-text);
-  border-color: rgba(255,255,255,0.15);
+  border-color: var(--tint-3);
 }
 
 /* ============================================================
@@ -491,7 +490,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .mail-item.multi-selected {
-  background: rgba(0, 120, 214, 0.12);
+  background: color-mix(in srgb, var(--colony-accent-blue) 12%, transparent);
 }
 
 /* ============================================================
@@ -503,8 +502,8 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
   gap: 8px;
   padding: 8px 12px;
   background: var(--accent);
-  color: #fff;
-  font-size: 13px;
+  color: var(--on-accent);
+  font-size: calc(var(--font-scale) * 13px);
   flex-shrink: 0;
   animation: fadeIn 0.15s ease;
 }
@@ -515,30 +514,30 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .batch-btn {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.25);
+  background: var(--tint-3);
+  border: 1px solid var(--tint-4);
   border-radius: var(--radius-sm);
-  color: #fff;
+  color: inherit;
   cursor: pointer;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   font-family: var(--font);
   transition: background var(--transition);
 }
 
 .batch-btn:hover {
-  background: rgba(255,255,255,0.25);
+  background: var(--tint-4);
 }
 
 /* ============================================================
    Feature: Mail list sort dropdown
    ============================================================ */
 .mail-list-sort {
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--tint-2);
+  border: 1px solid var(--tint-2);
   border-radius: var(--radius-sm);
   color: var(--list-text-dim);
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   font-family: var(--font);
   padding: 4px 6px;
   cursor: pointer;
@@ -563,7 +562,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
   align-items: center;
   gap: 6px;
   padding: 10px 16px 4px;
-  font-size: 10px;
+  font-size: calc(var(--font-scale) * 10px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -578,7 +577,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .sidebar-section-arrow {
-  font-size: 8px;
+  font-size: calc(var(--font-scale) * 8px);
   transition: transform 0.2s ease;
 }
 
@@ -594,7 +593,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .conversation-timeline-title {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -613,7 +612,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .conversation-timeline-item:hover {
-  background: rgba(0,0,0,0.04);
+  background: var(--tint-1);
 }
 
 .conversation-timeline-item.current {
@@ -640,7 +639,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .conversation-timeline-from {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   font-weight: 600;
   color: var(--pane-text);
   overflow: hidden;
@@ -649,12 +648,12 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .conversation-timeline-date {
-  font-size: 10px;
+  font-size: calc(var(--font-scale) * 10px);
   color: var(--pane-text-dim);
 }
 
 .conversation-timeline-preview {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--pane-text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -676,7 +675,7 @@ body #app.focus-mode .panel-splitter:nth-of-type(2) {
 }
 
 .empty-state-text {
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   color: inherit;
   opacity: 0.7;
 }
@@ -696,19 +695,18 @@ button[title]:hover::after,
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 20, 20, 0.92);
-  color: #fff;
+  background: color-mix(in srgb, var(--colony-ink) 92%, transparent);
+  color: var(--colony-paper);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   font-weight: 500;
   white-space: nowrap;
   z-index: var(--z-dialog);
   pointer-events: none;
   animation: fadeIn 0.1s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--colony-ink) 30%, transparent);
 }
-
 
 /* ============================================================
    Feature 3: Quick reply template pills
@@ -723,7 +721,7 @@ button[title]:hover::after,
   flex-wrap: wrap;
 }
 .quick-reply-templates-label {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   color: var(--pane-text-dim);
   margin-right: 4px;
 }
@@ -733,7 +731,7 @@ button[title]:hover::after,
   border-radius: 16px;
   background: var(--pane-bg);
   color: var(--pane-text);
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   font-family: var(--font);
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition);
@@ -744,7 +742,7 @@ button[title]:hover::after,
 }
 .quick-reply-pill:active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .quick-reply-pill:disabled {
   opacity: 0.5;
@@ -754,7 +752,7 @@ button[title]:hover::after,
    Feature 5: Reading time estimate
    ============================================================ */
 .mail-view-reading-time {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--pane-text-dim);
   margin-top: 2px;
 }
@@ -792,9 +790,8 @@ button[title]:hover::after,
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
   font-weight: 600;
-  font-size: 18px;
+  font-size: calc(var(--font-scale) * 18px);
   flex-shrink: 0;
 }
 .sender-card-info {
@@ -803,21 +800,21 @@ button[title]:hover::after,
 }
 .sender-card-name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   color: var(--pane-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .sender-card-email {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   color: var(--pane-text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .sender-card-stats {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--accent);
   margin-top: 2px;
 }
@@ -826,7 +823,7 @@ button[title]:hover::after,
   border: 1px solid var(--pane-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(var(--font-scale) * 16px);
   padding: 4px 8px;
   color: var(--accent);
   transition: background var(--transition);

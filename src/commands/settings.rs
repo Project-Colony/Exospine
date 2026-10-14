@@ -21,7 +21,11 @@ pub async fn save_settings(
     settings: AppSettings,
 ) -> Result<(), String> {
     let new_settings = settings;
-    tracing::info!("save_settings: theme={}, font_size={}", new_settings.theme, new_settings.font_size);
+    tracing::info!(
+        "save_settings: theme={}/{}",
+        new_settings.appearance.selected_theme,
+        new_settings.appearance.selected_variant
+    );
 
     // Update runtime state
     {
@@ -32,8 +36,7 @@ pub async fn save_settings(
     // Sync relevant fields into the config file
     {
         let mut config = lock_or_recover(&state.config);
-        config.theme = new_settings.theme;
-        config.font_size = new_settings.font_size;
+        config.appearance = new_settings.appearance;
         config.check_interval_secs = new_settings.check_interval_secs;
         config.show_notifications = new_settings.show_notifications;
         config.reading_pane = new_settings.reading_pane;

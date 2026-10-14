@@ -16,7 +16,6 @@
   white-space: nowrap;
 }
 
-
 /* ============================================================
    CSP-safe utility classes (replaces inline styles blocked by
    Tauri v2 CSP nonce)
@@ -35,12 +34,14 @@
 /* Highlight rules are injected dynamically via <style> element */
 
 /* -- Account color border (unified inbox) --------------------- */
-.mail-item.acct-color-0 { border-left: 3px solid rgb(0, 120, 214); }
-.mail-item.acct-color-1 { border-left: 3px solid rgb(160, 90, 220); }
-.mail-item.acct-color-2 { border-left: 3px solid rgb(220, 80, 60); }
-.mail-item.acct-color-3 { border-left: 3px solid rgb(40, 167, 69); }
-.mail-item.acct-color-4 { border-left: 3px solid rgb(230, 150, 0); }
-.mail-item.acct-color-5 { border-left: 3px solid rgb(0, 180, 160); }
+.mail-item.acct-color-0 { border-left: 3px solid var(--accent-red); }
+.mail-item.acct-color-1 { border-left: 3px solid var(--accent-orange); }
+.mail-item.acct-color-2 { border-left: 3px solid var(--accent-yellow); }
+.mail-item.acct-color-3 { border-left: 3px solid var(--accent-green); }
+.mail-item.acct-color-4 { border-left: 3px solid var(--accent-blue); }
+.mail-item.acct-color-5 { border-left: 3px solid var(--accent-indigo); }
+.mail-item.acct-color-6 { border-left: 3px solid var(--accent-violet); }
+.mail-item.acct-color-7 { border-left: 3px solid var(--accent-amber); }
 
 /* -- Unread accent takes priority over account color ---------- */
 .mail-item.unread[class*="acct-color-"] {
@@ -56,7 +57,7 @@
 /* -- Mail item pin icon --------------------------------------- */
 .mail-item-pin {
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   padding: 2px 4px;
   opacity: 0.3;
 }
@@ -67,7 +68,7 @@
 /* -- Mail item flag icon -------------------------------------- */
 .mail-item-flag {
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   padding: 2px 4px;
 }
 .mail-item-flag:not(.flagged) {
@@ -115,7 +116,7 @@ body.col-resizing {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--accent);
   padding: 0 4px;
   vertical-align: middle;
@@ -144,7 +145,7 @@ body.col-resizing {
   border-radius: 6px;
   padding: 4px 0;
   z-index: var(--z-dropdown);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--colony-ink) 30%, transparent);
 }
 .remind-dropdown { min-width: 160px; }
 .snooze-dropdown { min-width: 180px; }
@@ -153,7 +154,7 @@ body.col-resizing {
 .dropdown-option {
   padding: 6px 12px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
 }
 
 /* -- Mail view: snooze custom section ------------------------- */
@@ -161,7 +162,7 @@ body.col-resizing {
   padding: 6px 12px;
 }
 .snooze-custom-section label {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   display: block;
   margin-bottom: 4px;
 }
@@ -172,12 +173,12 @@ body.col-resizing {
   border: 1px solid var(--pane-border);
   background: var(--pane-bg);
   color: var(--pane-text);
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
 }
 .snooze-custom-btn {
   padding: 4px 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   margin-top: 4px;
   width: 100%;
   text-align: center;
@@ -204,13 +205,13 @@ body.col-resizing {
 }
 .zoom-controls .mail-view-toolbar-btn[data-action="zoom-out"],
 .zoom-controls .mail-view-toolbar-btn[data-action="zoom-in"] {
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
 }
 .zoom-controls .mail-view-toolbar-btn[data-action="zoom-reset"] {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
 }
 #zoom-level-display {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--pane-text-dim);
   min-width: 36px;
   text-align: center;
@@ -239,11 +240,11 @@ body.col-resizing {
 .dev-link-card:hover {
   background: var(--accent-light);
 }
-.dev-link-card-icon { font-size: 18px; }
+.dev-link-card-icon { font-size: calc(var(--font-scale) * 18px); }
 .dev-link-card-body { flex: 1; min-width: 0; }
-.dev-link-card-title { font-weight: 500; font-size: 13px; }
-.dev-link-card-meta { font-size: 11px; color: var(--pane-text-dim); }
-.dev-link-card-arrow { font-size: 11px; color: var(--accent); }
+.dev-link-card-title { font-weight: 500; font-size: calc(var(--font-scale) * 13px); }
+.dev-link-card-meta { font-size: calc(var(--font-scale) * 11px); color: var(--pane-text-dim); }
+.dev-link-card-arrow { font-size: calc(var(--font-scale) * 11px); color: var(--accent); }
 
 /* -- Mail view: preview loading/error ------------------------- */
 .preview-loading {
@@ -308,7 +309,7 @@ body.col-resizing {
   width: 100%;
   resize: vertical;
   font-family: inherit;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -347,7 +348,7 @@ body.col-resizing {
 }
 .shortcut-key {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   padding: 2px 6px;
   background: var(--pane-header-bg);
   border: 1px solid var(--pane-border);
@@ -358,9 +359,9 @@ body.col-resizing {
 .text-dim { color: var(--pane-text-dim); }
 .text-danger { color: var(--danger); }
 .text-accent { color: var(--accent); }
-.text-sm { font-size: 13px; }
-.text-xs { font-size: 12px; }
-.text-xxs { font-size: 11px; }
+.text-sm { font-size: calc(var(--font-scale) * 13px); }
+.text-xs { font-size: calc(var(--font-scale) * 12px); }
+.text-xxs { font-size: calc(var(--font-scale) * 11px); }
 .font-bold { font-weight: 500; }
 .font-bolder { font-weight: 700; }
 .flex-row { display: flex; }
@@ -396,12 +397,12 @@ body.col-resizing {
   text-align: center;
 }
 .analytics-stat-value {
-  font-size: 28px;
+  font-size: calc(var(--font-scale) * 28px);
   font-weight: 700;
   color: var(--accent);
 }
 .analytics-stat-label {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   color: var(--pane-text-dim);
   margin-top: 4px;
 }
@@ -429,7 +430,7 @@ body.col-resizing {
 .analytics-chart-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: calc(var(--font-scale) * 10px);
   color: var(--pane-text-dim);
   margin-top: 4px;
 }
@@ -437,13 +438,13 @@ body.col-resizing {
   display: grid;
   grid-template-columns: 40px repeat(24, 1fr);
   gap: 1px;
-  font-size: 10px;
+  font-size: calc(var(--font-scale) * 10px);
 }
 .analytics-sender-row { margin-bottom: 6px; }
 .analytics-sender-header {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   margin-bottom: 2px;
 }
 .analytics-sender-name {
@@ -494,7 +495,7 @@ body.col-resizing {
   border: none;
   color: var(--danger);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
 }
 .rss-add-row { display: flex; gap: 4px; }
 .rss-url-input {
@@ -502,7 +503,7 @@ body.col-resizing {
   padding: 4px 8px;
   border: 1px solid var(--separator);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   background: var(--pane-bg);
   color: var(--pane-text);
 }
@@ -510,10 +511,10 @@ body.col-resizing {
   padding: 4px 10px;
   border-radius: 4px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
 }
 .rss-content { flex: 1; overflow-y: auto; }
 .rss-item { padding: 8px 0; border-bottom: 1px solid var(--separator); }
@@ -521,10 +522,10 @@ body.col-resizing {
   color: var(--accent);
   text-decoration: none;
   font-weight: 600;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
 }
-.rss-item-date { font-size: 11px; color: var(--pane-text-dim); margin-top: 2px; }
-.rss-item-desc { font-size: 13px; margin-top: 4px; color: var(--pane-text); }
+.rss-item-date { font-size: calc(var(--font-scale) * 11px); color: var(--pane-text-dim); margin-top: 2px; }
+.rss-item-desc { font-size: calc(var(--font-scale) * 13px); margin-top: 4px; color: var(--pane-text); }
 
 /* -- Calendar helpers ----------------------------------------- */
 .cal-actions { display: flex; gap: 6px; margin-top: 8px; }
@@ -538,7 +539,7 @@ body.col-resizing {
 .compose-autocomplete-item {
   padding: 6px 10px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   border-bottom: 1px solid var(--pane-border);
 }
 .compose-autocomplete-name { font-weight: 500; }
@@ -548,7 +549,7 @@ body.col-resizing {
 .compose-template-item {
   padding: 6px 12px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   border-bottom: 1px solid var(--pane-border);
   display: flex;
   align-items: center;
@@ -563,7 +564,7 @@ body.col-resizing {
   border: none;
   color: var(--danger);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   padding: 0 4px;
 }
 
@@ -574,13 +575,13 @@ body.col-resizing {
   cursor: pointer;
 }
 .compose-version-title { font-weight: 500; }
-.compose-version-preview { font-size: 11px; color: var(--pane-text-dim); }
+.compose-version-preview { font-size: calc(var(--font-scale) * 11px); color: var(--pane-text-dim); }
 .compose-version-panel {
   border-top: 1px solid var(--pane-border);
   padding: 8px 16px;
   max-height: 200px;
   overflow-y: auto;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
 }
 .compose-version-panel-title { font-weight: 600; margin-bottom: 6px; }
 
@@ -591,14 +592,14 @@ body.col-resizing {
   padding: 4px 8px;
   border: 1px solid var(--pane-border);
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   background: var(--pane-bg);
   color: var(--pane-text);
 }
 
 /* -- Compose: autosave indicator ------------------------------ */
 .compose-autosave-indicator {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--pane-text-dim);
   margin-left: auto;
   margin-right: 8px;
@@ -618,7 +619,7 @@ body.col-resizing {
 }
 .compose-schedule-dropdown label {
   display: block;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   margin-bottom: 4px;
 }
 .compose-schedule-dropdown input[type="datetime-local"] {
@@ -628,7 +629,7 @@ body.col-resizing {
   border: 1px solid var(--pane-border);
   background: var(--pane-bg);
   color: var(--pane-text);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
 }
 
 /* -- Compose: send group -------------------------------------- */
@@ -649,9 +650,9 @@ body.col-resizing {
   align-items: center;
   gap: 8px;
   padding: 6px 24px;
-  background: rgba(52, 152, 219, 0.08);
+  background: color-mix(in srgb, var(--colony-accent-blue) 8%, transparent);
   border-bottom: 1px solid var(--pane-border);
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--accent);
   flex-shrink: 0;
 }
@@ -663,9 +664,6 @@ body.col-resizing {
 }
 .unsubscribe-link:hover {
   color: var(--accent-hover);
-}
-[data-theme="light"] .mail-view-unsubscribe-banner {
-  background: rgba(52, 152, 219, 0.06);
 }
 
 /* ================================================================
@@ -679,7 +677,7 @@ body.col-resizing {
 .notes-section-toggle {
   cursor: pointer;
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--pane-text);
   user-select: none;
   list-style: none;
@@ -690,7 +688,7 @@ body.col-resizing {
 .notes-section-toggle::-webkit-details-marker { display: none; }
 .notes-section-toggle::before {
   content: '\25B6';
-  font-size: 10px;
+  font-size: calc(var(--font-scale) * 10px);
   transition: transform 0.15s ease;
   display: inline-block;
 }
@@ -699,7 +697,7 @@ body.col-resizing {
 }
 .notes-indicator {
   color: var(--warning);
-  font-size: 16px;
+  font-size: calc(var(--font-scale) * 16px);
   line-height: 1;
 }
 .notes-section-body {
@@ -709,7 +707,7 @@ body.col-resizing {
   width: 100%;
   min-height: 60px;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   font-family: inherit;
   background: var(--note-bg);
   color: var(--note-text);
@@ -727,19 +725,8 @@ body.col-resizing {
   color: var(--note-text);
   opacity: 0.6;
 }
-[data-theme="dark"] .mail-note-textarea {
-  background: rgba(243, 156, 18, 0.08);
-  color: #f9e79f;
-  border-color: rgba(243, 156, 18, 0.2);
-}
-[data-theme="dark"] .mail-note-textarea:focus {
-  border-color: rgba(243, 156, 18, 0.5);
-}
-[data-theme="dark"] .mail-note-textarea::placeholder {
-  color: #f9e79f;
-}
 .notes-status {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--text-muted);
   margin-top: 4px;
   min-height: 16px;
@@ -749,25 +736,22 @@ body.col-resizing {
    Feature: Duplicate detection
    ================================================================ */
 .mail-item.duplicate {
-  background: rgba(231, 76, 60, 0.06);
+  background: color-mix(in srgb, var(--colony-error) 6%, transparent);
   border-left: 3px solid var(--danger);
 }
 .mail-duplicate-badge {
-  font-size: 10px;
+  font-size: calc(var(--font-scale) * 10px);
   padding: 1px 5px;
   border-radius: 3px;
-  background: rgba(231, 76, 60, 0.12);
+  background: color-mix(in srgb, var(--colony-error) 12%, transparent);
   color: var(--danger);
   font-weight: 600;
   flex-shrink: 0;
   align-self: center;
 }
 .duplicate-action-bar {
-  background: rgba(231, 76, 60, 0.08);
-  border-bottom: 1px solid rgba(231, 76, 60, 0.2);
-}
-[data-theme="light"] .mail-item.duplicate {
-  background: rgba(231, 76, 60, 0.04);
+  background: color-mix(in srgb, var(--colony-error) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--colony-error) 20%, transparent);
 }
 
 /* ================================================================
@@ -775,7 +759,7 @@ body.col-resizing {
    ================================================================ */
 .mail-view-summary {
   font-style: italic;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   color: var(--text-muted);
   opacity: 0.75;
   margin-top: 2px;
@@ -785,9 +769,6 @@ body.col-resizing {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-[data-theme="dark"] .mail-view-summary {
-  color: rgba(255, 255, 255, 0.45);
 }
 
 /* ================================================================
@@ -807,20 +788,17 @@ body.col-resizing {
   padding: 4px 0;
 }
 .comments-empty {
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   color: var(--text-muted);
   font-style: italic;
   padding: 4px 0;
 }
 .comment-bubble {
-  background: rgba(52, 152, 219, 0.08);
+  background: color-mix(in srgb, var(--colony-accent-blue) 8%, transparent);
   border-left: 3px solid var(--accent);
   border-radius: 4px;
   padding: 6px 10px;
-  font-size: 13px;
-}
-[data-theme="dark"] .comment-bubble {
-  background: rgba(52, 152, 219, 0.1);
+  font-size: calc(var(--font-scale) * 13px);
 }
 .comment-meta {
   display: flex;
@@ -830,11 +808,11 @@ body.col-resizing {
 }
 .comment-author {
   font-weight: 600;
-  font-size: 12px;
+  font-size: calc(var(--font-scale) * 12px);
   color: var(--accent);
 }
 .comment-time {
-  font-size: 11px;
+  font-size: calc(var(--font-scale) * 11px);
   color: var(--text-muted);
 }
 .comment-delete-btn {
@@ -843,7 +821,7 @@ body.col-resizing {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   padding: 0 4px;
   line-height: 1;
   opacity: 0;
@@ -872,11 +850,11 @@ body.col-resizing {
 .comment-add-btn {
   padding: 6px 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(var(--font-scale) * 13px);
   font-weight: 500;
   white-space: nowrap;
   height: 36px;
@@ -909,7 +887,7 @@ body.col-resizing {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(var(--font-scale) * 14px);
   padding: 0 4px;
   line-height: 1;
   opacity: 0;
@@ -934,7 +912,7 @@ body.col-resizing {
 .eml-drag-hover {
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
-  background: rgba(0,120,214,0.05);
+  background: color-mix(in srgb, var(--colony-accent-blue) 5%, transparent);
 }
 
 /* ================================================================
@@ -950,7 +928,7 @@ body.col-resizing {
 .task-item.completed { opacity: 0.5; }
 .task-checkbox { width: 18px; height: 18px; cursor: pointer; }
 .task-checkbox-label { flex: 1; cursor: pointer; }
-.task-due { font-size: 12px; color: var(--pane-text-dim); }
+.task-due { font-size: calc(var(--font-scale) * 12px); color: var(--pane-text-dim); }
 .task-due.overdue { color: var(--danger); }
-.task-link-btn { font-size: 12px; color: var(--accent); cursor: pointer; background: none; border: none; }
+.task-link-btn { font-size: calc(var(--font-scale) * 12px); color: var(--accent); cursor: pointer; background: none; border: none; }
 .tasks-loading, .tasks-empty, .tasks-error { text-align: center; padding: 40px; color: var(--pane-text-dim); }
