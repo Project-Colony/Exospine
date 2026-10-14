@@ -1,6 +1,7 @@
 # Build artifacts
 /target/
-/src-tauri/target/
+# Schemas tauri-build regenerates on every build
+/gen/
 
 # Editor / IDE
 *.swp

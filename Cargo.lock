@@ -1202,7 +1202,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "exospine-tauri"
+name = "exospine"
 version = "0.2.0"
 dependencies = [
  "aes-gcm",

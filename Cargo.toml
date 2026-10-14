@@ -1,5 +1,5 @@
 [package]
-name = "exospine-tauri"
+name = "exospine"
 version = "0.2.0"
 edition = "2021"
 rust-version = "1.90"
@@ -8,6 +8,10 @@ license = "GPL-3.0-or-later"
 repository = "https://github.com/Project-Colony/Exospine"
 
 [features]
+default = ["custom-protocol"]
+# Embed the web UI (assets/ui) and serve it through Tauri's asset protocol,
+# so a plain `cargo build --release` gives the shipped binary.
+custom-protocol = ["tauri/custom-protocol"]
 # Web inspector in release builds. Debug builds always have it; release
 # builds ship without it unless built with `--features devtools`.
 devtools = ["tauri/devtools"]
@@ -70,3 +74,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
 uuid = { version = "1", features = ["v4"] }
 notify-rust = "4"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

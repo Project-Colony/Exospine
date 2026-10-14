@@ -1,6 +1,5 @@
 {
-    "name": "Exospine",
-    "category": "network",
-    "description": "Portable Outlook-like email client",
-    "icon": "📧"
+  "$schema": "https://raw.githubusercontent.com/Project-Colony/Project-Colony-Resources/main/generated/colony.schema.json",
+  "name": "Exospine",
+  "category": "network"
 }
