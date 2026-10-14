@@ -63,64 +63,6 @@ pub async fn fetch_folders_with_counts(session: &mut ImapSession) -> Result<Vec<
     Ok(folders)
 }
 
-#[allow(dead_code)]
-pub async fn create_folder(session: &mut ImapSession, name: &str) -> Result<()> {
-    session
-        .create(name)
-        .await
-        .with_context(|| format!("Failed to create folder: {}", name))?;
-    Ok(())
-}
-
-#[allow(dead_code)]
-pub async fn rename_folder(
-    session: &mut ImapSession,
-    old_name: &str,
-    new_name: &str,
-) -> Result<()> {
-    session
-        .rename(old_name, new_name)
-        .await
-        .with_context(|| format!("Failed to rename folder {} -> {}", old_name, new_name))?;
-    Ok(())
-}
-
-#[allow(dead_code)]
-pub async fn delete_folder(session: &mut ImapSession, name: &str) -> Result<()> {
-    session
-        .delete(name)
-        .await
-        .with_context(|| format!("Failed to delete folder: {}", name))?;
-    Ok(())
-}
-
-#[allow(dead_code)]
-pub async fn empty_trash(session: &mut ImapSession, trash_folder: &str) -> Result<()> {
-    session
-        .select(trash_folder)
-        .await
-        .with_context(|| format!("Failed to select trash folder: {}", trash_folder))?;
-
-    let all = "1:*";
-    session
-        .uid_store(all, "+FLAGS (\\Deleted)")
-        .await
-        .context("Failed to flag messages for deletion")?
-        .try_collect::<Vec<_>>()
-        .await
-        .context("Failed to collect store response")?;
-
-    session
-        .expunge()
-        .await
-        .context("Failed to expunge trash")?
-        .try_collect::<Vec<_>>()
-        .await
-        .context("Failed to collect expunge response")?;
-
-    Ok(())
-}
-
 pub fn classify_folder(name: &str, attributes: &[&str]) -> FolderType {
     for attr in attributes {
         let lower = attr.to_lowercase();

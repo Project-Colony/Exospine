@@ -81,14 +81,12 @@ pub fn get_transport(
 
 /// Evict a cached SMTP transport for the given account (e.g. when account is removed
 /// or credentials change).
-#[allow(dead_code)]
 pub fn evict_transport(account_id: &str) {
     let mut pool = lock_or_recover(&SMTP_POOL);
     pool.remove(account_id);
 }
 
 /// Evict all cached SMTP transports.
-#[allow(dead_code)]
 pub fn evict_all() {
     let mut pool = lock_or_recover(&SMTP_POOL);
     pool.clear();

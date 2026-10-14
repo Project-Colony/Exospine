@@ -6,7 +6,7 @@ use tauri::State;
 use tokio::time::timeout;
 
 use crate::app_state::{fetch_password, get_imap_session, lock_or_recover, map_err_str, MailEntry};
-use crate::AppState;
+use crate::app_state::AppState;
 
 use super::mail::get_account;
 

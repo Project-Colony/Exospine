@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::app_state::{lock_or_recover, AppSettings};
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Read the current settings.
 #[tauri::command]

@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::app_state::{fetch_password, map_err_str, with_db, ComposeDraft};
-use crate::AppState;
+use crate::app_state::AppState;
 
 use super::mail::get_account;
 

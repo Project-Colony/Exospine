@@ -25,6 +25,7 @@ impl Database {
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn load_accounts(&self) -> Result<Vec<Account>> {
         let mut stmt = self.conn().prepare(
             "SELECT id, name, email, imap_host, imap_port, smtp_host, smtp_port, username, use_tls

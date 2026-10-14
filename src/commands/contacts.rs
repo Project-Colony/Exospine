@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::app_state::with_db;
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// A contact entry returned to the frontend.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::app_state::with_db;
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Create a task (optionally linked to a mail).
 #[tauri::command]

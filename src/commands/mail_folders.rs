@@ -8,7 +8,7 @@ use tauri::State;
 use tokio::time::timeout;
 
 use crate::app_state::{fetch_password, lock_or_recover, map_err_str, Folder};
-use crate::AppState;
+use crate::app_state::AppState;
 
 use super::mail::get_account;
 

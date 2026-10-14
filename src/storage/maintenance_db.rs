@@ -50,19 +50,6 @@ impl Database {
         }
     }
 
-    /// Check and run VACUUM if needed (> 7 days since last run).
-    /// Safe to call on every startup -- only vacuums when due.
-    pub fn vacuum_if_needed(&self) -> Result<()> {
-        if self.should_vacuum() {
-            tracing::info!("VACUUM is due (> 7 days since last run), running...");
-            self.vacuum()?;
-            tracing::info!("VACUUM completed successfully");
-        } else {
-            tracing::debug!("VACUUM not needed yet");
-        }
-        Ok(())
-    }
-
     /// Delete messages older than the specified number of days.
     /// Returns the number of deleted rows.
     pub fn cleanup_old_messages(&self, days: u32) -> Result<usize> {

@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::app_state::{get_imap_session, lock_or_recover, map_err_str};
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Move a message to a different folder on IMAP.
 #[tauri::command]

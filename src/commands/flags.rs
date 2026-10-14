@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::app_state::{map_err_str, with_db};
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Flag a mail with an optional due date for follow-up.
 #[tauri::command]

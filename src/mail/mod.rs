@@ -9,7 +9,6 @@ pub mod parser;
 pub mod rate_limiter;
 pub mod rules;
 pub mod security;
-pub mod signatures;
 pub mod smtp;
 pub mod smtp_pool;
 pub mod spam_filter;

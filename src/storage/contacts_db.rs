@@ -9,6 +9,7 @@ pub type ContactRow = (String, String, u32, String, String, String);
 
 impl Database {
     /// Upsert a contact: insert or update, incrementing frequency.
+    #[cfg(test)]
     pub fn upsert_contact(&self, email: &str, name: &str) -> Result<()> {
         let now = chrono::Utc::now().to_rfc3339();
         self.conn().execute(

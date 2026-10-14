@@ -8,7 +8,7 @@ use tokio::time::timeout;
 
 use crate::app_state::{get_imap_session, lock_or_recover, map_err_str, MailEntry};
 use crate::mail::security::{AuthStatus, PhishingWarning};
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Response structure for get_mail_body, serialized as { text, html, security } for the frontend.
 #[derive(Debug, Clone, Serialize)]

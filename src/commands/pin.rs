@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::app_state::with_db;
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Pin a mail so it stays at the top of the list.
 #[tauri::command]

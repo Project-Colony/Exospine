@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::app_state::with_db;
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Add a follow-up: track a mail waiting for a reply from expected_from.
 #[tauri::command]

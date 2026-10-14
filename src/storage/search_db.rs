@@ -24,6 +24,7 @@ impl Database {
         Ok(entries)
     }
 
+    #[cfg(test)]
     pub fn search_messages(&self, query: &str) -> Result<Vec<MailEntry>> {
         let pattern = format!("%{}%", query);
         let mut stmt = self.conn().prepare(

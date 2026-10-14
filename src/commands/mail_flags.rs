@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::app_state::{get_imap_session, lock_or_recover, map_err_str};
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Mark a message as read on IMAP and in the local DB.
 #[tauri::command]

@@ -34,15 +34,4 @@ impl Database {
             .execute("DELETE FROM notes WHERE mail_id = ?1", params![mail_id])?;
         Ok(())
     }
-
-    /// Check if a mail has a note.
-    pub fn has_note(&self, mail_id: &str) -> bool {
-        self.conn()
-            .query_row(
-                "SELECT 1 FROM notes WHERE mail_id = ?1 AND note != ''",
-                params![mail_id],
-                |_| Ok(()),
-            )
-            .is_ok()
-    }
 }

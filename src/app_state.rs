@@ -10,8 +10,55 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+use crate::config::Config;
 use crate::mail::attachments::AttachmentMeta;
 use crate::mail::security::{AuthStatus, PhishingWarning};
+use crate::storage::db::Database;
+
+/// Global Tauri-managed application state.
+pub struct AppState {
+    pub accounts: StdMutex<Vec<Account>>,
+    /// Problem met while reading accounts.json, until the UI has shown it.
+    pub accounts_problem: StdMutex<Option<String>>,
+    pub db: StdMutex<Option<Database>>,
+    pub config: StdMutex<Config>,
+    pub settings: StdMutex<AppSettings>,
+    /// Broadcast channel for graceful shutdown signaling.
+    pub shutdown_tx: tokio::sync::broadcast::Sender<()>,
+}
+
+/// The state the app starts with: the config, the accounts with their
+/// passwords from the keyring, and the mail database.
+pub fn build() -> AppState {
+    let config = Config::load();
+    let settings = AppSettings {
+        theme: config.theme.clone(),
+        font_size: config.font_size,
+        check_interval_secs: config.check_interval_secs,
+        show_notifications: config.show_notifications,
+        reading_pane: config.reading_pane.clone(),
+        density: config.density.clone(),
+        language: config.language.clone(),
+    };
+
+    let crate::config::LoadedAccounts { accounts, problem: accounts_problem, .. } =
+        crate::config::load_accounts();
+    for acct in &accounts {
+        if let Ok(pw) = crate::accounts::keyring_store::get_password(&acct.id) {
+            store_credential(&acct.id, &pw);
+        }
+    }
+
+    let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
+    AppState {
+        accounts: StdMutex::new(accounts),
+        accounts_problem: StdMutex::new(accounts_problem),
+        db: StdMutex::new(Database::open().ok()),
+        config: StdMutex::new(config),
+        settings: StdMutex::new(settings),
+        shutdown_tx,
+    }
+}
 // ── Error mapping helper ────────────────────────────────────────────────
 
 /// Helper to convert any error to a user-friendly string.
@@ -358,19 +405,6 @@ impl Default for ComposeDraft {
     }
 }
 
-// ── Mail template ──────────────────────────────────────────────────────
-
-/// A reusable mail template with pre-filled subject and body.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MailTemplate {
-    /// Human-readable template name (e.g. "Meeting request").
-    pub name: String,
-    /// Pre-filled subject line.
-    pub subject: String,
-    /// Pre-filled body text.
-    pub body: String,
-}
-
 // ── Application settings ───────────────────────────────────────────────
 
 /// Persisted application settings.
@@ -417,7 +451,7 @@ impl Default for AppSettings {
 // ── Account lookup helper ──────────────────────────────────────────
 
 /// Look up an account by ID from the global accounts list.
-pub fn get_account(state: &crate::AppState, account_id: &str) -> Result<Account, String> {
+pub fn get_account(state: &AppState, account_id: &str) -> Result<Account, String> {
     let accounts = lock_or_recover(&state.accounts);
     accounts
         .iter()
@@ -430,7 +464,7 @@ pub fn get_account(state: &crate::AppState, account_id: &str) -> Result<Account,
 
 /// Acquire the database mutex and run a closure with a reference to the DB.
 /// Returns an error if the database is not available.
-pub fn with_db<T>(state: &crate::AppState, f: impl FnOnce(&crate::storage::db::Database) -> Result<T, String>) -> Result<T, String> {
+pub fn with_db<T>(state: &AppState, f: impl FnOnce(&crate::storage::db::Database) -> Result<T, String>) -> Result<T, String> {
     let guard = lock_or_recover(&state.db);
     let db = guard.as_ref().ok_or_else(|| "Database not available".to_string())?;
     f(db)
@@ -441,7 +475,7 @@ pub fn with_db<T>(state: &crate::AppState, f: impl FnOnce(&crate::storage::db::D
 /// Look up an account, fetch its password, and open an IMAP session on the given folder.
 /// Returns the session and the resolved Account.
 pub async fn get_imap_session(
-    state: &crate::AppState,
+    state: &AppState,
     account_id: &str,
     folder: &str,
 ) -> Result<(crate::mail::imap::ImapSession, Account), String> {

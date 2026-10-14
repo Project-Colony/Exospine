@@ -5,7 +5,7 @@ use tauri::State;
 
 use crate::accounts::provider::Provider;
 use crate::app_state::{lock_or_recover, map_err_str, remove_credential, store_credential, Account};
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Serializable provider detection result for the frontend.
 #[derive(Debug, Clone, Serialize)]
@@ -212,8 +212,9 @@ pub async fn remove_account(
     // Clean up in-memory credentials
     remove_credential(&account_id);
 
-    // Evict any pooled IMAP session
+    // Evict any pooled IMAP session and SMTP transport, which hold its credentials
     crate::mail::connection::evict_session(&account_id).await;
+    crate::mail::smtp_pool::evict_transport(&account_id);
 
     // Remove from state
     {

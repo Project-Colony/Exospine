@@ -3,7 +3,7 @@
 use tauri::State;
 
 use crate::app_state::{with_db, MailEntry};
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Search messages in the local SQLite cache for a given account and folder.
 /// Supports optional structured filters: filter_from, filter_subject, filter_to, filter_has_attachment.

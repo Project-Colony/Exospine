@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rusqlite::params;
 
-use super::db::{row_to_mail_entry_full, row_to_mail_entry_headers, Database};
+use super::db::{row_to_mail_entry_headers, Database};
 use crate::app_state::MailEntry;
 
 impl Database {
@@ -63,6 +63,7 @@ impl Database {
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn load_messages(&self, account_id: &str, folder: &str) -> Result<Vec<MailEntry>> {
         let mut stmt = self.conn().prepare(
             "SELECT id, account_id, folder, from_addr, to_addrs, subject, date, preview, body_text, body_html, is_read, is_starred, has_attachments, uid, message_id, in_reply_to, refs, thread_id, spam_score, categories, is_pinned, snoozed_until, importance, read_receipt_requested, read_receipt_to, flag_due_date, unsubscribe_url
@@ -73,7 +74,7 @@ impl Database {
 
         let entries = stmt
             .query_map(params![account_id, folder], |row| {
-                row_to_mail_entry_full(row)
+                super::db::row_to_mail_entry_full(row)
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
 

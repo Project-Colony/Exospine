@@ -16,6 +16,13 @@ pub struct MailtoData {
 pub static PENDING_MAILTO: LazyLock<Mutex<Option<MailtoData>>> =
     LazyLock::new(|| Mutex::new(None));
 
+/// Tauri command: get pending mailto data (if launched via mailto: link).
+#[tauri::command]
+pub fn get_pending_mailto() -> Option<MailtoData> {
+    let mut guard = PENDING_MAILTO.lock().unwrap_or_else(|e| e.into_inner());
+    guard.take()
+}
+
 /// Parse a `mailto:` URL into its components.
 pub fn parse_mailto(url: &str) -> MailtoData {
     let mut data = MailtoData::default();

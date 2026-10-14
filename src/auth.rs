@@ -4,8 +4,34 @@ use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
 use crate::accounts::keyring_store;
-use crate::app_state::{self, Account};
+use crate::app_state::{self, Account, AppState, AuthMethod};
 use crate::config::Config;
+
+/// Get a fresh access token for every OAuth2 account in the background, so
+/// that startup does not wait for the network.
+pub fn refresh_all_in_background(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    let state = app.state::<AppState>();
+    let config = app_state::lock_or_recover(&state.config).clone();
+    let accounts: Vec<Account> = app_state::lock_or_recover(&state.accounts)
+        .iter()
+        .filter(|acct| acct.auth_method == AuthMethod::OAuth2)
+        .cloned()
+        .collect();
+    for acct in accounts {
+        let config = config.clone();
+        tauri::async_runtime::spawn(async move {
+            match try_refresh_oauth_token(&acct, &config).await {
+                Ok(_) => tracing::info!("Refreshed OAuth2 token for account {}", acct.email),
+                Err(e) => tracing::error!(
+                    "Failed to refresh OAuth2 token for account {}: {}",
+                    acct.email,
+                    e
+                ),
+            }
+        });
+    }
+}
 
 /// Prevents concurrent token refreshes for the same account.
 /// Multiple tasks waiting on the same account will serialize;

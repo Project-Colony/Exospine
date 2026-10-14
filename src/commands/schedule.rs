@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use tauri::State;
 
 use crate::app_state::{fetch_password, lock_or_recover, with_db, ComposeDraft};
-use crate::AppState;
+use crate::app_state::AppState;
 
 /// Schedule an email to be sent at a future time.
 #[tauri::command]

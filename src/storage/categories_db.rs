@@ -41,14 +41,4 @@ impl Database {
         )?;
         Ok(())
     }
-
-    /// Set categories for a message directly, bypassing parse->modify->serialize overhead.
-    pub fn set_categories(&self, mail_id: &str, categories: &[String]) -> Result<()> {
-        let json = serde_json::to_string(categories).unwrap_or_else(|_| "[]".to_string());
-        self.conn().execute(
-            "UPDATE messages SET categories = ?1 WHERE id = ?2",
-            params![json, mail_id],
-        )?;
-        Ok(())
-    }
 }
