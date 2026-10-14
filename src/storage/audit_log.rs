@@ -1,6 +1,6 @@
 //! Security audit log for Exospine.
 //!
-//! Logs security-relevant events to a file at `<config_dir>/exospine/security.log`.
+//! Logs security-relevant events to `security.log` in the data directory.
 //! Each line is formatted as: `[timestamp] EVENT_TYPE | details`
 
 use chrono::Utc;
@@ -20,13 +20,12 @@ use std::io::Write;
 /// - `LINK_OPENED` — external link opened (URL)
 pub fn log_event(event_type: &str, details: &str) {
     let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-    let log_dir = dirs::config_dir()
-        .unwrap_or_default()
-        .join("exospine");
-    let _ = std::fs::create_dir_all(&log_dir);
-    let log_path = log_dir.join("security.log");
+    let log_path = &crate::paths::layout().security_log;
+    if let Some(dir) = log_path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
 
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&log_path) {
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_path) {
         let _ = writeln!(file, "[{}] {} | {}", timestamp, event_type, details);
     }
 }
@@ -34,12 +33,7 @@ pub fn log_event(event_type: &str, details: &str) {
 /// Read the last `n` lines from the security log.
 /// Returns the lines in chronological order (oldest first).
 pub fn read_last_entries(n: usize) -> Vec<String> {
-    let log_path = dirs::config_dir()
-        .unwrap_or_default()
-        .join("exospine")
-        .join("security.log");
-
-    let content = match std::fs::read_to_string(&log_path) {
+    let content = match std::fs::read_to_string(&crate::paths::layout().security_log) {
         Ok(c) => c,
         Err(_) => return Vec::new(),
     };

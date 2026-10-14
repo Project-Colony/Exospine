@@ -1,19 +1,10 @@
 {
   "productName": "Exospine",
-  "identifier": "com.mothersphere.exospine",
+  "identifier": "org.projectcolony.exospine",
   "build": {
     "frontendDist": "assets/ui"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Exospine",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 800,
-        "minHeight": 600
-      }
-    ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src ipc: http://ipc.localhost https:; frame-src 'self' blob: data:"
     }

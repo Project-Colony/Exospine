@@ -11,6 +11,7 @@ mod commands;
 mod config;
 mod mail;
 pub mod notifications;
+mod paths;
 mod search;
 mod storage;
 pub mod url_handlers;
@@ -100,6 +101,10 @@ fn main() {
         )
         .init();
 
+    // Resolve where the files are, carrying those of older versions over
+    // first, before anything reads one.
+    paths::layout();
+
     // Load config from disk
     let config = Config::load();
 
@@ -153,31 +158,38 @@ fn main() {
         .manage(state)
         .setup(move |app| {
             use tauri::Manager;
-            if let Some(window) = app.get_webview_window("main") {
-                #[cfg(debug_assertions)]
-                window.open_devtools();
-                // Restore window position/size from saved state
-                restore_window_state(&window);
-                // Save window state on close and trigger graceful shutdown
-                let win = window.clone();
-                let shutdown = shutdown_tx.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { .. } = event {
-                        save_window_state(&win);
-                        // Pop-out message windows close with the main window,
-                        // so the app does not keep running without it.
-                        for (label, popout) in win.webview_windows() {
-                            if label.starts_with("mail-") {
-                                let _ = popout.close();
-                            }
+            // Built here rather than in tauri.conf.json, so that it opens on
+            // the webview profile of the Colony layout.
+            let window = paths::with_webview_profile(
+                tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
+                    .title("Exospine")
+                    .inner_size(1200.0, 800.0)
+                    .min_inner_size(800.0, 600.0),
+            )
+            .build()?;
+            #[cfg(debug_assertions)]
+            window.open_devtools();
+            // Restore window position/size from saved state
+            restore_window_state(&window);
+            // Save window state on close and trigger graceful shutdown
+            let win = window.clone();
+            let shutdown = shutdown_tx.clone();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    save_window_state(&win);
+                    // Pop-out message windows close with the main window,
+                    // so the app does not keep running without it.
+                    for (label, popout) in win.webview_windows() {
+                        if label.starts_with("mail-") {
+                            let _ = popout.close();
                         }
-                        // Signal all background tasks to stop
-                        let _ = shutdown.send(());
-                        // Brief grace period for background tasks
-                        std::thread::sleep(std::time::Duration::from_millis(500));
                     }
-                });
-            }
+                    // Signal all background tasks to stop
+                    let _ = shutdown.send(());
+                    // Brief grace period for background tasks
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                }
+            });
 
             // Refresh OAuth2 tokens in background (non-blocking)
             for acct in oauth_accounts {

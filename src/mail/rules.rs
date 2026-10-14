@@ -66,28 +66,20 @@ pub fn apply_rules(mail: &MailEntry, rules: &[EmailRule]) -> Vec<RuleAction> {
 
 // ── Persistence ──────────────────────────────────────────────────────
 
-fn rules_path() -> std::path::PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("exospine")
-        .join("rules.json")
-}
-
 pub fn load_rules() -> Vec<EmailRule> {
-    let path = rules_path();
-    match std::fs::read_to_string(&path) {
+    match std::fs::read_to_string(&crate::paths::layout().rules) {
         Ok(json) => serde_json::from_str(&json).unwrap_or_default(),
         Err(_) => Vec::new(),
     }
 }
 
 pub fn save_rules(rules: &[EmailRule]) -> Result<(), String> {
-    let path = rules_path();
+    let path = &crate::paths::layout().rules;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     let json =
         serde_json::to_string_pretty(rules).map_err(|e| format!("Failed to serialize: {}", e))?;
-    std::fs::write(&path, json).map_err(|e| format!("Failed to write rules: {}", e))?;
+    std::fs::write(path, json).map_err(|e| format!("Failed to write rules: {}", e))?;
     Ok(())
 }

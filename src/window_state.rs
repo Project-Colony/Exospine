@@ -11,8 +11,8 @@ struct WindowState {
 }
 
 pub fn window_state_path() -> std::path::PathBuf {
-    let dir = crate::config::data_dir();
-    let _ = std::fs::create_dir_all(&dir);
+    let dir = &crate::paths::layout().data;
+    let _ = std::fs::create_dir_all(dir);
     dir.join("window_state.json")
 }
 

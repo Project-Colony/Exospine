@@ -6,23 +6,25 @@ OAuth client that Gmail and Outlook sign-in need.
 
 ## Where Exospine keeps its files
 
+Exospine keeps its files in `Colony/Exospine/`, in the platform folder for each
+kind of file, like every Project Colony program:
+
+| Folder | Linux | macOS | Windows |
+|---|---|---|---|
+| configuration | `~/.config/Colony/Exospine/` | `~/Library/Application Support/Colony/Exospine/` | `%LOCALAPPDATA%\Colony\Exospine\` |
+| data | `~/.local/share/Colony/Exospine/` | `~/Library/Application Support/Colony/Exospine/` | `%LOCALAPPDATA%\Colony\Exospine\` |
+
+On Linux, `$XDG_CONFIG_HOME` and `$XDG_DATA_HOME` move the two folders as usual.
+
 | File | What it holds | Location |
 |---|---|---|
-| `config.toml` | settings, including the OAuth client IDs below | data directory |
-| `accounts.json` | the account list: names, addresses and server settings, no passwords or tokens | data directory |
-| `mail.db` | the local SQLite mail cache | data directory |
-| `window_state.json` | the main window's size and position | data directory |
-| `rules.json` | mail filter rules | `exospine/` in the configuration directory |
-| `security.log` | OAuth sign-ins and failed sign-ins | `exospine/` in the configuration directory |
-
-The data directory is `exospine/` in the platform configuration directory, or
-`data/` beside the executable in portable mode:
-
-| Platform | Configuration directory |
-|---|---|
-| Linux | `~/.config/` (or `$XDG_CONFIG_HOME`) |
-| macOS | `~/Library/Application Support/` |
-| Windows | `%APPDATA%\` |
+| `config.toml` | settings, including the OAuth client IDs below | `preferences/` in the configuration folder |
+| `accounts.json` | the account list: names, addresses and server settings, no passwords or tokens | `preferences/` in the configuration folder |
+| `rules.json` | mail filter rules | `preferences/` in the configuration folder |
+| `mail.db` | the local SQLite mail cache | data folder |
+| `window_state.json` | the main window's size and position | data folder |
+| `security.log` | OAuth sign-ins and failed sign-ins | data folder |
+| `webview/` | the webview's own storage: PIN lock, calendar, RSS feeds, templates, labels, the offline action queue and display preferences | data folder, on Linux and Windows; on macOS the system keeps it in `~/Library/WebKit/` |
 
 Passwords and OAuth refresh tokens are not in any of these files. They are in
 the OS keyring under the service name `exospine`: the Secret Service on Linux
@@ -46,17 +48,34 @@ entries of its accounts stay in the keyring.
 
 Saved attachments go to `Exospine/` in your Downloads folder.
 
+### Upgrading from 0.2 or earlier
+
+Versions up to 0.2 kept every file in `exospine/` in the roaming configuration
+folder (`~/.config/exospine/` on Linux, `~/Library/Application Support/exospine/`
+on macOS, `%APPDATA%\exospine\` on Windows) and the webview storage in
+`com.mothersphere.exospine` (`~/.local/share/` on Linux, `%LOCALAPPDATA%\` on
+Windows). On its first start, this version copies them to the folders above and
+writes a `.migrated` file in the data folder so it does not copy them again.
+
+The old folders are left as they are, so nothing is lost if the copy turns out
+wrong; you can delete them yourself once Exospine works from the new ones. If a
+file cannot be copied, Exospine removes what it copied in that run, keeps
+using the old folders and tries again at the next start. **Wipe All Data**
+also deletes the mail cache, the account list and the webview storage left in
+the old folders.
+
 ## Portable mode
 
 Create an empty file named `portable.txt` next to the Exospine executable. From
-the next start, `config.toml`, `accounts.json`, `mail.db` and
-`window_state.json` are read from and written to a `data/` folder beside the
-executable instead of the configuration directory.
+the next start, the configuration and data folders are `data/config/` and
+`data/data/` beside the executable, so the settings, the account list, the
+rules, the mail cache, the security log and, on Linux and Windows, the webview
+storage all travel with it. Passwords and tokens stay in the OS keyring of the
+machine you signed in on.
 
-Not everything moves yet: `rules.json` and `security.log` stay in the
-configuration directory, passwords and tokens stay in the OS keyring of the
-machine you signed in on, and the webview's own storage (PIN lock, calendar,
-RSS feeds, templates) stays in the webview profile.
+A portable copy of version 0.2 or earlier kept its files directly in `data/`
+(and its rules, security log and webview storage outside it). They are copied
+into the new folders on the first start, as above.
 
 ## Gmail and Outlook sign-in
 

@@ -161,11 +161,17 @@ What Exospine keeps on your machine:
 | Data | Where |
 |---|---|
 | Passwords and OAuth refresh tokens | the OS keyring, under the service name `exospine` |
-| Settings (`config.toml`), the account list without any secret (`accounts.json`), the mail cache (`mail.db`, SQLite) and the window position (`window_state.json`) | `exospine/` in the configuration directory: `~/.config/exospine/` on Linux, `~/Library/Application Support/exospine/` on macOS, `%APPDATA%\exospine\` on Windows; in portable mode, `data/` next to the executable |
-| Mail filter rules (`rules.json`) and the security log (`security.log`, which records OAuth sign-ins with the account address and failed sign-ins) | `exospine/` in the configuration directory, also in portable mode |
+| Settings (`config.toml`), the account list without any secret (`accounts.json`) and mail filter rules (`rules.json`) | `Colony/Exospine/preferences/` in the configuration folder: `~/.config/` on Linux, `~/Library/Application Support/` on macOS, `%LOCALAPPDATA%\` on Windows |
+| The mail cache (`mail.db`, SQLite), the window position (`window_state.json`) and the security log (`security.log`, which records OAuth sign-ins with the account address and failed sign-ins) | `Colony/Exospine/` in the data folder: `~/.local/share/` on Linux, `~/Library/Application Support/` on macOS, `%LOCALAPPDATA%\` on Windows |
+| The PIN lock hash, calendar events, RSS feed list, templates, labels, the offline action queue and display preferences | the webview's local storage: `webview/` in the same data folder on Linux and Windows, the system's `~/Library/WebKit/` on macOS |
 | Attachments you save | `Exospine/` in your Downloads folder |
-| The PIN lock hash, calendar events, RSS feed list, templates, labels, the offline action queue and display preferences | the webview's local storage, in the webview profile that Tauri keeps for the app identifier `com.mothersphere.exospine` |
 | Start with Windows, when you turn it on | an `Exospine` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` |
+
+In portable mode, the configuration and data folders are `data/config/` and
+`data/data/` beside the executable. Versions up to 0.2 kept these files in
+`exospine/` in the roaming configuration folder; they are copied to the folders
+above on the first start and the old copies are left in place.
+[docs/guide/configuration.md](docs/guide/configuration.md) has the details.
 
 ## License
 

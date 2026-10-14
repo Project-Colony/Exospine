@@ -4,36 +4,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::app_state::Account;
 
-// ── Portable mode detection ──────────────────────────────────────────
-
-/// Returns `true` if a `portable.txt` file exists next to the executable.
-/// When portable mode is active, all config and data are stored in a `data/`
-/// folder next to the exe instead of `%APPDATA%` / `~/.config`.
-pub fn is_portable() -> bool {
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            return dir.join("portable.txt").exists();
-        }
-    }
-    false
-}
-
-/// Returns the root data directory for Exospine.
-/// - Portable mode: `<exe_dir>/data/`
-/// - Normal mode: `<config_dir>/exospine/` (e.g. `%APPDATA%/exospine/`)
-pub fn data_dir() -> PathBuf {
-    if is_portable() {
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|d| d.join("data")))
-            .unwrap_or_else(|| PathBuf::from("data"))
-    } else {
-        dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("exospine")
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub window_width: u32,
@@ -172,38 +142,42 @@ impl Config {
     }
 
     pub fn config_path() -> PathBuf {
-        data_dir().join("config.toml")
+        crate::paths::layout().preferences.join(CONFIG_FILE)
     }
 
     /// Delete accounts.json, any copy set aside as unreadable and the key
-    /// salt of older versions (used by secure wipe). The keyring entries of
-    /// the accounts these files name go too, as a copy set aside holds
-    /// accounts that are not in memory. An encrypted copy of an older
-    /// version cannot be read, so the entries of its accounts remain.
+    /// salt of older versions (used by secure wipe), both where they are used
+    /// and where versions up to 0.2 kept them, which hold a copy after the
+    /// move to the Colony layout. The keyring entries of the accounts these
+    /// files name go too, as a copy set aside holds accounts that are not in
+    /// memory. An encrypted copy of an older version cannot be read, so the
+    /// entries of its accounts remain.
     pub fn delete_accounts_file(&self) -> anyhow::Result<()> {
         ACCOUNTS_READ_ONLY.store(false, Ordering::Relaxed);
-        let Ok(entries) = std::fs::read_dir(data_dir()) else {
-            return Ok(());
-        };
         // Keep going after a failure so every other copy and its keyring
         // entries are still removed, then report the first failure.
         let mut first_error = None;
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name = name.to_string_lossy();
-            if name.starts_with(ACCOUNTS_FILE) {
-                for id in account_ids_in(&entry.path()) {
-                    crate::accounts::keyring_store::delete_account_secrets(&id);
+        for dir in crate::paths::account_dirs() {
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.starts_with(ACCOUNTS_FILE) {
+                    for id in account_ids_in(&entry.path()) {
+                        crate::accounts::keyring_store::delete_account_secrets(&id);
+                    }
                 }
-            }
-            if name.starts_with(ACCOUNTS_FILE) || name == LEGACY_SALT_FILE {
-                match std::fs::remove_file(entry.path()) {
-                    Ok(()) => tracing::info!("Deleted {}", entry.path().display()),
-                    Err(e) => {
-                        tracing::error!("Cannot delete {}: {}", entry.path().display(), e);
-                        first_error.get_or_insert_with(|| {
-                            anyhow::anyhow!("Cannot delete {}: {}", entry.path().display(), e)
-                        });
+                if name.starts_with(ACCOUNTS_FILE) || name == LEGACY_SALT_FILE {
+                    match std::fs::remove_file(entry.path()) {
+                        Ok(()) => tracing::info!("Deleted {}", entry.path().display()),
+                        Err(e) => {
+                            tracing::error!("Cannot delete {}: {}", entry.path().display(), e);
+                            first_error.get_or_insert_with(|| {
+                                anyhow::anyhow!("Cannot delete {}: {}", entry.path().display(), e)
+                            });
+                        }
                     }
                 }
             }
@@ -221,8 +195,9 @@ impl Config {
 // another machine), and kept refresh tokens inside it. Both are migrated
 // once on load.
 
-const ACCOUNTS_FILE: &str = "accounts.json";
-const LEGACY_SALT_FILE: &str = "encryption.salt";
+pub(crate) const CONFIG_FILE: &str = "config.toml";
+pub(crate) const ACCOUNTS_FILE: &str = "accounts.json";
+pub(crate) const LEGACY_SALT_FILE: &str = "encryption.salt";
 
 /// Set when accounts.json must not be overwritten this session: it could not
 /// be set aside after a failed read, or it still holds refresh tokens that
@@ -252,7 +227,7 @@ pub struct LoadedAccounts {
 
 /// Read accounts.json, migrating the formats of older versions.
 pub fn load_accounts() -> LoadedAccounts {
-    let loaded = load_accounts_in(&data_dir(), &mut |account_id, token| {
+    let loaded = load_accounts_in(&crate::paths::layout().preferences, &mut |account_id, token| {
         use crate::accounts::keyring_store;
         // A token already in the keyring came from an earlier migration of
         // this file, possibly rotated since: it is the newer one.
@@ -447,7 +422,7 @@ fn write_accounts(path: &Path, accounts: &[Account]) -> std::io::Result<()> {
 }
 
 pub fn save_accounts(accounts: &[Account]) {
-    let path = data_dir().join(ACCOUNTS_FILE);
+    let path = crate::paths::layout().preferences.join(ACCOUNTS_FILE);
     if ACCOUNTS_READ_ONLY.load(Ordering::Relaxed) {
         tracing::warn!("Not saving accounts: {} is kept as it is", path.display());
         return;

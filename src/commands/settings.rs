@@ -169,7 +169,12 @@ pub async fn secure_wipe(state: State<'_, AppState>) -> Result<(), String> {
     // 5. Evict SMTP pool
     crate::mail::smtp_pool::evict_all();
 
+    // 6. The mail cache and webview storage that versions up to 0.2 kept in
+    //    their own folders, copied when Exospine moved to the Colony layout
+    let legacy = crate::paths::remove_legacy_copies();
+
     deleted.map_err(|e| format!("Failed to delete the account list: {:#}", e))?;
+    legacy.map_err(|e| format!("Failed to delete the files of an older version: {}", e))?;
     tracing::warn!("secure_wipe: completed");
     Ok(())
 }

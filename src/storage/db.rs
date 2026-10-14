@@ -45,8 +45,8 @@ impl Database {
     }
 
     pub fn open() -> Result<Self> {
-        let data_dir = crate::config::data_dir();
-        std::fs::create_dir_all(&data_dir)
+        let data_dir = &crate::paths::layout().data;
+        std::fs::create_dir_all(data_dir)
             .with_context(|| format!("Failed to create data dir: {:?}", data_dir))?;
 
         let db_path = data_dir.join("mail.db");

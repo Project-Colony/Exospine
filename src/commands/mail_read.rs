@@ -285,10 +285,12 @@ pub async fn open_mail_window(
     query: String,
 ) -> Result<(), String> {
     let url = tauri::WebviewUrl::App(format!("mail.html?{query}").into());
-    tauri::WebviewWindowBuilder::new(&app, format!("mail-{}", uuid::Uuid::new_v4()), url)
-        .title(title)
-        .inner_size(800.0, 600.0)
-        .build()
-        .map_err(map_err_str("Failed to open the message window"))?;
+    crate::paths::with_webview_profile(
+        tauri::WebviewWindowBuilder::new(&app, format!("mail-{}", uuid::Uuid::new_v4()), url)
+            .title(title)
+            .inner_size(800.0, 600.0),
+    )
+    .build()
+    .map_err(map_err_str("Failed to open the message window"))?;
     Ok(())
 }
