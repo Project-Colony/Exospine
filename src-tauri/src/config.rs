@@ -185,6 +185,9 @@ impl Config {
         let Ok(entries) = std::fs::read_dir(data_dir()) else {
             return Ok(());
         };
+        // Keep going after a failure so every other copy and its keyring
+        // entries are still removed, then report the first failure.
+        let mut first_error = None;
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
@@ -194,11 +197,18 @@ impl Config {
                 }
             }
             if name.starts_with(ACCOUNTS_FILE) || name == LEGACY_SALT_FILE {
-                std::fs::remove_file(entry.path())?;
-                tracing::info!("Deleted {}", entry.path().display());
+                match std::fs::remove_file(entry.path()) {
+                    Ok(()) => tracing::info!("Deleted {}", entry.path().display()),
+                    Err(e) => {
+                        tracing::error!("Cannot delete {}: {}", entry.path().display(), e);
+                        first_error.get_or_insert_with(|| {
+                            anyhow::anyhow!("Cannot delete {}: {}", entry.path().display(), e)
+                        });
+                    }
+                }
             }
         }
-        Ok(())
+        first_error.map_or(Ok(()), Err)
     }
 }
 
