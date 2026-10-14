@@ -145,8 +145,7 @@ the servers below, and only for the action named.
 | Your IMAP and SMTP servers | syncing, searching and sending mail for the accounts you add, with the credentials of that account; a read receipt only when you click to send it |
 | `accounts.google.com`, `oauth2.googleapis.com` | Gmail sign-in in your browser, then the token exchange and token refreshes |
 | `www.googleapis.com/oauth2/v2/userinfo` | once at Gmail sign-in, to read the account's address and name |
-| `login.microsoftonline.com` | Outlook / Office 365 sign-in in your browser, then the token exchange and token refreshes |
-| `graph.microsoft.com/v1.0/me` | once at Outlook sign-in, to read the account's address and name |
+| `login.microsoftonline.com` | Outlook / Office 365 sign-in in your browser, then the token exchange, whose ID token gives the account's address and name, and token refreshes |
 | `127.0.0.1:8844` | a listener on your own machine, open only during an OAuth sign-in, that receives the browser's redirect |
 | RSS feeds you add | fetching those feeds |
 | Image and content hosts named in an email | only after you click **Show images** on that message |

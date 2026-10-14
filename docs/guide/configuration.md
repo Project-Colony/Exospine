@@ -37,8 +37,12 @@ rewrites the file as plain JSON and deletes the old `encryption.salt`. If
 `accounts.json` cannot be read, it is renamed to
 `accounts.json.unreadable-<time>` instead of being overwritten, and Exospine
 says so at startup. If a token cannot be moved because the keyring is not
-reachable, the file is left as it is and changes to your accounts are not saved
-until a later start can reach the keyring.
+reachable, or an unreadable file cannot be renamed, the file is left as it is
+and adding or removing an account fails with an error for that session, until a
+later start can reach the keyring or the file is moved away. **Wipe All Data**
+in Settings deletes these copies too, with the keyring entries of the accounts
+they list; a copy still in the old encrypted format cannot be read, so the
+entries of its accounts stay in the keyring.
 
 Saved attachments go to `Exospine/` in your Downloads folder.
 
