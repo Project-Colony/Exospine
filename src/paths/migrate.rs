@@ -249,8 +249,10 @@ mod tests {
         assert_eq!(read(&new.data.join("window_state.json")), "{}");
         assert_eq!(read(&new.rules), "[{}]");
         assert_eq!(read(&new.security_log), "[t] OAUTH_LOGIN | a");
-        let webview = new.webview.as_ref().unwrap();
-        assert_eq!(read(&webview.join("localstorage/app.localstorage")), "pin");
+        // macOS has no webview data directory to copy into.
+        if let Some(webview) = &new.webview {
+            assert_eq!(read(&webview.join("localstorage/app.localstorage")), "pin");
+        }
         assert!(marker.exists());
         // The originals stay for this release.
         assert_eq!(read(&old.data.join("mail.db")), "db");
