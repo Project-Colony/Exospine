@@ -31,7 +31,7 @@ Settings live in `config.toml` inside the platform configuration directory: `~/.
 
 Gmail and Outlook sign-in need your own OAuth2 client credentials. Set them in `config.toml` (`google_client_id`, `google_client_secret`, `microsoft_client_id`, `microsoft_client_secret`) or through the environment variables `EXOSPINE_GOOGLE_CLIENT_ID`, `EXOSPINE_GOOGLE_CLIENT_SECRET`, `EXOSPINE_MICROSOFT_CLIENT_ID` and `EXOSPINE_MICROSOFT_CLIENT_SECRET`. A variable overrides the file for the running session only and is never written to `config.toml`.
 
-Accounts are listed in `accounts.json` in the same directory. Older versions encrypted this file and kept OAuth refresh tokens in it: Exospine moves those tokens to the keyring and rewrites the file as plain JSON on first start. If the file cannot be read, it is renamed to `accounts.json.unreadable-<time>` instead of being overwritten, and Exospine says so at startup.
+Accounts are listed in `accounts.json` in the same directory. Older versions encrypted this file and kept OAuth refresh tokens in it: Exospine moves those tokens to the keyring and rewrites the file as plain JSON on first start. If the file cannot be read, it is renamed to `accounts.json.unreadable-<time>` instead of being overwritten, and Exospine says so at startup. If it cannot be renamed, or its tokens cannot reach the keyring, the file is left as it is and accounts cannot be added or removed for that session. Secure wipe deletes these copies with the keyring entries of the accounts they list.
 
 ## License
 
