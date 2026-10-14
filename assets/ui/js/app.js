@@ -3,9 +3,9 @@
 import * as api from './api.js';
 import { showToast } from './components/toast.js';
 import { renderSidebar, updateUnreadBadges } from './views/sidebar.js';
-import { renderMailList } from './views/mail_list.js';
-import { renderMailView, isThreadMuted } from './views/mail_view.js';
-import { openCompose, makeReplyPrefill, makeForwardPrefill } from './views/compose.js';
+import { renderMailList } from './views/mail_list/index.js';
+import { renderMailView, isThreadMuted } from './views/mail_view/index.js';
+import { openCompose, makeReplyPrefill, makeForwardPrefill } from './views/compose/index.js';
 import { openSettings, hashPin, restoreImportedTheme } from './views/settings.js';
 import { openOnboarding } from './views/onboarding.js';
 import { openAnalytics } from './views/analytics.js';

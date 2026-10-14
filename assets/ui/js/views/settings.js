@@ -4,6 +4,7 @@ import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { showDialog } from '../components/dialog.js';
 import { t } from '../i18n.js';
+import { esc } from '../html.js';
 
 const overlay = document.getElementById('settings-overlay');
 
@@ -1102,11 +1103,6 @@ export async function openSettings(state, actions) {
 }
 
 // ===== SECTION: Utility Helpers =====
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
-}
 
 // ── Display Rules persistence (localStorage) ──────────────────────
 

@@ -2,6 +2,7 @@
 
 import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
+import { esc } from '../html.js';
 
 let _currentFilter = 'all'; // 'all' | 'active' | 'completed'
 
@@ -268,8 +269,3 @@ async function loadAndRenderFollowups(overlay, opts) {
   }
 }
 
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
-}

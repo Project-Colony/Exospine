@@ -2,6 +2,7 @@
 
 import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
+import { esc } from '../html.js';
 
 const overlay = document.getElementById('settings-overlay');
 
@@ -282,8 +283,3 @@ function formatDuration(minutes) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
-}

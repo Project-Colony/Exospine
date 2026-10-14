@@ -4,6 +4,7 @@ import { showToast } from '../components/toast.js';
 import { showContextMenu } from '../components/context_menu.js';
 import * as api from '../api.js';
 import { t } from '../i18n.js';
+import { esc } from '../html.js';
 
 // ===== SECTION: Constants & Folder Icons =====
 const FOLDER_ICONS = {
@@ -799,8 +800,3 @@ function decodeModifiedUtf7(str) {
   });
 }
 
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
-}

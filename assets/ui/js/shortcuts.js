@@ -1,7 +1,7 @@
 // Exospine — Keyboard shortcuts
 
 import { getMergedShortcuts } from './views/settings.js';
-import { openCompose } from './views/compose.js';
+import { openCompose } from './views/compose/index.js';
 import { state, activeAccountId, sidebarEl, mailListEl, mailViewEl } from './state.js';
 
 // These callbacks are injected by app.js at init time

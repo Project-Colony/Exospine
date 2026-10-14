@@ -1,7 +1,8 @@
 // Exospine: one message in its own window, opened by the open_mail_window command.
 // The body comes from get_mail_body, so it is the same sanitized HTML as the reading pane.
 import { getMailBody } from './api.js';
-import { esc, mailDocument, openLinksExternally, showRemoteImages } from './views/mail_view.js';
+import { esc } from './html.js';
+import { mailDocument, openLinksExternally, showRemoteImages } from './views/mail_view/index.js';
 
 const params = new URLSearchParams(location.search);
 document.getElementById('mail-subject').textContent = params.get('subject') || '';

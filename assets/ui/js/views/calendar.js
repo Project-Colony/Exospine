@@ -1,6 +1,7 @@
 // Exospine — Calendar View
 
 import { showToast } from '../components/toast.js';
+import { esc } from '../html.js';
 
 const overlay = document.getElementById('settings-overlay');
 
@@ -389,8 +390,3 @@ function truncate(str, max) {
   return str.length > max ? str.slice(0, max) + '...' : str;
 }
 
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
-}

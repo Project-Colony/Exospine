@@ -1,6 +1,7 @@
 // Exospine RSS Reader
 import { showToast } from '../components/toast.js';
 import { t } from '../i18n.js';
+import { esc } from '../html.js';
 
 const LS_KEY = 'exospine_rss_feeds';
 
@@ -167,7 +168,3 @@ function webLink(raw, feedUrl) {
   }
 }
 
-function esc(s) {
-  if (!s) return '';
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
