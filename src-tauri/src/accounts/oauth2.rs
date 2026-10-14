@@ -232,7 +232,13 @@ pub fn microsoft_userinfo_from_id_token(id_token: &str) -> Result<OAuthUserInfo>
     let claims: Claims =
         serde_json::from_slice(&payload).context("Failed to parse the ID token claims")?;
 
-    let email = if claims.email.is_empty() { claims.preferred_username } else { claims.email };
+    // preferred_username can be a phone number on consumer accounts: only an
+    // address is usable, otherwise the caller reports the missing email.
+    let email = if claims.email.is_empty() && claims.preferred_username.contains('@') {
+        claims.preferred_username
+    } else {
+        claims.email
+    };
     Ok(OAuthUserInfo { email, name: claims.name })
 }
 

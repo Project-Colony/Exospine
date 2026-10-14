@@ -164,14 +164,12 @@ pub async fn secure_wipe(state: State<'_, AppState>) -> Result<(), String> {
     }
 
     // 4. Delete accounts.json on disk
-    {
-        let config = lock_or_recover(&state.config);
-        let _ = config.delete_accounts_file();
-    }
+    let deleted = lock_or_recover(&state.config).delete_accounts_file();
 
     // 5. Evict SMTP pool
     crate::mail::smtp_pool::evict_all();
 
+    deleted.map_err(|e| format!("Failed to delete the account list: {:#}", e))?;
     tracing::warn!("secure_wipe: completed");
     Ok(())
 }

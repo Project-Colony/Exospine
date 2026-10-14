@@ -304,6 +304,8 @@ mod tests {
         assert_eq!((info.email.as_str(), info.name.as_str()), ("ada@contoso.com", "Ada"));
         // Work accounts often send no email claim.
         assert_eq!(from(r#"{"preferred_username":"ada@contoso.com"}"#).email, "ada@contoso.com");
+        // A phone number sign-in is not a mailbox address.
+        assert!(from(r#"{"preferred_username":"+15551234567"}"#).email.is_empty());
         assert!(crate::accounts::oauth2::microsoft_userinfo_from_id_token("").is_err());
     }
 }
