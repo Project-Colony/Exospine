@@ -1,8 +1,9 @@
-// Exospine — Email Analytics Dashboard
+// Exospine: the email analytics dashboard.
 
 import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { esc } from '../html.js';
+import { getLanguage, t } from '../i18n/index.js';
 
 const overlay = document.getElementById('settings-overlay');
 
@@ -16,14 +17,14 @@ export async function openAnalytics(accountId) {
   overlay.innerHTML = `
     <div class="overlay-panel settings-panel">
       <div class="settings-header">
-        <span class="settings-title">Email Analytics</span>
-        <button class="compose-close" id="analytics-close" title="Close">\u00D7</button>
+        <span class="settings-title">${t('email_analytics')}</span>
+        <button class="compose-close" id="analytics-close" title="${t('close')}">\u00D7</button>
       </div>
       <div class="settings-body" id="analytics-body" style="padding:16px;">
-        <div class="mail-view-status-text">Loading analytics...</div>
+        <div class="mail-view-status-text">${t('loading_analytics')}</div>
       </div>
       <div class="settings-footer">
-        <button class="btn btn-ghost" id="analytics-done">Close</button>
+        <button class="btn btn-ghost" id="analytics-done">${t('close')}</button>
       </div>
     </div>
   `;
@@ -52,7 +53,7 @@ export async function openAnalytics(accountId) {
   } catch (err) {
     const body = overlay.querySelector('#analytics-body');
     if (body) {
-      body.innerHTML = `<div class="preview-error" style="padding:20px;">Failed to load analytics: ${esc(String(err))}</div>`;
+      body.innerHTML = `<div class="preview-error" style="padding:20px;">${esc(t('error_load_analytics', { error: err }))}</div>`;
     }
   }
 }
@@ -72,15 +73,15 @@ function renderAnalytics(data) {
     <div class="analytics-summary">
       <div class="analytics-card">
         <div class="analytics-stat-value">${data.total_received}</div>
-        <div class="analytics-stat-label">Received</div>
+        <div class="analytics-stat-label">${t('stat_received')}</div>
       </div>
       <div class="analytics-card">
         <div class="analytics-stat-value">${data.total_sent}</div>
-        <div class="analytics-stat-label">Sent</div>
+        <div class="analytics-stat-label">${t('stat_sent')}</div>
       </div>
       <div class="analytics-card">
         <div class="analytics-stat-value">${data.total_received + data.total_sent}</div>
-        <div class="analytics-stat-label">Total</div>
+        <div class="analytics-stat-label">${t('stat_total')}</div>
       </div>
     </div>
   `;
@@ -89,13 +90,13 @@ function renderAnalytics(data) {
   if (data.by_day.length > 0) {
     html += `
       <div class="analytics-section">
-        <div class="analytics-section-title">Emails by Day (last 30 days)</div>
+        <div class="analytics-section-title">${t('emails_by_day')}</div>
         <div class="analytics-chart" style="gap:2px;height:100px;">
     `;
     for (const [day, count] of data.by_day) {
       const pct = (count / maxByDay) * 100;
       html += `
-        <div class="analytics-chart-bar-wrapper" title="${day}: ${count} emails">
+        <div class="analytics-chart-bar-wrapper" title="${esc(t('day_count', { day, count }))}">
           <div style="width:100%;max-width:20px;background:var(--accent);border-radius:2px 2px 0 0;height:${pct}%;min-height:${count > 0 ? 2 : 0}px;transition:height 0.2s;"></div>
         </div>
       `;
@@ -113,14 +114,14 @@ function renderAnalytics(data) {
   // Busiest hours — CSS bar chart
   html += `
     <div class="analytics-section">
-      <div class="analytics-section-title">Busiest Hours</div>
+      <div class="analytics-section-title">${t('busiest_hours')}</div>
       <div class="analytics-chart" style="gap:1px;height:80px;">
   `;
   for (let h = 0; h < 24; h++) {
     const count = data.by_hour[h] || 0;
     const pct = (count / maxByHour) * 100;
     html += `
-      <div class="analytics-chart-bar-wrapper" title="${h}:00 - ${count} emails">
+      <div class="analytics-chart-bar-wrapper" title="${esc(t('hour_count', { hour: h, count }))}">
         <div style="width:100%;max-width:16px;background:rgb(0,180,160);border-radius:2px 2px 0 0;height:${pct}%;min-height:${count > 0 ? 2 : 0}px;"></div>
       </div>
     `;
@@ -137,7 +138,7 @@ function renderAnalytics(data) {
   if (data.top_senders.length > 0) {
     html += `
       <div class="analytics-section">
-        <div class="analytics-section-title">Top Senders</div>
+        <div class="analytics-section-title">${t('top_senders')}</div>
     `;
     for (const [sender, count] of data.top_senders) {
       const pct = (count / maxSender) * 100;
@@ -172,7 +173,9 @@ function renderWeeklyHeatmap(data) {
   // Build a 7×24 matrix from by_day data and by_hour data
   // Since we only have aggregate by_day and by_hour, we'll create a synthetic heatmap
   // based on the distribution patterns
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // Monday to Sunday in the interface language (5 January 2026 is a Monday).
+  const weekday = new Intl.DateTimeFormat(getLanguage(), { weekday: 'short' });
+  const dayNames = Array.from({ length: 7 }, (_, i) => weekday.format(new Date(2026, 0, 5 + i)));
   const byHour = data.by_hour || new Array(24).fill(0);
   const maxHour = Math.max(1, ...byHour);
 
@@ -205,7 +208,7 @@ function renderWeeklyHeatmap(data) {
 
   let html = `
     <div class="analytics-section">
-      <div class="analytics-section-title">Weekly Email Heatmap</div>
+      <div class="analytics-section-title">${t('weekly_heatmap')}</div>
       <div class="analytics-heatmap">
         <div></div>
   `;
@@ -222,7 +225,7 @@ function renderWeeklyHeatmap(data) {
       const bg = intensity > 0
         ? `rgba(0,180,160,${0.15 + intensity * 0.85})`
         : 'rgba(0,0,0,0.05)';
-      html += `<div style="aspect-ratio:1;background:${bg};border-radius:2px;min-height:12px;" title="${dayNames[d]} ${h}:00 — ${val}"></div>`;
+      html += `<div style="aspect-ratio:1;background:${bg};border-radius:2px;min-height:12px;" title="${esc(t('heatmap_cell', { day: dayNames[d], hour: h, count: val }))}"></div>`;
     }
   }
   html += '</div></div>';
@@ -241,7 +244,7 @@ function renderAvgResponseTime(data) {
       <div class="analytics-section">
         <div class="analytics-card">
           <div class="analytics-stat-value">${esc(display)}</div>
-          <div class="analytics-stat-label">Average response time</div>
+          <div class="analytics-stat-label">${t('avg_response_time')}</div>
         </div>
       </div>
     `;
@@ -265,21 +268,21 @@ function renderAvgResponseTime(data) {
     <div class="analytics-section">
       <div class="analytics-card">
         <div class="analytics-stat-value">~${esc(display)}</div>
-        <div class="analytics-stat-label">Estimated average response time</div>
+        <div class="analytics-stat-label">${t('est_avg_response_time')}</div>
       </div>
     </div>
   `;
 }
 
 function formatDuration(minutes) {
-  if (minutes < 60) return `${Math.round(minutes)}m`;
+  if (minutes < 60) return t('duration_minutes', { m: Math.round(minutes) });
   const h = Math.floor(minutes / 60);
   const m = Math.round(minutes % 60);
   if (h >= 24) {
     const d = Math.floor(h / 24);
     const rh = h % 24;
-    return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
+    return rh > 0 ? t('duration_days_hours', { d, h: rh }) : t('duration_days', { d });
   }
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return m > 0 ? t('duration_hours_minutes', { h, m }) : t('duration_hours', { h });
 }
 

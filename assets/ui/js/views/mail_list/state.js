@@ -1,11 +1,11 @@
 // Exospine: what the mail list remembers between renders.
 
 export const SORT_OPTIONS = [
-  { key: 'date-desc', label: 'Date (newest)' },
-  { key: 'date-asc', label: 'Date (oldest)' },
-  { key: 'sender-az', label: 'Sender A-Z' },
-  { key: 'subject-az', label: 'Subject A-Z' },
-  { key: 'priority', label: 'Priority' },
+  { key: 'date-desc', label: 'sort_date_desc' },
+  { key: 'date-asc', label: 'sort_date_asc' },
+  { key: 'sender-az', label: 'sort_sender' },
+  { key: 'subject-az', label: 'sort_subject' },
+  { key: 'priority', label: 'sort_priority' },
 ];
 
 export const list = {

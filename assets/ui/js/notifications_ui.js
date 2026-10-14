@@ -1,6 +1,7 @@
-// Exospine — Notification sound, desktop notifications, favicon, unread title
+// Exospine: notification sound, desktop notifications, favicon and unread title.
 
 import * as api from './api.js';
+import { tn } from './i18n/index.js';
 
 // ---------------------------------------------------------------------------
 // Notification sound
@@ -163,7 +164,7 @@ export function updateFavicon(unreadCount) {
 export async function updateUnreadTitle() {
   try {
     const count = await api.getUnreadCount();
-    document.title = count > 0 ? `Exospine (${count} unread)` : 'Exospine';
+    document.title = count > 0 ? tn('title_unread', count) : 'Exospine';
     updateFavicon(count);
   } catch {
     // Silent fail

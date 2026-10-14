@@ -1,7 +1,8 @@
 // Exospine: clicks, keys, context menus and drags on the rows of the mail list.
 
 import { showContextMenu } from '../../components/context_menu.js';
-import { CATEGORIES } from './items.js';
+import { t } from '../../i18n/index.js';
+import { CATEGORIES, categoryLabel } from './items.js';
 import { list } from './state.js';
 
 /**
@@ -150,41 +151,41 @@ export function attachItemEvents(contentEl, state, actions, rerender) {
     const isSpam = (mail.categories || []).includes('Spam');
 
     const menuItems = [
-      { label: '\u21A9 Reply', action: () => { if (actions.onReply) actions.onReply(mail); } },
-      { label: '\u21A9\u21A9 Reply All', action: () => { if (actions.onReplyAll) actions.onReplyAll(mail); } },
-      { label: '\u21AA Forward', action: () => { if (actions.onForward) actions.onForward(mail); } },
+      { label: `\u21A9 ${t('reply')}`, action: () => { if (actions.onReply) actions.onReply(mail); } },
+      { label: `\u21A9\u21A9 ${t('reply_all')}`, action: () => { if (actions.onReplyAll) actions.onReplyAll(mail); } },
+      { label: `\u21AA ${t('forward')}`, action: () => { if (actions.onForward) actions.onForward(mail); } },
       { separator: true },
       {
-        label: isRead ? '\u2709 Mark Unread' : '\u2709 Mark Read',
+        label: `\u2709 ${t(isRead ? 'mark_unread' : 'mark_read')}`,
         action: () => {
           if (isRead && actions.onMarkUnread) actions.onMarkUnread(mail);
           else if (!isRead && actions.onMarkRead) actions.onMarkRead(mail);
         },
       },
       {
-        label: isStarred ? '\u2606 Unstar' : '\u2605 Star',
+        label: isStarred ? `\u2606 ${t('unstar')}` : `\u2605 ${t('star')}`,
         action: () => { if (actions.onToggleStar) actions.onToggleStar(mailId); },
       },
       { separator: true },
       {
-        label: isSpam ? '\u2714 Not Spam' : '\u26A0 Report Spam',
+        label: isSpam ? `\u2714 ${t('not_spam')}` : `\u26A0 ${t('report_spam')}`,
         action: () => {
           if (isSpam && actions.onReportNotSpam) actions.onReportNotSpam(mail);
           else if (!isSpam && actions.onReportSpam) actions.onReportSpam(mail);
         },
       },
       {
-        label: '\uD83C\uDFF7 Categorize...',
+        label: `\uD83C\uDFF7 ${t('categorize')}`,
         action: () => {
           showCategoryMenu(e.clientX, e.clientY, mail, actions);
         },
       },
       { separator: true },
-      { label: '\uD83D\uDCE6 Archive', action: () => { if (actions.onArchive) actions.onArchive(mail); } },
-      { label: '\uD83D\uDDD1 Delete', action: () => { if (actions.onDelete) actions.onDelete(mail); }, danger: true },
+      { label: `\uD83D\uDCE6 ${t('archive')}`, action: () => { if (actions.onArchive) actions.onArchive(mail); } },
+      { label: `\uD83D\uDDD1 ${t('delete')}`, action: () => { if (actions.onDelete) actions.onDelete(mail); }, danger: true },
       { separator: true },
       {
-        label: '\uD83E\uDDF9 Sweep: Delete all from this sender',
+        label: `\uD83E\uDDF9 ${t('sweep_sender_menu')}`,
         action: () => { if (actions.onSweepSender) actions.onSweepSender(mail); },
         danger: true,
       },
@@ -219,7 +220,7 @@ function showCategoryMenu(x, y, mail, actions) {
   const menuItems = CATEGORIES.map((cat) => {
     const has = currentCats.includes(cat.name);
     return {
-      label: `<span class="category-dot" style="background:${cat.color}"></span>${has ? '\u2714 ' : ''}${cat.name}`,
+      label: `<span class="category-dot" style="background:${cat.color}"></span>${has ? '\u2714 ' : ''}${categoryLabel(cat.name)}`,
       html: true,
       action: () => {
         if (has) {
@@ -240,14 +241,14 @@ function showFlagMenu(x, y, mailId, actions) {
   const endOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (7 - now.getDay())).toISOString();
 
   const menuItems = [
-    { label: '\u2691 Today', action: () => { if (actions.onFlagMail) actions.onFlagMail(mailId, today); } },
-    { label: '\u2691 Tomorrow', action: () => { if (actions.onFlagMail) actions.onFlagMail(mailId, tomorrow); } },
-    { label: '\u2691 This week', action: () => { if (actions.onFlagMail) actions.onFlagMail(mailId, endOfWeek); } },
+    { label: `\u2691 ${t('flag_today')}`, action: () => { if (actions.onFlagMail) actions.onFlagMail(mailId, today); } },
+    { label: `\u2691 ${t('tomorrow')}`, action: () => { if (actions.onFlagMail) actions.onFlagMail(mailId, tomorrow); } },
+    { label: `\u2691 ${t('flag_this_week')}`, action: () => { if (actions.onFlagMail) actions.onFlagMail(mailId, endOfWeek); } },
     { separator: true },
     {
-      label: '\u2691 Pick date...',
+      label: `\u2691 ${t('pick_date')}`,
       action: () => {
-        const dateStr = prompt('Enter due date (YYYY-MM-DD):');
+        const dateStr = prompt(t('due_date_prompt'));
         if (dateStr) {
           const parsed = new Date(dateStr);
           if (!isNaN(parsed.getTime())) {

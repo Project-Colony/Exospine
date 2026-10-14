@@ -1,23 +1,30 @@
 //! Desktop notification support using notify-rust.
 
 use crate::app_state::MailEntry;
+use crate::i18n::tr;
+
+fn sender(mail: &MailEntry) -> &str {
+    if mail.from.is_empty() {
+        tr("Unknown sender", "Expéditeur inconnu")
+    } else {
+        &mail.from
+    }
+}
 
 /// Send a desktop notification for a single new mail.
 pub fn notify_new_mail(mail: &MailEntry) {
-    let from = if mail.from.is_empty() {
-        "Unknown sender"
-    } else {
-        &mail.from
-    };
     let subject = if mail.subject.is_empty() {
-        "(no subject)"
+        tr("(no subject)", "(sans objet)")
     } else {
         &mail.subject
     };
+    let body = tr("From: {from}\nSubject: {subject}", "De : {from}\nObjet : {subject}")
+        .replace("{from}", sender(mail))
+        .replace("{subject}", subject);
 
     if let Err(e) = notify_rust::Notification::new()
-        .summary("New email")
-        .body(&format!("From: {}\nSubject: {}", from, subject))
+        .summary(tr("New email", "Nouveau message"))
+        .body(&body)
         .appname("Exospine")
         .show()
     {
@@ -35,18 +42,15 @@ pub fn notify_new_mails_batch(mails: &[MailEntry]) {
         return;
     }
 
-    let body = format!(
-        "{} new emails received.\nLatest from: {}",
-        mails.len(),
-        if mails[0].from.is_empty() {
-            "Unknown sender"
-        } else {
-            &mails[0].from
-        }
-    );
+    let body = tr(
+        "{count} new emails received.\nLatest from: {from}",
+        "{count} nouveaux messages reçus.\nLe dernier vient de : {from}",
+    )
+    .replace("{count}", &mails.len().to_string())
+    .replace("{from}", sender(&mails[0]));
 
     if let Err(e) = notify_rust::Notification::new()
-        .summary("New email")
+        .summary(tr("New email", "Nouveau message"))
         .body(&body)
         .appname("Exospine")
         .show()

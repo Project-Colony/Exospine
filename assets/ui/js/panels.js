@@ -1,6 +1,7 @@
-// Exospine — Resizable panels and connection status
+// Exospine: resizable panels and the connection status.
 
 import * as api from './api.js';
+import { t } from './i18n/index.js';
 import { _intervals } from './state.js';
 import { lsSetItem } from './offline.js';
 
@@ -15,10 +16,10 @@ export function setupConnectionStatus() {
   function updateStatus(online) {
     if (online) {
       dot.className = 'connection-dot connected';
-      text.textContent = 'Connected';
+      text.textContent = t('connected');
     } else {
       dot.className = 'connection-dot disconnected';
-      text.textContent = 'Disconnected';
+      text.textContent = t('disconnected');
     }
   }
 
@@ -62,13 +63,13 @@ export function setupResizablePanels() {
   const splitter1 = document.createElement('div');
   splitter1.className = 'panel-splitter';
   splitter1.setAttribute('role', 'separator');
-  splitter1.setAttribute('aria-label', 'Resize sidebar');
+  splitter1.setAttribute('aria-label', t('resize_sidebar'));
   sidebar.after(splitter1);
 
   const splitter2 = document.createElement('div');
   splitter2.className = 'panel-splitter';
   splitter2.setAttribute('role', 'separator');
-  splitter2.setAttribute('aria-label', 'Resize mail list');
+  splitter2.setAttribute('aria-label', t('resize_mail_list'));
   mailList.after(splitter2);
 
   function makeDraggable(splitter, targetEl, minW, maxW, storageKey) {

@@ -1,4 +1,6 @@
-// Exospine — Context menu component
+// Exospine: context menus.
+
+import { t } from '../i18n/index.js';
 
 let _activeMenu = null;
 
@@ -14,7 +16,7 @@ export function showContextMenu(x, y, items) {
   const menu = document.createElement('div');
   menu.className = 'context-menu';
   menu.setAttribute('role', 'menu');
-  menu.setAttribute('aria-label', 'Context menu');
+  menu.setAttribute('aria-label', t('context_menu'));
 
   for (const item of items) {
     if (item.separator) {

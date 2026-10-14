@@ -46,7 +46,9 @@ pub async fn detect_provider(email: String) -> Result<ProviderInfo, String> {
 /// The UI asks once it is ready: an event sent before its listeners exist
 /// would be lost.
 #[tauri::command]
-pub fn take_accounts_problem(state: State<'_, AppState>) -> Option<String> {
+pub fn take_accounts_problem(
+    state: State<'_, AppState>,
+) -> Option<crate::config::AccountsProblem> {
     lock_or_recover(&state.accounts_problem).take()
 }
 

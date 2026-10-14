@@ -1,7 +1,8 @@
-// Exospine — Calendar View
+// Exospine: a small local calendar, with ICS import.
 
 import { showToast } from '../components/toast.js';
 import { esc } from '../html.js';
+import { getLanguage, t, tn } from '../i18n/index.js';
 
 const overlay = document.getElementById('settings-overlay');
 
@@ -44,7 +45,7 @@ function parseICS(icsText) {
       if (current.dtstart) {
         events.push({
           id: current.uid || crypto.randomUUID(),
-          subject: current.summary || 'No Subject',
+          subject: current.summary || t('no_subject'),
           description: current.description || '',
           date: parseICSDate(current.dtstart),
           endDate: current.dtend ? parseICSDate(current.dtend) : null,
@@ -101,7 +102,7 @@ export function openCalendar() {
 
   function render() {
     const events = loadEvents();
-    const monthName = new Date(currentYear, currentMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    const monthName = new Date(currentYear, currentMonth, 1).toLocaleString(getLanguage(), { month: 'long', year: 'numeric' });
     const firstDay = new Date(currentYear, currentMonth, 1).getDay();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const today = new Date();
@@ -109,7 +110,9 @@ export function openCalendar() {
 
     let calendarGrid = '';
     // Day headers
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // Sunday to Saturday in the interface language (4 January 2026 is a Sunday).
+    const weekday = new Intl.DateTimeFormat(getLanguage(), { weekday: 'short' });
+    const dayNames = Array.from({ length: 7 }, (_, i) => weekday.format(new Date(2026, 0, 4 + i)));
     for (const dn of dayNames) {
       calendarGrid += `<div class="calendar-day-header">${dn}</div>`;
     }
@@ -145,8 +148,8 @@ export function openCalendar() {
       const dayEvents = events.filter(ev => ev.date === dateStr);
       dayDetailHtml = `
         <div class="calendar-day-detail">
-          <div class="calendar-day-detail-title">${selectedDay} ${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}</div>
-          ${dayEvents.length === 0 ? '<div class="calendar-no-events">No events</div>' : ''}
+          <div class="calendar-day-detail-title">${esc(new Date(currentYear, currentMonth, selectedDay).toLocaleDateString(getLanguage(), { day: 'numeric', month: 'long', year: 'numeric' }))}</div>
+          ${dayEvents.length === 0 ? `<div class="calendar-no-events">${t('no_events')}</div>` : ''}
           ${dayEvents.map(ev => `
             <div class="calendar-event-item">
               <div class="calendar-event-color" style="background:${esc(ev.color || '#0078d6')}"></div>
@@ -155,10 +158,10 @@ export function openCalendar() {
                 ${ev.time ? `<div class="calendar-event-time">${esc(ev.time)}${ev.endTime ? ' - ' + esc(ev.endTime) : ''}</div>` : ''}
                 ${ev.description ? `<div class="calendar-event-desc">${esc(ev.description)}</div>` : ''}
               </div>
-              <button class="calendar-event-delete" data-delete-event="${esc(ev.id)}" title="Delete">\u00D7</button>
+              <button class="calendar-event-delete" data-delete-event="${esc(ev.id)}" title="${t('delete')}">\u00D7</button>
             </div>
           `).join('')}
-          <button class="btn btn-ghost btn-sm calendar-add-event-btn" data-action="add-event">+ Add Event</button>
+          <button class="btn btn-ghost btn-sm calendar-add-event-btn" data-action="add-event">${t('add_event')}</button>
         </div>
       `;
     }
@@ -166,30 +169,30 @@ export function openCalendar() {
     // New event form
     const newEventFormHtml = `
       <div class="calendar-new-event" id="calendar-new-event-form" hidden>
-        <div class="settings-section-title">New Event</div>
+        <div class="settings-section-title">${t('new_event')}</div>
         <div class="settings-row">
-          <label>Subject</label>
-          <input type="text" id="cal-ev-subject" placeholder="Event subject" class="calendar-input" />
+          <label>${t('subject')}</label>
+          <input type="text" id="cal-ev-subject" placeholder="${t('event_subject')}" class="calendar-input" />
         </div>
         <div class="settings-row">
-          <label>Date</label>
+          <label>${t('date')}</label>
           <input type="date" id="cal-ev-date" class="calendar-input" />
         </div>
         <div class="settings-row">
-          <label>Time</label>
+          <label>${t('time')}</label>
           <input type="time" id="cal-ev-time" class="calendar-input" />
         </div>
         <div class="settings-row">
-          <label>End Time</label>
+          <label>${t('end_time')}</label>
           <input type="time" id="cal-ev-endtime" class="calendar-input" />
         </div>
         <div class="settings-row">
-          <label>Description</label>
-          <textarea id="cal-ev-desc" rows="3" class="calendar-input" placeholder="Optional description"></textarea>
+          <label>${t('description')}</label>
+          <textarea id="cal-ev-desc" rows="3" class="calendar-input" placeholder="${t('optional_description')}"></textarea>
         </div>
         <div class="cal-actions">
-          <button class="btn btn-primary btn-sm" id="cal-ev-save">Save</button>
-          <button class="btn btn-ghost btn-sm" id="cal-ev-cancel">Cancel</button>
+          <button class="btn btn-primary btn-sm" id="cal-ev-save">${t('save')}</button>
+          <button class="btn btn-ghost btn-sm" id="cal-ev-cancel">${t('cancel')}</button>
         </div>
       </div>
     `;
@@ -197,16 +200,16 @@ export function openCalendar() {
     overlay.innerHTML = `
       <div class="overlay-panel settings-panel calendar-panel">
         <div class="settings-header">
-          <span class="settings-title">Calendar</span>
-          <button class="compose-close" id="calendar-close" title="Close">\u00D7</button>
+          <span class="settings-title">${t('calendar')}</span>
+          <button class="compose-close" id="calendar-close" title="${t('close')}">\u00D7</button>
         </div>
         <div class="settings-body cal-body">
           <div class="calendar-nav">
-            <button class="btn btn-ghost btn-sm" id="cal-prev">\u276E</button>
+            <button class="btn btn-ghost btn-sm" id="cal-prev" title="${t('previous_month')}" aria-label="${t('previous_month')}">\u276E</button>
             <span class="calendar-month-title">${esc(monthName)}</span>
-            <button class="btn btn-ghost btn-sm" id="cal-next">\u276F</button>
-            <button class="btn btn-ghost btn-sm ml-auto" id="cal-today">Today</button>
-            <button class="btn btn-ghost btn-sm" id="cal-import-ics" title="Import ICS file">Import ICS</button>
+            <button class="btn btn-ghost btn-sm" id="cal-next" title="${t('next_month')}" aria-label="${t('next_month')}">\u276F</button>
+            <button class="btn btn-ghost btn-sm ml-auto" id="cal-today">${t('today')}</button>
+            <button class="btn btn-ghost btn-sm" id="cal-import-ics" title="${t('import_ics_file')}">${t('import_ics')}</button>
           </div>
           <div class="calendar-grid">
             ${calendarGrid}
@@ -215,7 +218,7 @@ export function openCalendar() {
           ${newEventFormHtml}
         </div>
         <div class="settings-footer">
-          <button class="btn btn-ghost" id="calendar-done">Close</button>
+          <button class="btn btn-ghost" id="calendar-done">${t('close')}</button>
         </div>
       </div>
     `;
@@ -270,7 +273,7 @@ export function openCalendar() {
           const evId = deleteBtn.dataset.deleteEvent;
           const evts = loadEvents().filter(ev => ev.id !== evId);
           saveEvents(evts);
-          showToast('Event deleted.', 'info');
+          showToast(t('event_deleted'), 'info');
           render();
           return;
         }
@@ -309,7 +312,7 @@ export function openCalendar() {
         const desc = overlay.querySelector('#cal-ev-desc').value.trim();
 
         if (!subject || !date) {
-          showToast('Subject and date are required.', 'error');
+          showToast(t('subject_date_required'), 'error');
           return;
         }
 
@@ -325,7 +328,7 @@ export function openCalendar() {
           source: 'manual',
         });
         saveEvents(evts);
-        showToast('Event created.', 'success');
+        showToast(t('event_created'), 'success');
         render();
       });
     }
@@ -351,13 +354,13 @@ export function openCalendar() {
         reader.onload = () => {
           const parsed = parseICS(reader.result);
           if (parsed.length === 0) {
-            showToast('No events found in ICS file.', 'error');
+            showToast(t('ics_no_events'), 'error');
             return;
           }
           const evts = loadEvents();
           evts.push(...parsed);
           saveEvents(evts);
-          showToast(`Imported ${parsed.length} event(s).`, 'success');
+          showToast(tn('events_imported', parsed.length), 'success');
           render();
         };
         reader.readAsText(file);

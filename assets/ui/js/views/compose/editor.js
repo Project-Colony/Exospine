@@ -3,12 +3,15 @@
 
 import * as api from '../../api.js';
 import { esc } from '../../html.js';
+import { t } from '../../i18n/index.js';
 
 /** The compose overlay element, which every part of the compose view draws into. */
 export const overlay = document.getElementById('compose-overlay');
 
 /** Fallback email signature used when no per-account signature is configured. */
-export const FALLBACK_SIGNATURE = '<br><br><div class="compose-signature">--<br>Sent with Exospine</div>';
+export function fallbackSignature() {
+  return `<br><br><div class="compose-signature">--<br>${t('sent_with_exospine')}</div>`;
+}
 
 export function setupToolbar() {
   const toolbar = overlay.querySelector('#compose-toolbar');
@@ -24,7 +27,7 @@ export function setupToolbar() {
       const cmd = btn.dataset.cmd;
 
       if (cmd === 'createLink') {
-        const url = prompt('Enter URL:', 'https://');
+        const url = prompt(t('enter_url'), 'https://');
         if (url) document.execCommand('createLink', false, url);
         return;
       }
@@ -126,7 +129,7 @@ export function setupFileDrop(overlay, attachments) {
       `<div class="compose-attachment-pill" data-att-idx="${idx}">
         <span class="compose-attachment-pill-name" title="${esc(att.name)}">${esc(att.name)}</span>
         <span class="compose-attachment-pill-size">${formatAttSize(att.size)}</span>
-        <button class="compose-attachment-pill-remove" data-att-idx="${idx}" title="Remove">\u00D7</button>
+        <button class="compose-attachment-pill-remove" data-att-idx="${idx}" title="${t('remove')}">\u00D7</button>
       </div>`
     ).join('');
 
@@ -182,7 +185,7 @@ export function setupFileDrop(overlay, attachments) {
 /** Build initial HTML content for the editor (body + signature). */
 export function buildInitialContent(prefill) {
   let content = '';
-  const signature = prefill._signatureHtml || FALLBACK_SIGNATURE;
+  const signature = prefill._signatureHtml || fallbackSignature();
 
   if (prefill.bodyHtml) {
     content = prefill.bodyHtml;

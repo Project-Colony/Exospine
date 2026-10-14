@@ -9,6 +9,7 @@ pub mod auth;
 mod background;
 mod commands;
 mod config;
+mod i18n;
 mod mail;
 pub mod notifications;
 mod paths;

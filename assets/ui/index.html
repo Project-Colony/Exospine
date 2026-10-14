@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Exospine — Modern email client built with Rust and Tauri">
+  <meta name="description" content="Exospine, an email client built with Rust and Tauri">
   <meta name="theme-color" content="#6c3ce0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📧</text></svg>">
   <title>Exospine</title>
@@ -17,34 +17,34 @@
   </div>
 
   <!-- Skip links for keyboard navigation -->
-  <a href="#mail-list" class="skip-link" aria-label="Skip to mail list">Skip to mail list</a>
-  <a href="#mail-view" class="skip-link" aria-label="Skip to content">Skip to content</a>
+  <a href="#mail-list" class="skip-link" data-i18n="skip_to_mail_list">Skip to the mail list</a>
+  <a href="#mail-view" class="skip-link" data-i18n="skip_to_content">Skip to the content</a>
 
   <div id="app">
-    <button class="hamburger-btn" id="hamburger-btn" title="Toggle sidebar" aria-label="Toggle sidebar" hidden>&#9776;</button>
-    <aside id="sidebar" role="navigation" aria-label="Mailbox navigation" tabindex="-1"></aside>
+    <button class="hamburger-btn" id="hamburger-btn" title="Show or hide the sidebar" aria-label="Show or hide the sidebar" data-i18n-title="toggle_sidebar" data-i18n-aria-label="toggle_sidebar" hidden>&#9776;</button>
+    <aside id="sidebar" role="navigation" aria-label="Mailbox navigation" data-i18n-aria-label="mailbox_navigation" tabindex="-1"></aside>
     <main id="content" role="main">
-      <section id="mail-list" aria-label="Email list" aria-live="polite" tabindex="-1"></section>
-      <section id="mail-view" aria-label="Email content" aria-live="polite" tabindex="-1"></section>
+      <section id="mail-list" aria-label="Email list" data-i18n-aria-label="email_list" aria-live="polite" tabindex="-1"></section>
+      <section id="mail-view" aria-label="Email content" data-i18n-aria-label="email_content" aria-live="polite" tabindex="-1"></section>
     </main>
   </div>
-  <div id="status-bar" class="status-bar" role="status" aria-label="Connection status">
+  <div id="status-bar" class="status-bar" role="status" aria-label="Connection status" data-i18n-aria-label="connection_status">
     <div id="connection-status" class="connection-status">
       <span id="connection-dot" class="connection-dot connected" aria-hidden="true"></span>
-      <span id="connection-text">Connected</span>
+      <span id="connection-text" data-i18n="connected">Connected</span>
     </div>
   </div>
-  <div id="compose-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Compose email"></div>
+  <div id="compose-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Compose email" data-i18n-aria-label="compose_email"></div>
   <div id="settings-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Settings"></div>
-  <div id="onboarding-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Account setup"></div>
+  <div id="onboarding-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Account setup" data-i18n-aria-label="account_setup"></div>
   <div id="toast-container" role="alert" aria-live="assertive" aria-atomic="true"></div>
   <div id="dialog-container" role="alertdialog" aria-modal="true"></div>
   <div id="lock-screen" class="lock-screen" hidden>
     <div class="lock-screen-content">
       <div class="lock-screen-icon">&#128274;</div>
-      <h2 class="lock-screen-title">Exospine is locked</h2>
-      <p class="lock-screen-subtitle">Session paused due to inactivity</p>
-      <button id="lock-screen-unlock" class="lock-screen-btn" title="Unlock Exospine">Unlock</button>
+      <h2 class="lock-screen-title" data-i18n="locked_title">Exospine is locked</h2>
+      <p class="lock-screen-subtitle" data-i18n="locked_subtitle">Session paused after a period of inactivity</p>
+      <button id="lock-screen-unlock" class="lock-screen-btn" title="Unlock Exospine" data-i18n-title="unlock_exospine" data-i18n="unlock">Unlock</button>
     </div>
   </div>
   <script type="module" src="js/app.js"></script>

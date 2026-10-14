@@ -1,8 +1,9 @@
-// Exospine — Tasks overlay (email-to-task feature)
+// Exospine: tasks made from emails, and the replies being waited for.
 
 import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { esc } from '../html.js';
+import { t, tn } from '../i18n/index.js';
 
 let _currentFilter = 'all'; // 'all' | 'active' | 'completed'
 
@@ -21,17 +22,17 @@ export function openTasks(opts = {}) {
   overlay.innerHTML = `
     <div class="overlay-content tasks-overlay-content">
       <div class="overlay-header">
-        <h2>Tasks</h2>
-        <button class="overlay-close" id="tasks-close" aria-label="Close">&times;</button>
+        <h2>${t('tasks')}</h2>
+        <button class="overlay-close" id="tasks-close" aria-label="${t('close')}">&times;</button>
       </div>
       <div class="tasks-filters">
-        <button class="tasks-filter-btn${_currentFilter === 'all' ? ' active' : ''}" data-filter="all">All</button>
-        <button class="tasks-filter-btn${_currentFilter === 'active' ? ' active' : ''}" data-filter="active">Active</button>
-        <button class="tasks-filter-btn${_currentFilter === 'completed' ? ' active' : ''}" data-filter="completed">Completed</button>
-        <button class="tasks-action-btn" id="tasks-delete-completed" title="Delete completed">Delete completed</button>
+        <button class="tasks-filter-btn${_currentFilter === 'all' ? ' active' : ''}" data-filter="all">${t('filter_all')}</button>
+        <button class="tasks-filter-btn${_currentFilter === 'active' ? ' active' : ''}" data-filter="active">${t('filter_active')}</button>
+        <button class="tasks-filter-btn${_currentFilter === 'completed' ? ' active' : ''}" data-filter="completed">${t('filter_completed')}</button>
+        <button class="tasks-action-btn" id="tasks-delete-completed" title="${t('delete_completed')}">${t('delete_completed')}</button>
       </div>
       <div class="tasks-list" id="tasks-list">
-        <div class="tasks-loading">Loading tasks...</div>
+        <div class="tasks-loading">${t('loading_tasks')}</div>
       </div>
     </div>
   `;
@@ -63,10 +64,10 @@ export function openTasks(opts = {}) {
       for (const task of completed) {
         await api.deleteTask(task.id);
       }
-      showToast(`Deleted ${completed.length} completed task(s).`, 'success');
+      showToast(tn('completed_tasks_deleted', completed.length), 'success');
       loadAndRenderTasks(overlay, opts);
     } catch (err) {
-      showToast('Failed to delete tasks: ' + err, 'error');
+      showToast(t('error_delete_tasks', { error: err }), 'error');
     }
   });
 
@@ -86,7 +87,7 @@ async function loadAndRenderTasks(overlay, opts) {
     }
 
     if (tasks.length === 0) {
-      listEl.innerHTML = '<div class="tasks-empty">No tasks.</div>';
+      listEl.innerHTML = `<div class="tasks-empty">${t('no_tasks')}</div>`;
       return;
     }
 
@@ -94,8 +95,8 @@ async function loadAndRenderTasks(overlay, opts) {
     for (const task of tasks) {
       const checkedAttr = task.completed ? 'checked' : '';
       const completedClass = task.completed ? ' task-completed' : '';
-      const dueStr = task.due_date ? `<span class="task-due">Due: ${esc(task.due_date)}</span>` : '';
-      const linkedMail = task.mail_id ? `<button class="task-link-btn" data-mail-id="${esc(task.mail_id)}" title="Open linked email">Open email</button>` : '';
+      const dueStr = task.due_date ? `<span class="task-due">${esc(t('due', { date: task.due_date }))}</span>` : '';
+      const linkedMail = task.mail_id ? `<button class="task-link-btn" data-mail-id="${esc(task.mail_id)}" title="${t('open_linked_email')}">${t('open_email')}</button>` : '';
       html += `
         <div class="task-item${completedClass}" data-task-id="${esc(task.id)}">
           <label class="task-checkbox-label">
@@ -109,7 +110,7 @@ async function loadAndRenderTasks(overlay, opts) {
               ${linkedMail}
             </div>
           </div>
-          <button class="task-delete-btn" data-task-id="${esc(task.id)}" title="Delete task">&times;</button>
+          <button class="task-delete-btn" data-task-id="${esc(task.id)}" title="${t('delete_task')}">&times;</button>
         </div>
       `;
     }
@@ -122,12 +123,12 @@ async function loadAndRenderTasks(overlay, opts) {
         try {
           if (cb.checked) {
             await api.completeTask(taskId);
-            showToast('Task completed.', 'success');
+            showToast(t('task_completed'), 'success');
           }
           // Reload to reflect state
           loadAndRenderTasks(overlay, opts);
         } catch (err) {
-          showToast('Failed to update task: ' + err, 'error');
+          showToast(t('error_update_task', { error: err }), 'error');
         }
       });
     });
@@ -138,10 +139,10 @@ async function loadAndRenderTasks(overlay, opts) {
         const taskId = btn.dataset.taskId;
         try {
           await api.deleteTask(taskId);
-          showToast('Task deleted.', 'success');
+          showToast(t('task_deleted'), 'success');
           loadAndRenderTasks(overlay, opts);
         } catch (err) {
-          showToast('Failed to delete task: ' + err, 'error');
+          showToast(t('error_delete_task', { error: err }), 'error');
         }
       });
     });
@@ -158,7 +159,7 @@ async function loadAndRenderTasks(overlay, opts) {
     });
 
   } catch (err) {
-    listEl.innerHTML = `<div class="tasks-error">Failed to load tasks: ${esc(String(err))}</div>`;
+    listEl.innerHTML = `<div class="tasks-error">${esc(t('error_load_tasks', { error: err }))}</div>`;
   }
 }
 
@@ -176,11 +177,11 @@ export function openAwaitingReply(opts = {}) {
   overlay.innerHTML = `
     <div class="overlay-content tasks-overlay-content">
       <div class="overlay-header">
-        <h2>Awaiting Reply</h2>
-        <button class="overlay-close" id="followups-close" aria-label="Close">&times;</button>
+        <h2>${t('awaiting_reply')}</h2>
+        <button class="overlay-close" id="followups-close" aria-label="${t('close')}">&times;</button>
       </div>
       <div class="tasks-list" id="followups-list">
-        <div class="tasks-loading">Loading...</div>
+        <div class="tasks-loading">${t('loading')}</div>
       </div>
     </div>
   `;
@@ -201,7 +202,7 @@ async function loadAndRenderFollowups(overlay, opts) {
     const unresolved = followups.filter(f => !f.resolved);
 
     if (unresolved.length === 0) {
-      listEl.innerHTML = '<div class="tasks-empty">No pending follow-ups.</div>';
+      listEl.innerHTML = `<div class="tasks-empty">${t('no_followups')}</div>`;
       return;
     }
 
@@ -212,16 +213,16 @@ async function loadAndRenderFollowups(overlay, opts) {
       html += `
         <div class="task-item${overdueClass}" data-mail-id="${esc(f.mail_id)}">
           <div class="task-info">
-            <div class="task-title">Waiting for reply from: ${esc(f.expected_from)}</div>
+            <div class="task-title">${esc(t('waiting_reply_from', { sender: f.expected_from }))}</div>
             <div class="task-meta">
-              <span class="task-due">${f.due_date ? 'Due: ' + esc(f.due_date) : 'No due date'}</span>
-              ${overdue ? '<span class="task-overdue-badge">OVERDUE</span>' : ''}
-              <button class="task-link-btn" data-mail-id="${esc(f.mail_id)}" title="Open email">Open email</button>
+              <span class="task-due">${esc(f.due_date ? t('due', { date: f.due_date }) : t('no_due_date'))}</span>
+              ${overdue ? `<span class="task-overdue-badge">${t('overdue')}</span>` : ''}
+              <button class="task-link-btn" data-mail-id="${esc(f.mail_id)}" title="${t('open_email')}">${t('open_email')}</button>
             </div>
           </div>
           <div class="followup-actions">
-            <button class="task-action-btn followup-resolve-btn" data-mail-id="${esc(f.mail_id)}" title="Mark as resolved">Resolve</button>
-            <button class="task-delete-btn" data-mail-id="${esc(f.mail_id)}" title="Delete">&times;</button>
+            <button class="task-action-btn followup-resolve-btn" data-mail-id="${esc(f.mail_id)}" title="${t('mark_resolved')}">${t('resolve')}</button>
+            <button class="task-delete-btn" data-mail-id="${esc(f.mail_id)}" title="${t('delete')}">&times;</button>
           </div>
         </div>
       `;
@@ -233,10 +234,10 @@ async function loadAndRenderFollowups(overlay, opts) {
       btn.addEventListener('click', async () => {
         try {
           await api.resolveFollowup(btn.dataset.mailId);
-          showToast('Follow-up resolved.', 'success');
+          showToast(t('followup_resolved'), 'success');
           loadAndRenderFollowups(overlay, opts);
         } catch (err) {
-          showToast('Failed to resolve: ' + err, 'error');
+          showToast(t('error_resolve', { error: err }), 'error');
         }
       });
     });
@@ -246,10 +247,10 @@ async function loadAndRenderFollowups(overlay, opts) {
       btn.addEventListener('click', async () => {
         try {
           await api.deleteFollowup(btn.dataset.mailId);
-          showToast('Follow-up removed.', 'success');
+          showToast(t('followup_removed'), 'success');
           loadAndRenderFollowups(overlay, opts);
         } catch (err) {
-          showToast('Failed to delete: ' + err, 'error');
+          showToast(t('error_delete_followup', { error: err }), 'error');
         }
       });
     });
@@ -265,7 +266,7 @@ async function loadAndRenderFollowups(overlay, opts) {
     });
 
   } catch (err) {
-    listEl.innerHTML = `<div class="tasks-error">Failed to load follow-ups: ${esc(String(err))}</div>`;
+    listEl.innerHTML = `<div class="tasks-error">${esc(t('error_load_followups', { error: err }))}</div>`;
   }
 }
 

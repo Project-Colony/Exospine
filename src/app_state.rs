@@ -19,7 +19,7 @@ use crate::storage::db::Database;
 pub struct AppState {
     pub accounts: StdMutex<Vec<Account>>,
     /// Problem met while reading accounts.json, until the UI has shown it.
-    pub accounts_problem: StdMutex<Option<String>>,
+    pub accounts_problem: StdMutex<Option<crate::config::AccountsProblem>>,
     pub db: StdMutex<Option<Database>>,
     pub config: StdMutex<Config>,
     pub settings: StdMutex<AppSettings>,
@@ -424,7 +424,7 @@ pub struct AppSettings {
     /// Display density: "compact" or "normal".
     #[serde(default = "crate::config::default_density")]
     pub density: String,
-    /// UI language: "en" or "fr".
+    /// UI language: "auto" (the system language), "en" or "fr".
     #[serde(default = "crate::config::default_language")]
     pub language: String,
 }
@@ -443,7 +443,7 @@ impl Default for AppSettings {
             show_notifications: true,
             reading_pane: "right".to_string(),
             density: "normal".to_string(),
-            language: "en".to_string(),
+            language: crate::config::default_language(),
         }
     }
 }

@@ -3,6 +3,7 @@
 import * as api from '../../api.js';
 import { showToast } from '../../components/toast.js';
 import { esc } from '../../html.js';
+import { t } from '../../i18n/index.js';
 
 // ── Attachment preview cache ───────────────────────────────────────
 const _previewCache = new Map(); // "accountId:folder:uid:partIndex" -> data
@@ -52,7 +53,7 @@ export async function openAttachmentPreview(el, mail, partIndex, previewType, co
 
   section.hidden = false;
   section.setAttribute('aria-expanded', 'true');
-  content.innerHTML = '<div class="preview-loading">Loading preview...</div>';
+  content.innerHTML = `<div class="preview-loading">${t('loading_preview')}</div>`;
 
   const cacheKey = `${mail.account_id}:${mail.folder}:${mail.uid}:${partIndex}`;
 
@@ -69,7 +70,7 @@ export async function openAttachmentPreview(el, mail, partIndex, previewType, co
         : `data:${contentType || 'image/png'};base64,${data}`;
       content.innerHTML = `
         <div class="attachment-preview-image-wrap">
-          <img src="${src}" alt="${esc(filename)}" class="attachment-preview-thumbnail" tabindex="0" role="button" aria-label="Click to view full size: ${esc(filename)}" />
+          <img src="${src}" alt="${esc(filename)}" class="attachment-preview-thumbnail" tabindex="0" role="button" aria-label="${esc(t('view_full_size', { name: filename }))}" />
         </div>
       `;
       const img = content.querySelector('.attachment-preview-thumbnail');
@@ -85,18 +86,18 @@ export async function openAttachmentPreview(el, mail, partIndex, previewType, co
         ? data
         : `data:application/pdf;base64,${data}`;
       content.innerHTML = `
-        <iframe src="${src}" class="attachment-preview-pdf" title="PDF preview: ${esc(filename)}"></iframe>
+        <iframe src="${src}" class="attachment-preview-pdf" title="${esc(t('pdf_preview', { name: filename }))}"></iframe>
       `;
     } else if (previewType === 'text') {
       const textContent = typeof data === 'string' && !data.startsWith('data:')
         ? atob(data)
         : data;
       content.innerHTML = `
-        <pre class="attachment-preview-text" tabindex="0" aria-label="Text file content: ${esc(filename)}">${esc(textContent)}</pre>
+        <pre class="attachment-preview-text" tabindex="0" aria-label="${esc(t('text_file_content', { name: filename }))}">${esc(textContent)}</pre>
       `;
     }
   } catch (err) {
-    content.innerHTML = `<div class="preview-error">Failed to load preview: ${esc(String(err))}</div>`;
+    content.innerHTML = `<div class="preview-error">${esc(t('error_load_preview', { error: err }))}</div>`;
   }
 }
 
@@ -106,9 +107,9 @@ function showImageLightbox(src, filename) {
   overlay.className = 'lightbox-overlay';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', `Image preview: ${filename}`);
+  overlay.setAttribute('aria-label', t('image_preview', { name: filename }));
   overlay.innerHTML = `
-    <button class="lightbox-close" aria-label="Close image preview">\u00D7</button>
+    <button class="lightbox-close" aria-label="${t('close_image_preview')}">\u00D7</button>
     <img src="${src}" alt="${esc(filename)}" class="lightbox-image" />
   `;
 
@@ -137,16 +138,16 @@ function showImageLightbox(src, filename) {
  */
 export async function handleDownloadAttachment(mail, partIndex) {
   try {
-    showToast('Downloading attachment...', 'info');
+    showToast(t('downloading_attachment'), 'info');
     const filePath = await api.downloadAttachment(
       mail.account_id,
       mail.folder,
       mail.uid,
       partIndex,
     );
-    showToast(`Saved to ${filePath}`, 'success');
+    showToast(t('saved_to', { path: filePath }), 'success');
   } catch (err) {
-    showToast(`Download failed: ${err}`, 'error');
+    showToast(t('error_download', { error: err }), 'error');
   }
 }
 

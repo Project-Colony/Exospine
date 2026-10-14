@@ -1,7 +1,8 @@
-// Exospine — Offline mode with action queue
+// Exospine: offline mode with an action queue.
 
 import * as api from './api.js';
 import { showToast } from './components/toast.js';
+import { t, tn } from './i18n/index.js';
 
 // ---------------------------------------------------------------------------
 // localStorage batch debounce — coalesce writes with 1s interval
@@ -32,7 +33,7 @@ export const _actionQueue = JSON.parse(localStorage.getItem('exospine_action_que
 export function queueAction(action) {
   _actionQueue.push({ ...action, timestamp: Date.now() });
   lsSetItem('exospine_action_queue', JSON.stringify(_actionQueue));
-  showToast('Action queued. Will sync when connected.', 'info');
+  showToast(t('action_queued'), 'info');
 }
 
 export async function executeAction(action) {
@@ -68,7 +69,7 @@ export async function executeAction(action) {
 
 export async function replayQueue() {
   if (_actionQueue.length === 0) return;
-  showToast(`Replaying ${_actionQueue.length} queued action(s)...`, 'info');
+  showToast(tn('replaying_queue', _actionQueue.length), 'info');
 
   const MAX_RETRIES = 3;
 
@@ -92,7 +93,7 @@ export async function replayQueue() {
       }
     }
     if (discarded.length > 0) {
-      showToast(`${discarded.length} action(s) failed after ${MAX_RETRIES} retries and were discarded.`, 'error');
+      showToast(tn('queue_discarded', discarded.length, { retries: MAX_RETRIES }), 'error');
     }
     if (failed.length > 0) {
       _actionQueue.push(...failed);
@@ -102,7 +103,7 @@ export async function replayQueue() {
 
   lsSetItem('exospine_action_queue', JSON.stringify(_actionQueue));
   if (_actionQueue.length === 0) {
-    showToast('All queued actions synced.', 'success');
+    showToast(t('queue_synced'), 'success');
   }
 }
 
@@ -115,7 +116,7 @@ export function setupOfflineMode() {
         banner = document.createElement('div');
         banner.id = 'offline-banner';
         banner.className = 'offline-banner';
-        banner.textContent = 'Offline \u2014 actions will sync when connected';
+        banner.textContent = t('offline_banner');
         document.body.prepend(banner);
       }
     } else {

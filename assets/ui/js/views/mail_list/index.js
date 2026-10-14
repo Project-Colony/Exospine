@@ -2,7 +2,7 @@
 
 import * as api from '../../api.js';
 import { showToast } from '../../components/toast.js';
-import { t } from '../../i18n.js';
+import { t, tn } from '../../i18n/index.js';
 import { attachItemEvents } from './events.js';
 import { renderMailItem, renderThreadHeader } from './items.js';
 import { sortMails } from './sort.js';
@@ -47,8 +47,7 @@ export function renderMailList(el, state, actions) {
   }
 
   // Toolbar
-  const sortLabel = (SORT_OPTIONS.find(s => s.key === list.currentSort) || SORT_OPTIONS[0]).label;
-  html += `
+    html += `
     <div class="mail-list-toolbar">
       <input
         type="text"
@@ -57,11 +56,11 @@ export function renderMailList(el, state, actions) {
         id="ml-search"
         aria-label="${t('search_emails')}"
       />
-      <select class="mail-list-sort" id="ml-sort" title="Sort emails" aria-label="Sort emails">
-        ${SORT_OPTIONS.map(s => `<option value="${s.key}"${s.key === list.currentSort ? ' selected' : ''}>${s.label}</option>`).join('')}
+      <select class="mail-list-sort" id="ml-sort" title="${t('sort_emails')}" aria-label="${t('sort_emails')}">
+        ${SORT_OPTIONS.map(s => `<option value="${s.key}"${s.key === list.currentSort ? ' selected' : ''}>${t(s.label)}</option>`).join('')}
       </select>
       <button class="mail-list-btn${list.threadViewEnabled ? ' active' : ''}" id="ml-thread-toggle" title="${list.threadViewEnabled ? t('list_view') : t('thread_view')}" aria-label="${t('toggle_thread_view')}" aria-pressed="${list.threadViewEnabled}">${list.threadViewEnabled ? '\u2261' : '\u2630'}</button>
-      <button class="mail-list-btn${list.duplicateMode ? ' active' : ''}" id="ml-find-duplicates" title="Find duplicates" aria-label="Find duplicate emails">\uD83D\uDD0D Dupes</button>
+      <button class="mail-list-btn${list.duplicateMode ? ' active' : ''}" id="ml-find-duplicates" title="${t('find_duplicates')}" aria-label="${t('find_duplicate_emails')}">\uD83D\uDD0D ${t('dupes')}</button>
       <button class="mail-list-btn" id="ml-refresh" title="${t('refresh')}" aria-label="${t('refresh_emails')}">\u21BB</button>
       <button class="mail-list-btn primary" id="ml-compose" title="${t('compose_new_email')}" aria-label="${t('compose_new_email')}">${t('new_email')}</button>
     </div>
@@ -70,10 +69,10 @@ export function renderMailList(el, state, actions) {
   // Duplicate action bar
   if (list.duplicateMode && list.duplicatePairs.length > 0) {
     html += `
-      <div class="batch-action-bar duplicate-action-bar" role="toolbar" aria-label="Duplicate actions">
-        <span class="batch-count">${list.duplicatePairs.length} duplicate${list.duplicatePairs.length !== 1 ? 's' : ''} found</span>
-        <button class="batch-btn danger" id="ml-delete-duplicates" title="Delete all duplicates (keep newest)">\uD83D\uDDD1 Delete duplicates</button>
-        <button class="batch-btn" id="ml-dismiss-duplicates" title="Dismiss">\u2717 Dismiss</button>
+      <div class="batch-action-bar duplicate-action-bar" role="toolbar" aria-label="${t('duplicate_actions')}">
+        <span class="batch-count">${tn('duplicates_found', list.duplicatePairs.length)}</span>
+        <button class="batch-btn danger" id="ml-delete-duplicates" title="${t('delete_duplicates_hint')}">\uD83D\uDDD1 ${t('delete_duplicates')}</button>
+        <button class="batch-btn" id="ml-dismiss-duplicates" title="${t('dismiss')}">\u2717 ${t('dismiss')}</button>
       </div>
     `;
   }
@@ -81,13 +80,13 @@ export function renderMailList(el, state, actions) {
   // Batch action bar (multi-select)
   if (list.selectedIds.size > 0) {
     html += `
-      <div class="batch-action-bar" role="toolbar" aria-label="Batch actions">
-        <span class="batch-count">${list.selectedIds.size} selected</span>
-        <button class="batch-btn" data-batch="archive" title="Archive selected">\uD83D\uDCE6 Archive</button>
-        <button class="batch-btn" data-batch="delete" title="Delete selected">\uD83D\uDDD1 Delete</button>
-        <button class="batch-btn" data-batch="mark-read" title="Mark selected as read">\u2709 Mark Read</button>
-        <button class="batch-btn" data-batch="move" title="Move selected">Move to\u2026</button>
-        <button class="batch-btn" data-batch="clear" title="Clear selection">\u2717 Clear</button>
+      <div class="batch-action-bar" role="toolbar" aria-label="${t('batch_actions')}">
+        <span class="batch-count">${t('selected_count', { count: list.selectedIds.size })}</span>
+        <button class="batch-btn" data-batch="archive" title="${t('archive_selected')}">\uD83D\uDCE6 ${t('archive')}</button>
+        <button class="batch-btn" data-batch="delete" title="${t('delete_selected')}">\uD83D\uDDD1 ${t('delete')}</button>
+        <button class="batch-btn" data-batch="mark-read" title="${t('mark_selected_read')}">\u2709 ${t('mark_read')}</button>
+        <button class="batch-btn" data-batch="move" title="${t('move_selected')}">${t('move_to')}</button>
+        <button class="batch-btn" data-batch="clear" title="${t('clear_selection')}">\u2717 ${t('clear')}</button>
       </div>
     `;
   }
@@ -104,7 +103,7 @@ export function renderMailList(el, state, actions) {
   }
   // Loading state
   else if (state.loading && state.mails.length === 0) {
-    html += '<div class="mail-list-items" role="listbox" aria-label="Email list">';
+    html += `<div class="mail-list-items" role="listbox" aria-label="${t('email_list')}">`;
     for (let i = 0; i < 8; i++) {
       html += `
         <div class="mail-item skeleton" aria-hidden="true">
@@ -118,11 +117,11 @@ export function renderMailList(el, state, actions) {
   } else if (state.mails.length === 0) {
     html += `<div class="mail-list-empty" role="status">
       <div class="empty-state-illustration">${EMPTY_ENVELOPE_SVG}</div>
-      <div class="empty-state-text">No emails yet</div>
+      <div class="empty-state-text">${t('no_emails_yet')}</div>
     </div>`;
   } else {
     // Virtual scroll container
-    html += '<div class="mail-list-items" id="ml-virtual-container" role="listbox" aria-label="Email list">';
+    html += `<div class="mail-list-items" id="ml-virtual-container" role="listbox" aria-label="${t('email_list')}">`;
     html += '<div id="ml-virtual-content"></div>';
     html += '</div>';
 
@@ -209,7 +208,7 @@ export function renderMailList(el, state, actions) {
       // Show "Searching..." indicator in the mail list while debouncing
       const itemsContainer = el.querySelector('.mail-list-items');
       if (itemsContainer && query) {
-        itemsContainer.innerHTML = '<div class="mail-list-loading"><div class="spinner"></div> Searching\u2026</div>';
+        itemsContainer.innerHTML = `<div class="mail-list-loading"><div class="spinner"></div> ${t('searching')}</div>`;
       }
       debounce = setTimeout(() => {
         _searchAbortController = new AbortController();
@@ -246,7 +245,7 @@ export function renderMailList(el, state, actions) {
   const deleteDupesBtn = el.querySelector('#ml-delete-duplicates');
   if (deleteDupesBtn) {
     deleteDupesBtn.addEventListener('click', async () => {
-      if (!confirm(`Delete ${list.duplicatePairs.length} duplicate email(s)? This keeps the newest copy.`)) return;
+      if (!confirm(tn('delete_duplicates_confirm', list.duplicatePairs.length))) return;
       let deleted = 0;
       for (const pair of list.duplicatePairs) {
         const mail = state.mails.find(m => m.id === pair.duplicate_id);
@@ -260,7 +259,7 @@ export function renderMailList(el, state, actions) {
       list.duplicateMode = false;
       list.duplicateIds.clear();
       list.duplicatePairs = [];
-      showToast(`Deleted ${deleted} duplicate(s).`, 'success');
+      showToast(tn('duplicates_deleted', deleted), 'success');
       renderMailList(el, list.lastState, list.lastActions);
     });
   }
@@ -289,12 +288,12 @@ export function renderMailList(el, state, actions) {
       const accountId = state.activeAccountId;
       const folder = state.activeFolder;
       if (!accountId || !folder) {
-        showToast('Select an account and folder first.', 'error');
+        showToast(t('select_account_folder_first'), 'error');
         return;
       }
       try {
         dupeBtn.disabled = true;
-        dupeBtn.textContent = 'Scanning...';
+        dupeBtn.textContent = t('scanning');
         const pairs = await api.findDuplicates(accountId, folder);
         list.duplicatePairs = pairs;
         list.duplicateIds = new Set();
@@ -303,12 +302,12 @@ export function renderMailList(el, state, actions) {
         }
         list.duplicateMode = true;
         if (pairs.length === 0) {
-          showToast('No duplicates found.', 'info');
+          showToast(t('no_duplicates'), 'info');
         } else {
-          showToast(`Found ${pairs.length} duplicate${pairs.length !== 1 ? 's' : ''}.`, 'info');
+          showToast(tn('duplicates_found', pairs.length), 'info');
         }
       } catch (err) {
-        showToast('Failed to find duplicates: ' + err, 'error');
+        showToast(t('error_find_duplicates', { error: err }), 'error');
       }
       renderMailList(el, list.lastState, list.lastActions);
     });
@@ -342,7 +341,7 @@ export function renderMailList(el, state, actions) {
         list.selectedIds.clear();
         renderMailList(el, list.lastState, list.lastActions);
       } else if (action === 'move') {
-        const target = prompt('Move to folder:');
+        const target = prompt(t('move_to_folder_prompt'));
         if (target && actions.onBatchMove) {
           actions.onBatchMove(ids, target);
           list.selectedIds.clear();

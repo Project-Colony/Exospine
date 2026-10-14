@@ -1,4 +1,7 @@
-// Exospine — Confirmation dialog component
+// Exospine: the confirmation dialog.
+
+import { esc as escapeHtml } from '../html.js';
+import { t } from '../i18n/index.js';
 
 const container = document.getElementById('dialog-container');
 container.hidden = true;
@@ -8,12 +11,12 @@ container.hidden = true;
  * @param {object} opts
  * @param {string} opts.title
  * @param {string} opts.message
- * @param {string} [opts.confirmLabel='Confirm']
- * @param {string} [opts.cancelLabel='Cancel']
+ * @param {string} [opts.confirmLabel] defaults to Confirm
+ * @param {string} [opts.cancelLabel] defaults to Cancel
  * @param {boolean} [opts.danger=false]
  * @returns {Promise<boolean>} true if confirmed
  */
-export function showDialog({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false }) {
+export function showDialog({ title, message, confirmLabel = t('confirm'), cancelLabel = t('cancel'), danger = false }) {
   return new Promise((resolve) => {
     container.hidden = false;
 
@@ -60,10 +63,4 @@ export function showDialog({ title, message, confirmLabel = 'Confirm', cancelLab
     // Focus confirm button
     container.querySelector('[data-action="confirm"]').focus();
   });
-}
-
-function escapeHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
 }

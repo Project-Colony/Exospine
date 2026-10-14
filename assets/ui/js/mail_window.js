@@ -2,12 +2,14 @@
 // The body comes from get_mail_body, so it is the same sanitized HTML as the reading pane.
 import { getMailBody } from './api.js';
 import { esc } from './html.js';
+import { setLanguage, t } from './i18n/index.js';
 import { mailDocument, openLinksExternally, showRemoteImages } from './views/mail_view/index.js';
 
 const params = new URLSearchParams(location.search);
+setLanguage(params.get('lang'));
 document.getElementById('mail-subject').textContent = params.get('subject') || '';
-for (const [field, label] of [['from', 'From'], ['to', 'To'], ['date', 'Date']]) {
-  document.getElementById(`mail-${field}`).textContent = `${label}: ${params.get(field) || ''}`;
+for (const field of ['from', 'to', 'date']) {
+  document.getElementById(`mail-${field}`).textContent = t(`popout_${field}`, { value: params.get(field) || '' });
 }
 
 const frame = document.getElementById('email-frame');
@@ -20,5 +22,5 @@ try {
     : `<pre style="white-space:pre-wrap;font-family:inherit;">${esc(body.text || '')}</pre>`;
   frame.srcdoc = mailDocument(content, { allowRemoteImages });
 } catch (err) {
-  frame.srcdoc = mailDocument(`<p>Failed to load the message: ${esc(String(err))}</p>`);
+  frame.srcdoc = mailDocument(`<p>${esc(t('error_load_message', { error: err }))}</p>`);
 }

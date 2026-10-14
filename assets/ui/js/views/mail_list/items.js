@@ -2,6 +2,7 @@
 
 import { formatDate } from '../../date_format.js';
 import { esc } from '../../html.js';
+import { t, tn } from '../../i18n/index.js';
 import { loadDisplayRules } from '../settings.js';
 import { list } from './state.js';
 
@@ -18,6 +19,13 @@ export const CATEGORIES = [
 const CATEGORY_COLORS = {};
 CATEGORIES.forEach((c) => { CATEGORY_COLORS[c.name] = c.color; });
 CATEGORY_COLORS['Spam'] = '#95a5a6';
+
+/** A category's name for display; the stored name stays the English one. */
+export function categoryLabel(name) {
+  const key = `category_${String(name).toLowerCase()}`;
+  const label = t(key);
+  return label === key ? name : label;
+}
 
 function getCategoryColor(name) {
   return CATEGORY_COLORS[name] || '#7f8c8d';
@@ -47,7 +55,7 @@ function renderCategoryBadges(mail) {
   return cats
     .map(
       (c) =>
-        `<span class="mail-category-badge" style="background:${getCategoryColor(c)}" title="${esc(c)}">${esc(c)}</span>`
+        `<span class="mail-category-badge" style="background:${getCategoryColor(c)}" title="${esc(categoryLabel(c))}">${esc(categoryLabel(c))}</span>`
     )
     .join('');
 }
@@ -55,10 +63,10 @@ function renderCategoryBadges(mail) {
 function renderSpamIndicator(mail) {
   const score = mail.spam_score || 0;
   if (score > 3.0) {
-    return '<span class="mail-spam-indicator" title="Likely spam">\u26A0</span>';
+    return `<span class="mail-spam-indicator" title="${t('likely_spam')}">\u26A0</span>`;
   }
   if (score > 1.5) {
-    return '<span class="mail-spam-indicator mild" title="Possibly spam">\u26A0</span>';
+    return `<span class="mail-spam-indicator mild" title="${t('possibly_spam')}">\u26A0</span>`;
   }
   return '';
 }
@@ -73,7 +81,7 @@ export function renderThreadHeader(thread, expanded) {
   const spamInd = renderSpamIndicator(lastMail);
 
   return `
-    <div class="thread-header mail-item${hasUnread ? ' unread' : ''}" data-thread-id="${esc(thread.thread_id)}" role="option" tabindex="0" aria-expanded="${expanded}" aria-label="${esc(thread.subject)}, ${count} messages${hasUnread ? ', ' + thread.unread_count + ' unread' : ''}">
+    <div class="thread-header mail-item${hasUnread ? ' unread' : ''}" data-thread-id="${esc(thread.thread_id)}" role="option" tabindex="0" aria-expanded="${expanded}" aria-label="${esc(tn('thread_label', count, { subject: thread.subject }))}${hasUnread ? ', ' + t('thread_unread', { count: thread.unread_count }) : ''}">
       <div class="thread-expand-icon" aria-hidden="true">${expanded ? '\u25BC' : '\u25B6'}</div>
       <div class="mail-item-body">
         <div class="mail-item-top">
@@ -82,7 +90,7 @@ export function renderThreadHeader(thread, expanded) {
           <span class="mail-item-date">${formatDate(thread.last_date)}</span>
         </div>
         <div class="mail-item-subject">${spamInd}${esc(thread.subject)}${catBadges ? ' ' + catBadges : ''}</div>
-        <div class="mail-item-preview">${thread.unread_count > 0 ? `${thread.unread_count} unread` : esc(lastMail.preview || '')}</div>
+        <div class="mail-item-preview">${thread.unread_count > 0 ? t('thread_unread', { count: thread.unread_count }) : esc(lastMail.preview || '')}</div>
       </div>
     </div>
   `;
@@ -100,21 +108,21 @@ function senderAvatar(from) {
 
 function renderImportanceIcon(mail) {
   const imp = mail.importance || 'normal';
-  if (imp === 'high') return '<span class="mail-importance-icon high" title="High importance">\u2757</span>';
-  if (imp === 'low') return '<span class="mail-importance-icon low" title="Low importance">\u2193</span>';
+  if (imp === 'high') return `<span class="mail-importance-icon high" title="${t('high_importance')}">\u2757</span>`;
+  if (imp === 'low') return `<span class="mail-importance-icon low" title="${t('low_importance')}">\u2193</span>`;
   return '';
 }
 
 function renderFlagIcon(mail) {
   const flagged = !!mail.flag_due_date;
-  if (!flagged) return `<div class="mail-item-flag" data-flag-id="${esc(mail.id)}" title="Flag for follow-up" role="button" tabindex="0">\u2691</div>`;
+  if (!flagged) return `<div class="mail-item-flag" data-flag-id="${esc(mail.id)}" title="${t('flag_for_follow_up')}" role="button" tabindex="0">\u2691</div>`;
   // Color class: red if overdue, orange if due today, default blue
   const now = new Date().toISOString().slice(0, 10);
   const due = mail.flag_due_date.slice(0, 10);
   let colorClass = 'flag-default';
   if (due < now) colorClass = 'flag-overdue';
   else if (due === now) colorClass = 'flag-due-today';
-  return `<div class="mail-item-flag flagged ${colorClass}" data-flag-id="${esc(mail.id)}" title="Flagged: due ${esc(mail.flag_due_date)}" role="button" tabindex="0">\u2691</div>`;
+  return `<div class="mail-item-flag flagged ${colorClass}" data-flag-id="${esc(mail.id)}" title="${esc(t('flagged_due', { date: mail.flag_due_date }))}" role="button" tabindex="0">\u2691</div>`;
 }
 
 export function renderMailItem(mail, state, isThreadChild = false, cachedRules = null) {
@@ -136,37 +144,37 @@ export function renderMailItem(mail, state, isThreadChild = false, cachedRules =
 
   // Multi-select checkbox (visible when multi-select is active or on hover via CSS)
   const checkboxVisible = list.selectedIds.size > 0;
-  const checkbox = `<input type="checkbox" class="mail-item-checkbox${checkboxVisible ? ' visible' : ''}" data-check-id="${esc(mail.id)}" ${isMultiSelected ? 'checked' : ''} tabindex="-1" aria-label="Select email" />`;
+  const checkbox = `<input type="checkbox" class="mail-item-checkbox${checkboxVisible ? ' visible' : ''}" data-check-id="${esc(mail.id)}" ${isMultiSelected ? 'checked' : ''} tabindex="-1" aria-label="${t('select_email_checkbox')}" />`;
 
-  const dupeBadge = isDuplicate ? '<span class="mail-duplicate-badge" title="Duplicate email">\u2716 Dupe</span>' : '';
+  const dupeBadge = isDuplicate ? `<span class="mail-duplicate-badge" title="${t('duplicate_email')}">\u2716 ${t('dupe')}</span>` : '';
 
   return `
     <div class="mail-item${isSelected ? ' selected' : ''}${isUnread ? ' unread' : ''}${isPinned ? ' pinned' : ''}${isMultiSelected ? ' multi-selected' : ''}${isDuplicate ? ' duplicate' : ''}${indent}${getDisplayRuleClasses(mail, cachedRules)}${mail._accountEmail ? ' ' + getAccountColorClass(mail._accountEmail, (typeof state !== 'undefined' && state.accounts) || []) : ''}" data-mail-id="${esc(mail.id)}" draggable="true" role="option" aria-selected="${isSelected}" tabindex="0">
       ${checkbox}
-      ${senderAvatar(mail.from_name || mail.from || 'Unknown')}
+      ${senderAvatar(mail.from_name || mail.from || t('unknown_sender'))}
       ${isUnread ? '<div class="mail-item-unread-dot" aria-hidden="true"></div>' : ''}
       ${importanceInd}
       ${dupeBadge}
-      <div class="mail-item-pin${isPinned ? ' pinned' : ''}" data-pin-id="${esc(mail.id)}" title="${isPinned ? 'Unpin' : 'Pin to top'}" role="button" aria-label="${isPinned ? 'Unpin' : 'Pin'} email" tabindex="0">
+      <div class="mail-item-pin${isPinned ? ' pinned' : ''}" data-pin-id="${esc(mail.id)}" title="${t(isPinned ? 'unpin' : 'pin_to_top')}" role="button" aria-label="${t(isPinned ? 'unpin_email' : 'pin_email')}" tabindex="0">
         \uD83D\uDCCC
       </div>
-      <div class="mail-item-star${isStarred ? ' starred' : ''}" data-star-id="${esc(mail.id)}" title="Toggle star" role="button" aria-label="${isStarred ? 'Unstar' : 'Star'} email" tabindex="0">
+      <div class="mail-item-star${isStarred ? ' starred' : ''}" data-star-id="${esc(mail.id)}" title="${t('toggle_star')}" role="button" aria-label="${t(isStarred ? 'unstar_email' : 'star_email')}" tabindex="0">
         ${isStarred ? '\u2605' : '\u2606'}
       </div>
       ${flagIcon}
       <div class="mail-item-body">
         <div class="mail-item-top">
           ${accountBadge}
-          <span class="mail-item-from">${esc(mail.from_name || mail.from || 'Unknown')}</span>
+          <span class="mail-item-from">${esc(mail.from_name || mail.from || t('unknown_sender'))}</span>
           <span class="mail-item-date">${formatDate(mail.date)}</span>
         </div>
-        <div class="mail-item-subject">${spamInd}${esc(mail.subject || '(No subject)')}${catBadges ? ' ' + catBadges : ''}</div>
+        <div class="mail-item-subject">${spamInd}${esc(mail.subject || t('no_subject'))}${catBadges ? ' ' + catBadges : ''}</div>
         <div class="mail-item-preview">${esc(mail.preview || '')}</div>
       </div>
-      <div class="mail-item-quick-actions" aria-label="Quick actions">
-        <button class="quick-action-btn" data-quick="archive" data-quick-id="${esc(mail.id)}" title="Archive" aria-label="Archive">\uD83D\uDCE6</button>
-        <button class="quick-action-btn" data-quick="delete" data-quick-id="${esc(mail.id)}" title="Delete" aria-label="Delete">\uD83D\uDDD1</button>
-        <button class="quick-action-btn" data-quick="star" data-quick-id="${esc(mail.id)}" title="Star" aria-label="Star">${isStarred ? '\u2605' : '\u2606'}</button>
+      <div class="mail-item-quick-actions" aria-label="${t('quick_actions')}">
+        <button class="quick-action-btn" data-quick="archive" data-quick-id="${esc(mail.id)}" title="${t('archive')}" aria-label="${t('archive')}">\uD83D\uDCE6</button>
+        <button class="quick-action-btn" data-quick="delete" data-quick-id="${esc(mail.id)}" title="${t('delete')}" aria-label="${t('delete')}">\uD83D\uDDD1</button>
+        <button class="quick-action-btn" data-quick="star" data-quick-id="${esc(mail.id)}" title="${t('star')}" aria-label="${t('star')}">${isStarred ? '\u2605' : '\u2606'}</button>
       </div>
     </div>
   `;

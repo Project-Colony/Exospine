@@ -1,4 +1,7 @@
-// Exospine — Toast notification component
+// Exospine: toast notifications.
+
+import { esc } from '../html.js';
+import { t } from '../i18n/index.js';
 
 const container = document.getElementById('toast-container');
 
@@ -21,8 +24,8 @@ export function showToast(message, type = 'info', duration = 5000, onClick = nul
 
   el.innerHTML = `
     <span aria-hidden="true">${icon}</span>
-    <span>${escapeHtml(message)}</span>
-    <button class="toast-dismiss" title="Dismiss" aria-label="Dismiss notification">\u00D7</button>
+    <span>${esc(message)}</span>
+    <button class="toast-dismiss" title="${t('dismiss')}" aria-label="${t('dismiss_notification')}">\u00D7</button>
   `;
 
   let autoDismissTimer = null;
@@ -56,10 +59,4 @@ export function showToast(message, type = 'info', duration = 5000, onClick = nul
   // Expose dismiss so callers can cancel programmatically
   el._dismiss = dismiss;
   return el;
-}
-
-function escapeHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
 }

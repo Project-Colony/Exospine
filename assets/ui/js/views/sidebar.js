@@ -1,9 +1,9 @@
-// Exospine — Sidebar view
+// Exospine: the sidebar: accounts, folders, search folders, labels and widgets.
 
 import { showToast } from '../components/toast.js';
 import { showContextMenu } from '../components/context_menu.js';
 import * as api from '../api.js';
-import { t } from '../i18n.js';
+import { getLanguage, t } from '../i18n/index.js';
 import { esc } from '../html.js';
 
 // ===== SECTION: Constants & Folder Icons =====
@@ -180,7 +180,7 @@ export function renderSidebar(el, state, actions) {
 
   // Account switcher (if multiple accounts)
   if (state.accounts.length > 1) {
-    html += '<div class="sidebar-account-switcher" role="listbox" aria-label="Account switcher">';
+    html += `<div class="sidebar-account-switcher" role="listbox" aria-label="${t('account_switcher')}">`;
     for (let i = 0; i < state.accounts.length; i++) {
       const acc = state.accounts[i];
       const accColor = ACCOUNT_COLORS[i % ACCOUNT_COLORS.length];
@@ -200,7 +200,7 @@ export function renderSidebar(el, state, actions) {
   } else if (account) {
     // Single account header
     html += `
-      <div class="sidebar-account" role="banner" aria-label="Current account">
+      <div class="sidebar-account" role="banner" aria-label="${t('current_account')}">
         <div class="sidebar-account-icon acct-color-${state.activeAccount % ACCOUNT_COLORS.length}" aria-hidden="true">${initial}</div>
         <div>
           <div class="sidebar-account-name">${esc(account.name || account.email)}</div>
@@ -214,7 +214,7 @@ export function renderSidebar(el, state, actions) {
   if (state.accounts.length > 1) {
     const isUnified = state._unifiedInbox === true;
     html += `
-      <div class="sidebar-folders" role="listbox" aria-label="Virtual folders">
+      <div class="sidebar-folders" role="listbox" aria-label="${t('virtual_folders')}">
         <div class="sidebar-folder unified-inbox${isUnified ? ' active' : ''}" data-action="unified-inbox" role="option" aria-selected="${isUnified}" tabindex="0">
           <span class="sidebar-folder-icon" aria-hidden="true">\uD83D\uDCEC</span>
           <span class="sidebar-folder-label">${esc(t('all_inboxes'))}</span>
@@ -261,18 +261,18 @@ export function renderSidebar(el, state, actions) {
         <div class="sidebar-folder${isActive ? ' active' : ''}" data-folder="${esc(name)}" role="option" aria-selected="${isActive}" tabindex="0" draggable="true">
           <span class="sidebar-folder-icon" aria-hidden="true">${icon}</span>
           <span class="sidebar-folder-label">${esc(displayName)}</span>
-          ${unread > 0 ? `<span class="sidebar-folder-badge" aria-label="${unread} unread">${unread}</span>` : ''}
+          ${unread > 0 ? `<span class="sidebar-folder-badge" aria-label="${t('unread_count', { count: unread })}">${unread}</span>` : ''}
         </div>
       `;
     }
 
     // Favorites section
     const favCollapsed = collapsed['favorites'] || false;
-    html += `<div class="sidebar-section-header" data-section="favorites" role="button" tabindex="0" aria-expanded="${!favCollapsed}" title="Toggle Favorites">
+    html += `<div class="sidebar-section-header" data-section="favorites" role="button" tabindex="0" aria-expanded="${!favCollapsed}" title="${t('toggle_section', { section: t('favorites') })}">
       <span class="sidebar-section-arrow">${favCollapsed ? '\u25B6' : '\u25BC'}</span>
-      <span>Favorites</span>
+      <span>${t('favorites')}</span>
     </div>`;
-    html += `<div class="sidebar-folders sidebar-section-content${favCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Favorite folders">`;
+    html += `<div class="sidebar-folders sidebar-section-content${favCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="${t('favorite_folders')}">`;
     for (const folder of orderedFavFolders) {
       html += renderFolderItem(folder);
     }
@@ -280,11 +280,11 @@ export function renderSidebar(el, state, actions) {
 
     // Other Folders section
     const foldersCollapsed = collapsed['folders'] || false;
-    html += `<div class="sidebar-section-header" data-section="folders" role="button" tabindex="0" aria-expanded="${!foldersCollapsed}" title="Toggle Folders">
+    html += `<div class="sidebar-section-header" data-section="folders" role="button" tabindex="0" aria-expanded="${!foldersCollapsed}" title="${t('toggle_section', { section: t('folders') })}">
       <span class="sidebar-section-arrow">${foldersCollapsed ? '\u25B6' : '\u25BC'}</span>
-      <span>Folders</span>
+      <span>${t('folders')}</span>
     </div>`;
-    html += `<div class="sidebar-folders sidebar-section-content${foldersCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Mail folders">`;
+    html += `<div class="sidebar-folders sidebar-section-content${foldersCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="${t('mail_folders')}">`;
     for (const folder of orderedOtherFolders) {
       html += renderFolderItem(folder);
     }
@@ -297,20 +297,20 @@ export function renderSidebar(el, state, actions) {
   const collapsedSections = loadCollapsedSections();
   const searchCollapsed = collapsedSections['search-folders'] || false;
 
-  html += `<div class="sidebar-section-header" data-section="search-folders" role="button" tabindex="0" aria-expanded="${!searchCollapsed}" title="Toggle Search Folders">
+  html += `<div class="sidebar-section-header" data-section="search-folders" role="button" tabindex="0" aria-expanded="${!searchCollapsed}" title="${t('toggle_section', { section: t('search_folders') })}">
     <span class="sidebar-section-arrow">${searchCollapsed ? '\u25B6' : '\u25BC'}</span>
     <span>${esc(t('search_folders'))}</span>
   </div>`;
-  html += `<div class="sidebar-folders sidebar-search-folders sidebar-section-content${searchCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Search folders">`;
+  html += `<div class="sidebar-folders sidebar-search-folders sidebar-section-content${searchCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="${t('search_folders')}">`;
   for (const sf of allSearchFolders) {
     const isActive = state._activeSearchFolder === sf.name;
     const icon = sf.icon || '\uD83D\uDD0D';
-    const displayName = t(sf.name) || sf.name;
+    const displayName = sf.custom ? sf.name : t(sf.name);
     html += `
       <div class="sidebar-folder search-folder${isActive ? ' active' : ''}" data-search-folder="${esc(sf.name)}" data-search-query="${esc(sf.query)}" role="option" aria-selected="${isActive}" tabindex="0">
         <span class="sidebar-folder-icon" aria-hidden="true">${icon}</span>
         <span class="sidebar-folder-label">${esc(displayName)}</span>
-        ${sf.custom ? `<button class="sidebar-search-folder-delete" data-delete-search="${esc(sf.name)}" title="${t('delete')}" aria-label="Delete search folder">\u00D7</button>` : ''}
+        ${sf.custom ? `<button class="sidebar-search-folder-delete" data-delete-search="${esc(sf.name)}" title="${t('delete')}" aria-label="${t('delete_search_folder')}">\u00D7</button>` : ''}
       </div>
     `;
   }
@@ -326,25 +326,25 @@ export function renderSidebar(el, state, actions) {
   const labels = loadLabels();
   const labelsCollapsed = collapsedSections['labels'] || false;
 
-  html += `<div class="sidebar-section-header" data-section="labels" role="button" tabindex="0" aria-expanded="${!labelsCollapsed}" title="Toggle Labels">
+  html += `<div class="sidebar-section-header" data-section="labels" role="button" tabindex="0" aria-expanded="${!labelsCollapsed}" title="${t('toggle_section', { section: t('labels') })}">
     <span class="sidebar-section-arrow">${labelsCollapsed ? '\u25B6' : '\u25BC'}</span>
-    <span>\uD83C\uDFF7 Labels</span>
+    <span>\uD83C\uDFF7 ${t('labels')}</span>
   </div>`;
-  html += `<div class="sidebar-folders sidebar-labels sidebar-section-content${labelsCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="Labels">`;
+  html += `<div class="sidebar-folders sidebar-labels sidebar-section-content${labelsCollapsed ? ' collapsed' : ''}" role="listbox" aria-label="${t('labels')}">`;
   for (const label of labels) {
     const isActive = state._activeLabel === label.name;
     html += `
       <div class="sidebar-folder sidebar-label-item${isActive ? ' active' : ''}" data-label-name="${esc(label.name)}" role="option" aria-selected="${isActive}" tabindex="0">
         <span class="sidebar-label-dot" style="background:${label.color || '#7f8c8d'}" aria-hidden="true"></span>
         <span class="sidebar-folder-label">${esc(label.name)}</span>
-        <button class="sidebar-label-delete" data-delete-label="${esc(label.name)}" title="Delete label" aria-label="Delete label ${esc(label.name)}">\u00D7</button>
+        <button class="sidebar-label-delete" data-delete-label="${esc(label.name)}" title="${t('delete_label')}" aria-label="${esc(t('delete_label_named', { name: label.name }))}">\u00D7</button>
       </div>
     `;
   }
   html += `
     <div class="sidebar-folder sidebar-label-add" data-action="add-label" role="button" tabindex="0">
       <span class="sidebar-folder-icon" aria-hidden="true">+</span>
-      <span class="sidebar-folder-label">New label</span>
+      <span class="sidebar-folder-label">${t('new_label')}</span>
     </div>
   `;
   html += '</div>';
@@ -357,9 +357,9 @@ export function renderSidebar(el, state, actions) {
 
   if (showClock || showDate || showUnread) {
     const widgetsCollapsed = collapsedSections['widgets'] || false;
-    html += `<div class="sidebar-section-header" data-section="widgets" role="button" tabindex="0" aria-expanded="${!widgetsCollapsed}" title="Toggle Widgets">
+    html += `<div class="sidebar-section-header" data-section="widgets" role="button" tabindex="0" aria-expanded="${!widgetsCollapsed}" title="${t('toggle_section', { section: t('widgets') })}">
       <span class="sidebar-section-arrow">${widgetsCollapsed ? '\u25B6' : '\u25BC'}</span>
-      <span>Widgets</span>
+      <span>${t('widgets')}</span>
     </div>`;
     html += `<div class="sidebar-widgets sidebar-section-content${widgetsCollapsed ? ' collapsed' : ''}">`;
 
@@ -368,7 +368,7 @@ export function renderSidebar(el, state, actions) {
     }
     if (showDate) {
       const today = new Date();
-      const dateStr = today.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const dateStr = today.toLocaleDateString(getLanguage(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       html += `<div class="sidebar-widget-item"><span class="sidebar-widget-icon">\uD83D\uDCC5</span> ${esc(dateStr)}</div>`;
     }
     if (showUnread) {
@@ -376,7 +376,7 @@ export function renderSidebar(el, state, actions) {
       for (const folder of state.folders) {
         if (typeof folder === 'object') totalUnread += (folder.unread_count || folder.unread || 0);
       }
-      html += `<div class="sidebar-widget-item"><span class="sidebar-widget-icon">\uD83D\uDCE9</span> <span id="sidebar-unread-count">${totalUnread}</span> unread</div>`;
+      html += `<div class="sidebar-widget-item"><span class="sidebar-widget-icon">\uD83D\uDCE9</span> ${t('unread_count', { count: `<span id="sidebar-unread-count">${totalUnread}</span>` })}</div>`;
     }
     html += '</div>';
   }
@@ -388,25 +388,25 @@ export function renderSidebar(el, state, actions) {
         <span aria-hidden="true">+</span>
         <span>${t('add_account')}</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-awaiting-reply" title="Awaiting Reply" aria-label="Awaiting Reply">
+      <button class="sidebar-btn" id="sidebar-awaiting-reply" title="${t('awaiting_reply')}" aria-label="${t('awaiting_reply')}">
         <span aria-hidden="true">\u{1F552}</span>
-        <span>Awaiting Reply</span>
+        <span>${t('awaiting_reply')}</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-tasks" title="Tasks" aria-label="Tasks">
+      <button class="sidebar-btn" id="sidebar-tasks" title="${t('tasks')}" aria-label="${t('tasks')}">
         <span aria-hidden="true">\u2611</span>
-        <span>Tasks</span>
+        <span>${t('tasks')}</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-analytics" title="Analytics" aria-label="Analytics">
+      <button class="sidebar-btn" id="sidebar-analytics" title="${t('analytics')}" aria-label="${t('analytics')}">
         <span aria-hidden="true">\uD83D\uDCCA</span>
-        <span>Analytics</span>
+        <span>${t('analytics')}</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-calendar" title="Calendar" aria-label="Calendar">
+      <button class="sidebar-btn" id="sidebar-calendar" title="${t('calendar')}" aria-label="${t('calendar')}">
         <span aria-hidden="true">\uD83D\uDCC5</span>
-        <span>Calendar</span>
+        <span>${t('calendar')}</span>
       </button>
-      <button class="sidebar-btn" id="sidebar-contacts" title="Contacts" aria-label="Contacts">
+      <button class="sidebar-btn" id="sidebar-contacts" title="${t('contacts')}" aria-label="${t('contacts')}">
         <span aria-hidden="true">\uD83D\uDC64</span>
-        <span>Contacts</span>
+        <span>${t('contacts')}</span>
       </button>
       <button class="sidebar-btn" id="sidebar-settings" title="${t('settings')}" aria-label="${t('settings')}">
         <span aria-hidden="true">\u2699</span>
@@ -498,7 +498,7 @@ export function renderSidebar(el, state, actions) {
     if (deleteLabelBtn) {
       e.stopPropagation();
       const name = deleteLabelBtn.dataset.deleteLabel;
-      if (!confirm(`Delete label "${name}"?`)) return;
+      if (!confirm(t('delete_label_confirm', { name }))) return;
       const labels = loadLabels().filter(l => l.name !== name);
       saveLabels(labels);
       // Also remove label-mail associations
@@ -511,11 +511,11 @@ export function renderSidebar(el, state, actions) {
     // Add label
     const addLabelBtn = e.target.closest('[data-action="add-label"]');
     if (addLabelBtn) {
-      const name = prompt('Label name:');
+      const name = prompt(t('label_name_prompt'));
       if (!name || !name.trim()) return;
       const existing = loadLabels();
       if (existing.some(l => l.name === name.trim())) {
-        showToast('Label already exists.', 'error');
+        showToast(t('label_exists'), 'error');
         return;
       }
       const colorIdx = existing.length % LABEL_COLORS.length;
@@ -529,9 +529,9 @@ export function renderSidebar(el, state, actions) {
     // Add search folder
     const addSfBtn = e.target.closest('[data-action="add-search-folder"]');
     if (addSfBtn) {
-      const name = prompt('Search folder name:');
+      const name = prompt(t('search_folder_name_prompt'));
       if (!name) return;
-      const query = prompt('Search query (e.g. "from:user@example.com"):');
+      const query = prompt(t('search_query_prompt'));
       if (!query) return;
       const custom = loadCustomSearchFolders();
       custom.push({ name, query, icon: '\uD83D\uDD0D', custom: true });
@@ -572,12 +572,6 @@ export function renderSidebar(el, state, actions) {
           if (actions.onRefreshFolder) actions.onRefreshFolder(folderName);
         },
       },
-      {
-        label: '\u2709 Mark all as read',
-        action: () => {
-          showToast('Mark all as read is not yet implemented.', 'info');
-        },
-      },
     ];
     showContextMenu(e.clientX, e.clientY, menuItems);
   };
@@ -616,10 +610,10 @@ export function renderSidebar(el, state, actions) {
       const targetFolder = folderItem.dataset.folder;
       if (data.folder === targetFolder) return;
       await api.moveMail(data.accountId, data.folder, data.mailId, targetFolder);
-      showToast(`Moved to ${folderDisplayName(targetFolder)}`, 'success');
+      showToast(t('moved_to', { folder: folderDisplayName(targetFolder) }), 'success');
       if (actions.onMoveMail) actions.onMoveMail(data.mailId);
     } catch (err) {
-      showToast(`Move failed: ${err}`, 'error');
+      showToast(t('error_move', { error: err }), 'error');
     }
   };
 
@@ -733,13 +727,13 @@ export function updateUnreadBadges(el, state) {
         // Just update the number text
         if (existing.textContent !== String(unread)) {
           existing.textContent = unread;
-          existing.setAttribute('aria-label', `${unread} unread`);
+          existing.setAttribute('aria-label', t('unread_count', { count: unread }));
         }
       } else {
         // Add badge
         const badge = document.createElement('span');
         badge.className = 'sidebar-folder-badge';
-        badge.setAttribute('aria-label', `${unread} unread`);
+        badge.setAttribute('aria-label', t('unread_count', { count: unread }));
         badge.textContent = unread;
         folderEl.appendChild(badge);
       }
@@ -752,13 +746,32 @@ export function updateUnreadBadges(el, state) {
   _sidebarCacheKey = _sidebarFingerprint(state);
 }
 
+// The standard folders, shown in the interface language.
+const STANDARD_FOLDER_KEYS = {
+  'INBOX': 'inbox',
+  'Sent': 'sent',
+  '[Gmail]/Sent Mail': 'sent',
+  'Drafts': 'drafts',
+  '[Gmail]/Drafts': 'drafts',
+  'Trash': 'trash',
+  '[Gmail]/Trash': 'trash',
+  'Spam': 'spam',
+  '[Gmail]/Spam': 'spam',
+  'Archive': 'archive',
+  '[Gmail]/All Mail': 'all_mail',
+  'Starred': 'starred',
+  '[Gmail]/Starred': 'starred',
+  '[Gmail]/Important': 'important',
+};
+
 /**
  * Return a human-friendly display name for IMAP folder paths.
- * Strips common prefixes like "[Gmail]/" for cleaner sidebar display,
- * and decodes IMAP modified UTF-7 encoded names.
+ * Standard folders are translated; for the others, common prefixes like
+ * "[Gmail]/" are stripped and IMAP modified UTF-7 names are decoded.
  */
 // ===== SECTION: Utility Helpers =====
 function folderDisplayName(name) {
+  if (STANDARD_FOLDER_KEYS[name]) return t(STANDARD_FOLDER_KEYS[name]);
   let display = name;
   if (display.startsWith('[Gmail]/')) display = display.slice(8);
   else if (display.startsWith('[Google Mail]/')) display = display.slice(14);

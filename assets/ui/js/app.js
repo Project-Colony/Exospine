@@ -12,7 +12,7 @@ import { openAnalytics } from './views/analytics.js';
 import { openCalendar } from './views/calendar.js';
 import { openContacts } from './views/contacts.js';
 import { openTasks, openAwaitingReply } from './views/tasks.js';
-import { setLanguage } from './i18n.js';
+import { getLanguage, setLanguage, t, tn } from './i18n/index.js';
 
 // Module imports
 import { state, activeAccountId, sidebarEl, mailListEl, mailViewEl, hamburgerBtn, bodyCache, _prefetchInFlight, _intervals, findMail, updateMail } from './state.js';
@@ -58,7 +58,7 @@ function toggleFocusMode() {
       exitBtn = document.createElement('button');
       exitBtn.id = 'exit-focus-btn';
       exitBtn.className = 'exit-focus-btn';
-      exitBtn.textContent = 'Exit focus';
+      exitBtn.textContent = t('exit_focus');
       exitBtn.addEventListener('click', toggleFocusMode);
       app.prepend(exitBtn);
     }
@@ -70,20 +70,19 @@ function toggleFocusMode() {
 }
 
 // ---------------------------------------------------------------------------
-// RTL language detection
+// Interface language
 // ---------------------------------------------------------------------------
-const RTL_LANGUAGES = ['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi'];
-
-function applyDirection(language) {
-  const lang = (language || '').split('-')[0].toLowerCase();
-  if (RTL_LANGUAGES.includes(lang)) {
-    document.documentElement.dir = 'rtl';
-    document.documentElement.lang = lang;
-  } else {
-    document.documentElement.dir = 'ltr';
-    if (lang) document.documentElement.lang = lang;
-  }
+/**
+ * Switch to the language preference ('auto', 'en' or 'fr') and remember it,
+ * so the next start (the PIN screen comes before the settings load) opens
+ * in the same language.
+ */
+function applyLanguage(preference) {
+  setLanguage(preference);
+  try { localStorage.setItem('exospine_language', preference || 'auto'); } catch {}
+  api.setUiLanguage(getLanguage()).catch(() => {});
 }
+setLanguage(localStorage.getItem('exospine_language') || 'auto');
 
 // ---------------------------------------------------------------------------
 // Hamburger menu (responsive)
@@ -119,10 +118,7 @@ function sidebarActions() {
       onSaved: (s) => {
         state.settings = s;
         applyTheme(s.theme);
-        if (s.language) {
-          setLanguage(s.language);
-          applyDirection(s.language);
-        }
+        applyLanguage(s.language);
         // Update sound notification setting
         if (s.sound_notifications !== undefined) {
           setSoundEnabled(s.sound_notifications);
@@ -208,7 +204,7 @@ function safeRender(fn, fallbackEl) {
   try { fn(); } catch (e) {
     console.error('Render error:', e);
     if (fallbackEl) {
-      fallbackEl.innerHTML = '<div style="padding:20px;color:red;">Something went wrong. <button type="button">Reload</button></div>';
+      fallbackEl.innerHTML = `<div style="padding:20px;color:red;">${t('render_error')} <button type="button">${t('reload')}</button></div>`;
       fallbackEl.querySelector('button').addEventListener('click', () => location.reload());
     }
   }
@@ -255,7 +251,7 @@ async function loadAccounts() {
   try {
     state.accounts = await api.getAccounts();
   } catch (err) {
-    toastError('load accounts', err);
+    toastError('error_load_accounts', err);
     state.accounts = [];
   }
 }
@@ -341,7 +337,7 @@ async function loadMailBody(mailId) {
   } catch (err) {
     if (_loadingMailId !== mailId) return;
     if (state.selectedMail && state.selectedMail.id === mailId) {
-      toastError('load email body', err);
+      toastError('error_load_body', err);
       state.mailBody = { text: '', html: '' };
       renderView();
     }
@@ -426,7 +422,7 @@ async function refreshCurrentFolder() {
   try {
     await api.refreshFolder(activeAccountId(), state.activeFolder);
   } catch (err) {
-    toastError('refresh', err);
+    toastError('error_refresh', err);
   }
 
   await loadMails();
@@ -496,7 +492,7 @@ async function searchMails(query) {
     }
     state.hasMore = false;
   } catch (err) {
-    toastError('search', err);
+    toastError('error_search', err);
   }
 
   state.loading = false;
@@ -520,7 +516,7 @@ async function toggleMailPin(mailId) {
   } catch (err) {
     updateMail(mailId, { is_pinned: !newPinned });
     renderList();
-    toastError('toggle pin', err);
+    toastError('error_toggle_pin', err);
   }
 }
 
@@ -694,7 +690,7 @@ function setupTauriEvents() {
         state._syncing = true;
         state._syncProgress = Math.round((current / total) * 100);
         // Update document title with progress for Windows taskbar hover
-        document.title = `Exospine - Syncing ${state._syncProgress}%`;
+        document.title = t('title_syncing', { percent: state._syncProgress });
         renderList();
       }
       if (current >= total) {
@@ -715,7 +711,7 @@ function setupTauriEvents() {
           return;
         }
         playNotificationSound(evtAccountId);
-        showToast(`${count} new email${count > 1 ? 's' : ''} received.`, 'info');
+        showToast(tn('new_emails', count), 'info');
         refreshCurrentFolder();
       }
     });
@@ -728,7 +724,7 @@ function setupTauriEvents() {
     });
 
     listen('oauth-complete', () => {
-      showToast('Account linked successfully.', 'success');
+      showToast(t('account_linked'), 'success');
       reloadAccounts();
     });
   } catch {
@@ -824,7 +820,7 @@ function setupEmlDragDrop() {
       // Tauri v2: file.path gives the native path for dropped files
       const filePath = file.path || file.name;
       if (!filePath || filePath === file.name) {
-        showToast('Cannot read dropped file: native path not available.', 'error');
+        showToast(t('drop_no_path'), 'error');
         continue;
       }
       try {
@@ -833,11 +829,11 @@ function setupEmlDragDrop() {
           // Display in the reading pane
           state.selectedMail = entry;
           state.mailBody = { text: entry.body_text, html: entry.body_html };
-          renderMailView(mailViewEl, entry, state.mailBody, {});
-          showToast(`Opened: ${entry.subject || '(no subject)'}`, 'info');
+          renderView();
+          showToast(t('opened_file', { subject: entry.subject || t('no_subject') }), 'info');
         }
       } catch (err) {
-        toastError('open .eml file', err);
+        toastError('error_open_eml', err);
       }
     }
   });
@@ -860,7 +856,7 @@ async function lazyLoadFolderCounts() {
     if (folderEl && !folderEl.querySelector('.folder-sync-indicator')) {
       const indicator = document.createElement('span');
       indicator.className = 'folder-sync-indicator';
-      indicator.setAttribute('aria-label', 'Syncing');
+      indicator.setAttribute('aria-label', t('syncing'));
       indicator.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;"></span>';
       folderEl.appendChild(indicator);
     }
@@ -902,13 +898,13 @@ async function showPinLockScreen() {
     lockEl.innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:var(--sidebar-bg, #1a1a2e);color:var(--pane-text, #e0e0e0);">
         <div style="font-size:28px;font-weight:700;margin-bottom:8px;">Exospine</div>
-        <div style="font-size:14px;color:var(--pane-text-dim, #888);margin-bottom:24px;">Enter your PIN to unlock</div>
+        <div style="font-size:14px;color:var(--pane-text-dim, #888);margin-bottom:24px;">${t('pin_prompt')}</div>
         <div id="pin-error" style="color:#e53935;font-size:13px;min-height:20px;margin-bottom:8px;"></div>
         <input type="password" id="pin-input" maxlength="6" inputmode="numeric" pattern="[0-9]*"
           style="width:180px;text-align:center;font-size:24px;letter-spacing:8px;padding:10px;border:2px solid var(--pane-border, #333);border-radius:8px;background:var(--pane-bg, #222);color:var(--pane-text, #eee);outline:none;"
           placeholder="****" />
         <button id="pin-submit" style="margin-top:16px;padding:8px 32px;font-size:14px;font-weight:600;background:var(--accent, #0078d6);color:#fff;border:none;border-radius:6px;cursor:pointer;">
-          Unlock
+          ${t('unlock')}
         </button>
       </div>
     `;
@@ -920,7 +916,7 @@ async function showPinLockScreen() {
     function checkLockout() {
       if (lockedUntil > Date.now()) {
         const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
-        errorEl.textContent = 'Too many attempts. Try again in ' + remaining + 's';
+        errorEl.textContent = t('pin_locked', { seconds: remaining });
         input.disabled = true;
         submitBtn.disabled = true;
         setTimeout(checkLockout, 1000);
@@ -963,7 +959,7 @@ async function showPinLockScreen() {
           attempts = 0;
           checkLockout();
         } else {
-          errorEl.textContent = 'Wrong PIN. ' + (3 - attempts) + ' attempt(s) remaining.';
+          errorEl.textContent = tn('pin_wrong', 3 - attempts);
         }
         input.focus();
       }
@@ -1002,7 +998,7 @@ async function init() {
   // unreachable) is shown once.
   try {
     const problem = await api.takeAccountsProblem();
-    if (problem) showToast(problem, 'error', 15000);
+    if (problem) showToast(t(`accounts_problem_${problem.kind}`, problem), 'error', 15000);
   } catch {}
 
   if (state.accounts.length === 0) {
@@ -1010,10 +1006,7 @@ async function init() {
     try {
       state.settings = await api.getSettings();
       applyTheme(state.settings.theme);
-      if (state.settings.language) {
-        setLanguage(state.settings.language);
-        applyDirection(state.settings.language);
-      }
+      applyLanguage(state.settings.language);
     } catch {}
     openOnboarding({ isFirstRun: true, onAccountAdded: reloadAccounts });
     renderAll();
@@ -1044,10 +1037,7 @@ async function init() {
   try {
     state.settings = await api.getSettings();
     applyTheme(state.settings.theme);
-    if (state.settings.language) {
-      setLanguage(state.settings.language);
-      applyDirection(state.settings.language);
-    }
+    applyLanguage(state.settings.language);
   } catch {
     // Settings not available yet, use defaults
   }
@@ -1082,7 +1072,7 @@ async function init() {
       document.title = 'Exospine'; // Restore title after sync
       if (count > 0) {
         playNotificationSound(syncAccountId);
-        showToast(`Synced ${count} mails in background.`, 'info');
+        showToast(tn('synced_background', count), 'info');
         await loadMails();
         // Update folder unread counts in sidebar
         await loadFolders();
@@ -1144,7 +1134,7 @@ async function init() {
             const anyMuted = state.mails.slice(0, newCount).some(m => isThreadMuted(m.thread_id || m.id));
             if (!anyMuted) {
               playNotificationSound(activeAccountId());
-              showToast(`${newCount} new email${newCount > 1 ? 's' : ''} received.`, 'info');
+              showToast(tn('new_emails', newCount), 'info');
             }
           }
         }
@@ -1162,7 +1152,7 @@ async function init() {
       // Send due scheduled emails
       const sent = await api.sendDueScheduled();
       if (sent > 0) {
-        showToast(`${sent} scheduled email${sent > 1 ? 's' : ''} sent.`, 'success');
+        showToast(tn('scheduled_sent', sent), 'success');
       }
     } catch {
       // Silent fail for background task
@@ -1180,7 +1170,7 @@ async function init() {
             // Silent
           }
         }
-        showToast(`${dueSnoozed.length} snoozed email${dueSnoozed.length > 1 ? 's' : ''} returned.`, 'info');
+        showToast(tn('snoozed_returned', dueSnoozed.length), 'info');
         // Reload mail list to show unsnoozed mails
         await loadMails();
         // Update folder unread counts in sidebar
@@ -1200,14 +1190,14 @@ async function init() {
       // Auto-resolve followups that have been replied to
       const resolved = await api.checkFollowups(accountId);
       if (resolved && resolved.length > 0) {
-        showToast(`${resolved.length} follow-up(s) resolved (reply received).`, 'success');
+        showToast(tn('followups_resolved', resolved.length), 'success');
       }
       // Check for overdue followups
       const followups = await api.getFollowups();
       const now = new Date();
       const overdue = (followups || []).filter(f => !f.resolved && f.due_date && new Date(f.due_date) < now);
       if (overdue.length > 0) {
-        showToast(`${overdue.length} follow-up(s) are overdue!`, 'warning');
+        showToast(tn('followups_overdue', overdue.length), 'warning');
       }
     } catch {
       // Silent fail
@@ -1223,5 +1213,5 @@ async function init() {
 // Start
 init().catch((err) => {
   console.error('Exospine init failed:', err);
-  showToast(`Initialization error: ${err}`, 'error', 0);
+  showToast(t('error_init', { error: err }), 'error', 0);
 });

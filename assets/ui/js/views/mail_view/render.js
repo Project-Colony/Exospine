@@ -3,7 +3,7 @@
 import { formatFullDate } from '../../date_format.js';
 import * as api from '../../api.js';
 import { showToast } from '../../components/toast.js';
-import { t } from '../../i18n.js';
+import { t, tn } from '../../i18n/index.js';
 import { esc } from '../../html.js';
 import { attachmentIcon, formatSize, getPreviewType } from './attachments.js';
 import { dismissedReceipts, expandedQuoteIds, getMutedThreads, getZoom } from './state.js';
@@ -50,26 +50,26 @@ export function mailViewHtml(mail, body, state) {
   // Header
   html += `
     <div class="mail-view-header">
-      <div class="mail-view-subject">${esc(mail.subject || '(No subject)')}</div>
+      <div class="mail-view-subject">${esc(mail.subject || t('no_subject'))}</div>
       ${_summaryText ? `<div class="mail-view-summary">${esc(_summaryText)}</div>` : ''}
       <div class="mail-view-meta">
         <div class="mail-view-meta-row">
-          <span class="mail-view-meta-label" id="mv-from-label">From</span>
-          <span class="mail-view-meta-value" aria-labelledby="mv-from-label"><span class="mail-view-from-hover" data-from-email="${esc(mail.from || '')}">${esc(mail.from || 'Unknown')}</span> <button class="mail-view-copy-email" data-copy-email="${esc(mail.from || '')}" title="Copy email address" aria-label="Copy email address">\u{1F4CB}</button></span>
+          <span class="mail-view-meta-label" id="mv-from-label">${t('from')}</span>
+          <span class="mail-view-meta-value" aria-labelledby="mv-from-label"><span class="mail-view-from-hover" data-from-email="${esc(mail.from || '')}">${esc(mail.from || t('unknown_sender'))}</span> <button class="mail-view-copy-email" data-copy-email="${esc(mail.from || '')}" title="${t('copy_address')}" aria-label="${t('copy_address')}">\u{1F4CB}</button></span>
         </div>
         <div class="mail-view-meta-row">
-          <span class="mail-view-meta-label" id="mv-to-label">To</span>
+          <span class="mail-view-meta-label" id="mv-to-label">${t('to')}</span>
           <span class="mail-view-meta-value" aria-labelledby="mv-to-label">${esc(mail.to || '')}</span>
         </div>
         ${mail.cc ? `
         <div class="mail-view-meta-row">
-          <span class="mail-view-meta-label" id="mv-cc-label">CC</span>
+          <span class="mail-view-meta-label" id="mv-cc-label">${t('cc')}</span>
           <span class="mail-view-meta-value" aria-labelledby="mv-cc-label">${esc(mail.cc)}</span>
         </div>
         ` : ''}
       </div>
       <div class="mail-view-date">${formatFullDate(mail.date)}</div>
-      <div class="mail-view-reading-time" aria-label="Reading time">${(() => { const txt = (body && body.text) || (body && body.html && body.html.replace(/<[^>]+>/g, "")); if (!txt) return ""; const words = txt.trim().split(/\s+/).length; const mins = Math.max(1, Math.round(words / 200)); return "~" + mins + " min read"; })()}</div>
+      <div class="mail-view-reading-time" aria-label="${t('reading_time')}">${(() => { const txt = (body && body.text) || (body && body.html && body.html.replace(/<[^>]+>/g, "")); if (!txt) return ""; const words = txt.trim().split(/\s+/).length; const mins = Math.max(1, Math.round(words / 200)); return t('reading_minutes', { count: mins }); })()}</div>
     </div>
   `;
 
@@ -82,8 +82,8 @@ export function mailViewHtml(mail, body, state) {
     const isMailto = unsubscribeUrl.startsWith('mailto:');
     html += `
       <div class="mail-view-unsubscribe-banner" role="status">
-        <span>\u2709 This is a mailing list.</span>
-        <a href="#" id="unsubscribe-link" class="unsubscribe-link" data-unsub-url="${esc(unsubscribeUrl)}" data-unsub-mailto="${isMailto}">Unsubscribe</a>
+        <span>\u2709 ${t('mailing_list')}</span>
+        <a href="#" id="unsubscribe-link" class="unsubscribe-link" data-unsub-url="${esc(unsubscribeUrl)}" data-unsub-mailto="${isMailto}">${t('unsubscribe')}</a>
       </div>
     `;
   }
@@ -92,10 +92,10 @@ export function mailViewHtml(mail, body, state) {
   if (mail.read_receipt_requested && mail.read_receipt_to && !dismissedReceipts.has(mail.id)) {
     html += `
       <div class="mail-view-receipt-banner" id="receipt-banner" role="alert">
-        <span>\u2709 The sender requested a read receipt.</span>
+        <span>\u2709 ${t('receipt_requested')}</span>
         <div class="receipt-actions">
-          <button id="send-receipt-btn" class="btn btn-sm btn-primary" aria-label="Send read receipt">Send receipt</button>
-          <button id="ignore-receipt-btn" class="btn btn-sm btn-ghost" aria-label="Ignore read receipt request">Ignore</button>
+          <button id="send-receipt-btn" class="btn btn-sm btn-primary" aria-label="${t('send_receipt_label')}">${t('send_receipt')}</button>
+          <button id="ignore-receipt-btn" class="btn btn-sm btn-ghost" aria-label="${t('ignore_receipt_label')}">${t('ignore')}</button>
         </div>
       </div>
     `;
@@ -103,7 +103,7 @@ export function mailViewHtml(mail, body, state) {
 
   // Toolbar
   html += `
-    <div class="mail-view-toolbar" role="toolbar" aria-label="Email actions">
+    <div class="mail-view-toolbar" role="toolbar" aria-label="${t('email_actions')}">
       <button class="mail-view-toolbar-btn" data-action="reply" title="${t('reply')}" aria-label="${t('reply')}">\u21A9 ${t('reply')}</button>
       <button class="mail-view-toolbar-btn" data-action="reply-all" title="${t('reply_all')}" aria-label="${t('reply_all')}">\u21A9\u21A9 ${t('reply_all')}</button>
       <button class="mail-view-toolbar-btn" data-action="forward" title="${t('forward')}" aria-label="${t('forward')}">\u21AA ${t('forward')}</button>
@@ -111,42 +111,42 @@ export function mailViewHtml(mail, body, state) {
       <button class="mail-view-toolbar-btn" data-action="print" title="${t('print')}" aria-label="${t('print')}">\uD83D\uDDA8 ${t('print')}</button>
       <button class="mail-view-toolbar-btn" data-action="export" title="${t('export')}" aria-label="${t('export')}">\u2B07 ${t('export')}</button>
       <button class="mail-view-toolbar-btn" data-action="view-headers" title="${t('headers')}" aria-label="${t('headers')}">\uD83D\uDD0D ${t('headers')}</button>
-      <button class="mail-view-toolbar-btn" data-action="mute-thread" title="Mute thread" aria-label="Mute thread">${(() => { const tid = mail.thread_id || mail.id; const muted = getMutedThreads().has(tid); return muted ? '\u{1F507} Unmute' : '\u{1F515} Mute'; })()}</button>
+      <button class="mail-view-toolbar-btn" data-action="mute-thread" title="${t('mute_thread')}" aria-label="${t('mute_thread')}">${(() => { const tid = mail.thread_id || mail.id; const muted = getMutedThreads().has(tid); return muted ? `\u{1F507} ${t('unmute')}` : `\u{1F515} ${t('mute')}`; })()}</button>
       <div class="toolbar-dropdown-wrapper">
-        <button class="mail-view-toolbar-btn" data-action="remind" title="Remind me" aria-label="Remind me" aria-expanded="false" aria-controls="remind-dropdown">\u{23F0} Remind</button>
+        <button class="mail-view-toolbar-btn" data-action="remind" title="${t('remind_me')}" aria-label="${t('remind_me')}" aria-expanded="false" aria-controls="remind-dropdown">\u{23F0} ${t('remind')}</button>
         <div class="remind-dropdown toolbar-dropdown-panel" id="remind-dropdown" hidden>
-          <div class="remind-option dropdown-option" data-remind="30" role="button" tabindex="0">In 30 minutes</div>
-          <div class="remind-option dropdown-option" data-remind="60" role="button" tabindex="0">In 1 hour</div>
-          <div class="remind-option dropdown-option" data-remind="180" role="button" tabindex="0">In 3 hours</div>
-          <div class="remind-option dropdown-option" data-remind="tomorrow" role="button" tabindex="0">Tomorrow</div>
+          <div class="remind-option dropdown-option" data-remind="30" role="button" tabindex="0">${t('in_30_minutes')}</div>
+          <div class="remind-option dropdown-option" data-remind="60" role="button" tabindex="0">${t('in_1_hour')}</div>
+          <div class="remind-option dropdown-option" data-remind="180" role="button" tabindex="0">${t('in_3_hours')}</div>
+          <div class="remind-option dropdown-option" data-remind="tomorrow" role="button" tabindex="0">${t('tomorrow')}</div>
         </div>
       </div>
-      <button class="mail-view-toolbar-btn" data-action="track-reply" title="Track reply" aria-label="Track reply">\u{1F552} Track reply</button>
-      <button class="mail-view-toolbar-btn" data-action="create-task" title="Create task" aria-label="Create task">\u2611 Create task</button>
+      <button class="mail-view-toolbar-btn" data-action="track-reply" title="${t('track_reply')}" aria-label="${t('track_reply')}">\u{1F552} ${t('track_reply')}</button>
+      <button class="mail-view-toolbar-btn" data-action="create-task" title="${t('create_task')}" aria-label="${t('create_task')}">\u2611 ${t('create_task')}</button>
       <button class="mail-view-toolbar-btn" data-action="mark-unread" title="${t('mark_unread')}" aria-label="${t('mark_unread')}">\u2709 ${t('mark_unread')}</button>
       <div class="toolbar-dropdown-wrapper">
-        <button class="mail-view-toolbar-btn" data-action="snooze" title="Snooze email" aria-label="Snooze email" aria-expanded="false" aria-controls="snooze-dropdown">\u23F0 Snooze</button>
+        <button class="mail-view-toolbar-btn" data-action="snooze" title="${t('snooze_email')}" aria-label="${t('snooze_email')}" aria-expanded="false" aria-controls="snooze-dropdown">\u23F0 ${t('snooze')}</button>
         <div class="snooze-dropdown toolbar-dropdown-panel" id="snooze-dropdown" hidden>
-          <div class="snooze-option dropdown-option" data-snooze="later-today" role="button" tabindex="0" aria-label="Snooze for 4 hours">Later today (4 hours)</div>
-          <div class="snooze-option dropdown-option" data-snooze="tomorrow" role="button" tabindex="0" aria-label="Snooze until tomorrow morning">Tomorrow morning</div>
-          <div class="snooze-option dropdown-option" data-snooze="next-week" role="button" tabindex="0" aria-label="Snooze until next week">Next week</div>
+          <div class="snooze-option dropdown-option" data-snooze="later-today" role="button" tabindex="0" aria-label="${t('snooze_later_today_label')}">${t('snooze_later_today')}</div>
+          <div class="snooze-option dropdown-option" data-snooze="tomorrow" role="button" tabindex="0" aria-label="${t('snooze_tomorrow_label')}">${t('snooze_tomorrow')}</div>
+          <div class="snooze-option dropdown-option" data-snooze="next-week" role="button" tabindex="0" aria-label="${t('snooze_next_week_label')}">${t('snooze_next_week')}</div>
           <div class="separator-top mt-4 mb-4"></div>
           <div class="snooze-custom-section">
-            <label for="snooze-custom-time">Pick date & time:</label>
-            <input type="datetime-local" id="snooze-custom-time" aria-label="Custom snooze date and time" />
-            <button class="snooze-option snooze-custom-btn" data-snooze="custom" aria-label="Set custom snooze time">Set</button>
+            <label for="snooze-custom-time">${t('pick_date_time')}</label>
+            <input type="datetime-local" id="snooze-custom-time" aria-label="${t('custom_snooze_time')}" />
+            <button class="snooze-option snooze-custom-btn" data-snooze="custom" aria-label="${t('set_custom_snooze')}">${t('set')}</button>
           </div>
         </div>
       </div>
       <button class="mail-view-toolbar-btn" data-action="archive" title="${t('archive')}" aria-label="${t('archive')}">\uD83D\uDCE6 ${t('archive')}</button>
       <button class="mail-view-toolbar-btn danger" data-action="delete" title="${t('delete')}" aria-label="${t('delete')}">\uD83D\uDDD1 ${t('delete')}</button>
-      <button class="mail-view-toolbar-btn" data-action="open-new-window" title="Open in new window" aria-label="Open in new window">\u{1F5D7} New window</button>
+      <button class="mail-view-toolbar-btn" data-action="open-new-window" title="${t('open_new_window')}" aria-label="${t('open_new_window')}">\u{1F5D7} ${t('new_window')}</button>
       <span class="toolbar-sep" aria-hidden="true"></span>
       <div class="zoom-controls">
-        <button class="mail-view-toolbar-btn" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">\u2212</button>
+        <button class="mail-view-toolbar-btn" data-action="zoom-out" aria-label="${t('zoom_out')}" title="${t('zoom_out')}">\u2212</button>
         <span id="zoom-level-display" aria-live="polite">${Math.round(getZoom())}%</span>
-        <button class="mail-view-toolbar-btn" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
-        <button class="mail-view-toolbar-btn" data-action="zoom-reset" aria-label="Reset zoom" title="Reset zoom">100%</button>
+        <button class="mail-view-toolbar-btn" data-action="zoom-in" aria-label="${t('zoom_in')}" title="${t('zoom_in')}">+</button>
+        <button class="mail-view-toolbar-btn" data-action="zoom-reset" aria-label="${t('zoom_reset')}" title="${t('zoom_reset')}">100%</button>
       </div>
     </div>
   `;
@@ -154,19 +154,19 @@ export function mailViewHtml(mail, body, state) {
   // Feature 1: Attachment bar + preview
   const attachments = mail.attachment_meta || [];
   if (attachments.length > 0 || mail.has_attachments) {
-    html += '<div class="mail-view-attachments" role="region" aria-label="Attachments">';
-    html += `<div class="mail-view-attachments-header">\uD83D\uDCCE ${attachments.length} attachment${attachments.length !== 1 ? 's' : ''}</div>`;
+    html += `<div class="mail-view-attachments" role="region" aria-label="${t('attachments_label')}">`;
+    html += `<div class="mail-view-attachments-header">\uD83D\uDCCE ${tn('attachment_count', attachments.length)}</div>`;
     html += '<div class="mail-view-attachments-list">';
     for (const att of attachments) {
       const icon = attachmentIcon(att.content_type);
       const size = formatSize(att.size);
       const previewType = getPreviewType(att);
       html += `
-        <div class="mail-view-attachment-item${previewType ? ' previewable' : ''}" data-part-index="${att.part_index}" data-preview-type="${previewType || ''}" data-content-type="${esc(att.content_type || '')}" data-filename="${esc(att.filename || '')}" role="button" tabindex="0" aria-label="${esc(att.filename)} (${size})${previewType ? ', click to preview' : ''}">
+        <div class="mail-view-attachment-item${previewType ? ' previewable' : ''}" data-part-index="${att.part_index}" data-preview-type="${previewType || ''}" data-content-type="${esc(att.content_type || '')}" data-filename="${esc(att.filename || '')}" role="button" tabindex="0" aria-label="${esc(t(previewType ? 'attachment_preview_hint' : 'attachment_item', { name: att.filename, size }))}">
           <span class="mail-view-attachment-icon" aria-hidden="true">${icon}</span>
           <span class="mail-view-attachment-name" title="${esc(att.filename)}">${esc(att.filename)}</span>
           <span class="mail-view-attachment-size">${size}</span>
-          <button class="mail-view-attachment-download" data-part-index="${att.part_index}" aria-label="Download ${esc(att.filename)}" title="Download">\u2B07</button>
+          <button class="mail-view-attachment-download" data-part-index="${att.part_index}" aria-label="${esc(t('download_named', { name: att.filename }))}" title="${t('download')}">\u2B07</button>
         </div>
       `;
     }
@@ -175,7 +175,7 @@ export function mailViewHtml(mail, body, state) {
     // Collapsible preview section
     html += `
       <div class="attachment-preview-section" id="attachment-preview-section" hidden aria-expanded="false">
-        <button class="attachment-preview-close" id="attachment-preview-close" aria-label="Close preview">\u00D7 Close preview</button>
+        <button class="attachment-preview-close" id="attachment-preview-close" aria-label="${t('close_preview')}">\u00D7 ${t('close_preview')}</button>
         <div class="attachment-preview-content" id="attachment-preview-content" aria-live="polite"></div>
       </div>
     `;
@@ -200,11 +200,11 @@ export function mailViewHtml(mail, body, state) {
     if (threadMails.length > 1) {
       // Sort by date ascending
       const sorted = [...threadMails].sort((a, b) => new Date(a.date) - new Date(b.date));
-      html += '<div class="conversation-timeline" role="region" aria-label="Conversation timeline">';
-      html += '<div class="conversation-timeline-title">Conversation</div>';
+      html += `<div class="conversation-timeline" role="region" aria-label="${t('conversation_timeline')}">`;
+      html += `<div class="conversation-timeline-title">${t('conversation')}</div>`;
       for (const tm of sorted) {
         const isCurrent = tm.id === mail.id;
-        const fromName = (tm.from_name || tm.from || 'Unknown').split('<')[0].trim();
+        const fromName = (tm.from_name || tm.from || t('unknown_sender')).split('<')[0].trim();
         const dateStr = formatFullDate(tm.date);
         const preview = (tm.preview || '').slice(0, 60);
         html += `
@@ -225,13 +225,13 @@ export function mailViewHtml(mail, body, state) {
   // Body — with quoted text collapsing for plain text
   html += '<div class="mail-view-body" aria-live="polite">';
   if (hasHtml) {
-    html += '<iframe id="email-frame" sandbox="allow-same-origin" title="Email content"></iframe>';
+    html += `<iframe id="email-frame" sandbox="allow-same-origin" title="${t('email_content')}"></iframe>`;
   } else if (hasText) {
     html += `<div class="mail-view-body-text">${collapseQuotedText(esc(body.text))}</div>`;
   } else if (body === null) {
-    html += '<div class="mail-view-body-text mail-view-status-text" role="status">Loading email body\u2026</div>';
+    html += `<div class="mail-view-body-text mail-view-status-text" role="status">${t('loading_body')}</div>`;
   } else {
-    html += '<div class="mail-view-body-text mail-view-status-text" role="status">No content available</div>';
+    html += `<div class="mail-view-body-text mail-view-status-text" role="status">${t('no_content')}</div>`;
   }
   html += '</div>';
 
@@ -240,13 +240,13 @@ export function mailViewHtml(mail, body, state) {
     const links = extractLinks(body.html);
     if (links.length > 0) {
       const senderDomain = extractDomain(mail.from || '');
-      html += '<details class="mail-view-links-section" aria-label="Links found in this email">';
-      html += `<summary>Links in this email (${links.length})</summary>`;
+      html += `<details class="mail-view-links-section" aria-label="${t('links_in_email')}">`;
+      html += `<summary>${t('links_count', { count: links.length })}</summary>`;
       html += '<ul class="mail-view-links-list">';
       for (const link of links) {
         const linkDomain = extractDomainFromUrl(link.href);
         const mismatch = senderDomain && linkDomain && !linkDomain.endsWith(senderDomain);
-        const cls = mismatch ? ' class="mail-view-link-domain-mismatch" title="Domain differs from sender"' : '';
+        const cls = mismatch ? ` class="mail-view-link-domain-mismatch" title="${t('link_domain_differs')}"` : '';
         html += `<li${cls}>${esc(link.text || link.href)} &rarr; ${esc(link.href)}${mismatch ? ' \u26A0' : ''}</li>`;
       }
       html += '</ul></details>';
@@ -257,7 +257,7 @@ export function mailViewHtml(mail, body, state) {
         html += '<div class="mail-view-dev-links mt-8">';
         for (const dl of devLinks) {
           const typeIcon = dl.type === 'pull' ? '\uD83D\uDD00' : (dl.type === 'issue' ? '\uD83D\uDCDD' : '\uD83D\uDCCB');
-          const typeLabel = dl.type === 'pull' ? 'Pull Request' : (dl.type === 'issue' ? 'Issue' : 'Ticket');
+          const typeLabel = t(dl.type === 'pull' ? 'dev_pull_request' : (dl.type === 'issue' ? 'dev_issue' : 'dev_ticket'));
           const platformLabel = dl.platform === 'github' ? 'GitHub' : 'Jira';
           html += `
             <a href="${esc(dl.url)}" target="_blank" rel="noopener noreferrer" class="dev-link-card">
@@ -266,7 +266,7 @@ export function mailViewHtml(mail, body, state) {
                 <div class="dev-link-card-title">${esc(dl.repo)}${dl.number ? ' #' + esc(String(dl.number)) : ''}</div>
                 <div class="dev-link-card-meta">${platformLabel} ${typeLabel}</div>
               </div>
-              <span class="dev-link-card-arrow">Open &rarr;</span>
+              <span class="dev-link-card-arrow">${t('open_link')} &rarr;</span>
             </a>
           `;
         }
@@ -278,8 +278,8 @@ export function mailViewHtml(mail, body, state) {
 
   // Quick reply templates
   html += '<div class="quick-reply-templates" id="quick-reply-templates">';
-  html += '<span class="quick-reply-templates-label">Quick reply:</span>';
-  const templates = ["Thanks!", "Got it!", "I\'ll check", "Will do!"];
+  html += `<span class="quick-reply-templates-label">${t('quick_reply')}</span>`;
+  const templates = ['quick_reply_thanks', 'quick_reply_got_it', 'quick_reply_will_check', 'quick_reply_will_do'].map((key) => t(key));
   for (const tpl of templates) {
     html += `<button class="quick-reply-pill" data-reply-text="${esc(tpl)}">${esc(tpl)}</button>`;
   }
@@ -289,12 +289,12 @@ export function mailViewHtml(mail, body, state) {
   const _threadKey = mail.thread_id || mail.id;
   html += `
     <details class="mail-view-notes-section mail-view-comments-section" id="comments-section">
-      <summary class="notes-section-toggle">\uD83D\uDCDD Comments <span id="comments-indicator" class="notes-indicator" hidden>\u2022</span></summary>
+      <summary class="notes-section-toggle">\uD83D\uDCDD ${t('comments')} <span id="comments-indicator" class="notes-indicator" hidden>\u2022</span></summary>
       <div class="notes-section-body">
-        <div class="comments-timeline" id="comments-timeline" aria-label="Internal comments"></div>
+        <div class="comments-timeline" id="comments-timeline" aria-label="${t('internal_comments')}"></div>
         <div class="comments-input-row">
-          <textarea id="comment-input" class="mail-note-textarea comment-input" placeholder="Add a comment..." rows="2" aria-label="New comment"></textarea>
-          <button class="comment-add-btn" id="comment-add-btn" title="Add comment" aria-label="Add comment">Add</button>
+          <textarea id="comment-input" class="mail-note-textarea comment-input" placeholder="${t('add_comment_placeholder')}" rows="2" aria-label="${t('new_comment')}"></textarea>
+          <button class="comment-add-btn" id="comment-add-btn" title="${t('add_comment')}" aria-label="${t('add_comment')}">${t('add')}</button>
         </div>
       </div>
     </details>
@@ -314,9 +314,9 @@ function collapseQuotedText(text) {
   function makeToggle() {
     const qid = 'quote-' + (_quoteIdCounter++);
     const isExpanded = expandedQuoteIds.has(qid);
-    const label = isExpanded ? '\u22EF Hide quoted text' : '\u22EF Show quoted text';
+    const label = `\u22EF ${t(isExpanded ? 'hide_quoted' : 'show_quoted')}`;
     return {
-      toggle: `<div class="quoted-text-toggle" data-quote-id="${qid}" role="button" tabindex="0" aria-expanded="${isExpanded}" aria-label="${isExpanded ? 'Hide' : 'Show'} quoted text">${label}</div>`,
+      toggle: `<div class="quoted-text-toggle" data-quote-id="${qid}" role="button" tabindex="0" aria-expanded="${isExpanded}" aria-label="${t(isExpanded ? 'hide_quoted' : 'show_quoted')}">${label}</div>`,
       blockAttr: isExpanded ? '' : ' hidden',
       qid,
     };
@@ -436,7 +436,7 @@ export function openLinksExternally(iframe) {
       const link = e.target.closest?.('a[href]');
       if (!link) return;
       e.preventDefault();
-      api.openExternal(link.href).catch((err) => showToast(`Failed to open link: ${err}`, 'error'));
+      api.openExternal(link.href).catch((err) => showToast(t('error_open_link', { error: err }), 'error'));
     });
   });
 }
@@ -453,7 +453,7 @@ function renderSecurityBanners(authStatus, phishingWarnings, senderWarnings) {
       out += `
         <div class="mail-security-banner mail-security-ok" role="status" title="${esc(details.join(', '))}">
           <span class="mail-security-icon" aria-hidden="true">\u{1F6E1}</span>
-          <span>Authenticated sender (${esc(details.join(', '))})</span>
+          <span>${esc(t('authenticated_sender', { details: details.join(', ') }))}</span>
         </div>
       `;
     } else {
@@ -464,7 +464,7 @@ function renderSecurityBanners(authStatus, phishingWarnings, senderWarnings) {
       out += `
         <div class="mail-security-banner mail-security-warn" role="alert">
           <span class="mail-security-icon" aria-hidden="true">\u26A0</span>
-          <span>Authentication failed (${esc(details.join(', '))})</span>
+          <span>${esc(t('authentication_failed', { details: details.join(', ') }))}</span>
         </div>
       `;
     }
@@ -483,7 +483,7 @@ function renderSecurityBanners(authStatus, phishingWarnings, senderWarnings) {
     out += `
       <div class="mail-security-banner mail-security-danger" role="alert">
         <span class="mail-security-icon" aria-hidden="true">\u26D4</span>
-        <span><strong>Suspicious links detected (${phishingWarnings.length})</strong></span>
+        <span><strong>${t('suspicious_links', { count: phishingWarnings.length })}</strong></span>
       </div>
       <div class="mail-security-phishing-details">
     `;
@@ -493,7 +493,7 @@ function renderSecurityBanners(authStatus, phishingWarnings, senderWarnings) {
       out += `
         <div class="mail-security-phishing-item ${severityClass}">
           <span class="mail-security-phishing-reason">[${esc(w.reason)}]</span>
-          <span class="mail-security-phishing-text" title="Displayed: ${esc(w.displayed_text)}">${esc(w.displayed_text)}</span>
+          <span class="mail-security-phishing-text" title="${esc(t('link_displayed_as', { text: w.displayed_text }))}">${esc(w.displayed_text)}</span>
           <span class="mail-security-phishing-arrow" aria-hidden="true">\u2192</span>
           <span class="mail-security-phishing-url" title="${esc(w.actual_url)}">${esc(w.actual_url)}</span>
         </div>

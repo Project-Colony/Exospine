@@ -52,8 +52,10 @@ cleaned it.
 - Local SQLite mail cache with search
 - Calendar, contacts, tasks, notes, templates and RSS feeds alongside the mail
 - Portable mode: a `portable.txt` file next to the executable puts the settings,
-  the account list, the mail cache and the window state in a `data/` folder
-  beside it
+  the account list, the rules, the mail cache, the security log and, on Linux
+  and Windows, the webview storage in a `data/` folder beside it
+- Interface in English and French, following the system language unless you
+  choose one
 
 ## Installation
 

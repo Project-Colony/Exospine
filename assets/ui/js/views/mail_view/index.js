@@ -1,5 +1,6 @@
 // Exospine: the reading pane.
 
+import { t } from '../../i18n/index.js';
 import { cancelZoomSave } from './state.js';
 import { mailViewHtml } from './render.js';
 import { wireMailView } from './actions.js';
@@ -27,14 +28,14 @@ export function renderMailView(el, state, actions) {
           <path d="M10 26 L40 46 L70 26" stroke="currentColor" stroke-width="2" fill="none"/>
         </svg>
       </div>
-      <div class="empty-state-text">Select an email to read</div>
+      <div class="empty-state-text">${t('select_email')}</div>
     </div>`;
     return;
   }
 
   const body = state.mailBody;
   if (body === undefined) {
-    el.innerHTML = '<div class="mail-view-body-text mail-view-status-text" role="status" aria-live="polite">Loading email body\u2026</div>';
+    el.innerHTML = `<div class="mail-view-body-text mail-view-status-text" role="status" aria-live="polite">${t('loading_body')}</div>`;
     return;
   }
   el.innerHTML = mailViewHtml(mail, body, state);

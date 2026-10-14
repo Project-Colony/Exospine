@@ -1,10 +1,11 @@
-// Exospine — Individual mail actions
+// Exospine: actions on one email.
 
 import * as api from './api.js';
 import { showToast } from './components/toast.js';
 import { showDialog } from './components/dialog.js';
 import { state, activeAccountId, findMail, updateMail } from './state.js';
 import { toastError } from './components/toast_helpers.js';
+import { t, tn } from './i18n/index.js';
 import { _isOffline, queueAction } from './offline.js';
 
 // These callbacks are injected by app.js at init time
@@ -26,26 +27,26 @@ export async function handleArchive(mail) {
   try {
     await api.archiveMail(accountId, originalFolder, mail.id);
     _removeMail(mail.id);
-    showToast('Email archived. [Undo]', 'success', 5000, async () => {
+    showToast(t('archived_undo'), 'success', 5000, async () => {
       try {
         await api.moveMail(accountId, 'Archive', mail.id, originalFolder);
         state.mails.unshift(mailCopy);
         _renderList();
-        showToast('Archive undone.', 'info');
+        showToast(t('archive_undone'), 'info');
       } catch (e) {
-        showToast(`Undo failed: ${e}`, 'error');
+        showToast(t('undo_failed', { error: e }), 'error');
       }
     });
   } catch (err) {
-    toastError('archive', err);
+    toastError('error_archive', err);
   }
 }
 
 export async function handleDelete(mail) {
   const confirmed = await showDialog({
-    title: 'Delete Email',
-    message: 'Move this email to Trash?',
-    confirmLabel: 'Delete',
+    title: t('delete_email_title'),
+    message: t('delete_email_confirm'),
+    confirmLabel: t('delete'),
     danger: true,
   });
   if (!confirmed) return;
@@ -57,18 +58,18 @@ export async function handleDelete(mail) {
   try {
     await api.deleteMail(accountId, originalFolder, mail.id);
     _removeMail(mail.id);
-    showToast('Email deleted. [Undo]', 'success', 5000, async () => {
+    showToast(t('deleted_undo'), 'success', 5000, async () => {
       try {
         await api.moveMail(accountId, 'Trash', mail.id, originalFolder);
         state.mails.unshift(mailCopy);
         _renderList();
-        showToast('Delete undone.', 'info');
+        showToast(t('delete_undone'), 'info');
       } catch (e) {
-        showToast(`Undo failed: ${e}`, 'error');
+        showToast(t('undo_failed', { error: e }), 'error');
       }
     });
   } catch (err) {
-    toastError('delete', err);
+    toastError('error_delete', err);
   }
 }
 
@@ -78,7 +79,7 @@ export async function handleMarkRead(mail) {
     mail.is_read = true;
     _renderList();
   } catch (err) {
-    toastError('mark as read', err);
+    toastError('error_mark_read', err);
   }
 }
 
@@ -87,9 +88,9 @@ export async function handleMarkUnread(mail) {
     await api.markUnread(activeAccountId(), state.activeFolder, mail.id);
     mail.is_read = false;
     _renderList();
-    showToast('Marked as unread.', 'info');
+    showToast(t('marked_unread'), 'info');
   } catch (err) {
-    toastError('mark unread', err);
+    toastError('error_mark_unread', err);
   }
 }
 
@@ -106,7 +107,7 @@ export async function toggleMailStar(mailId) {
     // Revert on failure
     updateMail(mailId, { is_starred: !newStarred });
     _renderList();
-    toastError('toggle star', err);
+    toastError('error_toggle_star', err);
   }
 }
 
@@ -122,7 +123,7 @@ export async function handleFlagMail(mailId, dueDate) {
   } catch (err) {
     updateMail(mailId, { flag_due_date: null });
     _renderList();
-    toastError('flag mail', err);
+    toastError('error_flag', err);
   }
 }
 
@@ -138,7 +139,7 @@ export async function handleUnflagMail(mailId) {
   } catch (err) {
     updateMail(mailId, { flag_due_date: prev });
     _renderList();
-    toastError('unflag mail', err);
+    toastError('error_unflag', err);
   }
 }
 
@@ -152,14 +153,14 @@ export async function handleSweepSender(mail) {
   const fromField = mail.from || '';
   const senderEmail = extractEmail(fromField);
   if (!senderEmail) {
-    showToast('Cannot determine sender email.', 'error');
+    showToast(t('sender_unknown'), 'error');
     return;
   }
 
   const confirmed = await showDialog({
-    title: 'Sweep Sender',
-    message: `Delete ALL emails from "${senderEmail}" in this folder?`,
-    confirmLabel: 'Delete All',
+    title: t('sweep_sender_title'),
+    message: t('sweep_sender_confirm', { sender: senderEmail }),
+    confirmLabel: t('delete_all'),
     danger: true,
   });
   if (!confirmed) return;
@@ -174,12 +175,12 @@ export async function handleSweepSender(mail) {
 
   try {
     const count = await api.sweepSender(activeAccountId(), state.activeFolder, senderEmail);
-    showToast(`Deleted ${count || 'all'} emails from ${senderEmail}.`, 'success');
+    showToast(count ? tn('swept', count, { sender: senderEmail }) : t('swept_all', { sender: senderEmail }), 'success');
     // Remove matching mails from local state
     const toRemove = state.mails.filter(m => extractEmail(m.from || '') === senderEmail).map(m => m.id);
     for (const id of toRemove) _removeMail(id);
   } catch (err) {
-    showToast(`Sweep failed: ${err}`, 'error');
+    showToast(t('error_sweep', { error: err }), 'error');
   }
 }
 
@@ -189,9 +190,9 @@ export async function handleReportSpam(mail) {
     if (!mail.categories) mail.categories = [];
     if (!mail.categories.includes('Spam')) mail.categories.push('Spam');
     _renderList();
-    showToast('Reported as spam.', 'info');
+    showToast(t('reported_spam'), 'info');
   } catch (err) {
-    toastError('report spam', err);
+    toastError('error_report_spam', err);
   }
 }
 
@@ -202,9 +203,9 @@ export async function handleReportNotSpam(mail) {
       mail.categories = mail.categories.filter((c) => c !== 'Spam');
     }
     _renderList();
-    showToast('Marked as not spam.', 'info');
+    showToast(t('marked_not_spam'), 'info');
   } catch (err) {
-    toastError('unmark spam', err);
+    toastError('error_not_spam', err);
   }
 }
 
@@ -215,7 +216,7 @@ export async function handleAddCategory(mail, category) {
     if (!mail.categories.includes(category)) mail.categories.push(category);
     _renderList();
   } catch (err) {
-    toastError('add category', err);
+    toastError('error_add_category', err);
   }
 }
 
@@ -227,6 +228,6 @@ export async function handleRemoveCategory(mail, category) {
     }
     _renderList();
   } catch (err) {
-    toastError('remove category', err);
+    toastError('error_remove_category', err);
   }
 }

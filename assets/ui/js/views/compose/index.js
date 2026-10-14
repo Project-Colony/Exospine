@@ -3,11 +3,11 @@
 
 import * as api from '../../api.js';
 import { showToast } from '../../components/toast.js';
-import { t } from '../../i18n.js';
+import { t, tn } from '../../i18n/index.js';
 import { esc } from '../../html.js';
 import { currentDraftId, startAutoSave, stopAutoSave } from './drafts.js';
 import {
-  FALLBACK_SIGNATURE, buildInitialContent, htmlToPlainText, markdownToHtml, overlay,
+  fallbackSignature, buildInitialContent, htmlToPlainText, markdownToHtml, overlay,
   placeCursorAtStart, setupAutocomplete, setupFileDrop, setupImagePaste, setupToolbar,
 } from './editor.js';
 import { setupTemplatesDropdown } from './templates.js';
@@ -28,7 +28,7 @@ export async function openCompose(prefill = {}, onSent = null) {
   overlay.hidden = false;
 
   // Fetch per-account signature (fall back to default)
-  let accountSignatureHtml = FALLBACK_SIGNATURE;
+  let accountSignatureHtml = fallbackSignature();
   if (prefill.accountId) {
     try {
       const sig = await api.getSignature(prefill.accountId);
@@ -50,95 +50,95 @@ export async function openCompose(prefill = {}, onSent = null) {
       <div class="compose-header">
         <span class="compose-title">${prefill.subject ? t('reply_title') : t('new_email_title')}</span>
         <span class="compose-autosave-indicator" id="compose-autosave-indicator" hidden></span>
-        <button class="compose-close" id="compose-close" title="Close" aria-label="Close compose window">\u00D7</button>
+        <button class="compose-close" id="compose-close" title="${t('close')}" aria-label="${t('close_compose')}">\u00D7</button>
       </div>
       <div class="compose-fields">
         <div class="compose-field compose-field-relative">
           <label class="compose-field-label" for="compose-to">${t('to')}</label>
-          <input type="text" class="compose-field-input" id="compose-to" value="${esc(prefill.to || '')}" placeholder="recipient@example.com" autocomplete="off" aria-label="To recipients" />
-          <div class="compose-autocomplete" id="ac-to" hidden role="listbox" aria-label="Contact suggestions"></div>
+          <input type="text" class="compose-field-input" id="compose-to" value="${esc(prefill.to || '')}" placeholder="recipient@example.com" autocomplete="off" aria-label="${t('to_recipients')}" />
+          <div class="compose-autocomplete" id="ac-to" hidden role="listbox" aria-label="${t('contact_suggestions')}"></div>
         </div>
         <div class="compose-field compose-field-relative">
           <label class="compose-field-label" for="compose-cc">${t('cc')}</label>
-          <input type="text" class="compose-field-input" id="compose-cc" value="${esc(prefill.cc || '')}" placeholder="" autocomplete="off" aria-label="CC recipients" />
-          <div class="compose-autocomplete" id="ac-cc" hidden role="listbox" aria-label="Contact suggestions"></div>
+          <input type="text" class="compose-field-input" id="compose-cc" value="${esc(prefill.cc || '')}" placeholder="" autocomplete="off" aria-label="${t('cc_recipients')}" />
+          <div class="compose-autocomplete" id="ac-cc" hidden role="listbox" aria-label="${t('contact_suggestions')}"></div>
         </div>
         <div class="compose-field compose-field-relative">
           <label class="compose-field-label" for="compose-bcc">${t('bcc')}</label>
-          <input type="text" class="compose-field-input" id="compose-bcc" value="${esc(prefill.bcc || '')}" placeholder="" autocomplete="off" aria-label="BCC recipients" />
-          <div class="compose-autocomplete" id="ac-bcc" hidden role="listbox" aria-label="Contact suggestions"></div>
+          <input type="text" class="compose-field-input" id="compose-bcc" value="${esc(prefill.bcc || '')}" placeholder="" autocomplete="off" aria-label="${t('bcc_recipients')}" />
+          <div class="compose-autocomplete" id="ac-bcc" hidden role="listbox" aria-label="${t('contact_suggestions')}"></div>
         </div>
         <div class="compose-field">
           <label class="compose-field-label" for="compose-subject">${t('subject')}</label>
-          <input type="text" class="compose-field-input" id="compose-subject" value="${esc(prefill.subject || '')}" placeholder="${t('subject')}" aria-label="Email subject" />
+          <input type="text" class="compose-field-input" id="compose-subject" value="${esc(prefill.subject || '')}" placeholder="${t('subject')}" aria-label="${t('email_subject')}" />
         </div>
         <div class="compose-field">
-          <label class="compose-field-label" for="compose-importance">Priority</label>
-          <select id="compose-importance" class="compose-field-input compose-importance-select" aria-label="Email priority">
-            <option value="normal">Normal</option>
-            <option value="high">\u2757 High</option>
-            <option value="low">\u2193 Low</option>
+          <label class="compose-field-label" for="compose-importance">${t('priority')}</label>
+          <select id="compose-importance" class="compose-field-input compose-importance-select" aria-label="${t('email_priority')}">
+            <option value="normal">${t('priority_normal')}</option>
+            <option value="high">\u2757 ${t('priority_high')}</option>
+            <option value="low">\u2193 ${t('priority_low')}</option>
           </select>
         </div>
       </div>
       <div class="compose-body-wrap">
-        <div class="compose-toolbar" id="compose-toolbar" role="toolbar" aria-label="Formatting toolbar">
-          <button type="button" data-cmd="bold" title="Bold (Ctrl+B)" aria-label="Bold"><b>B</b></button>
-          <button type="button" data-cmd="italic" title="Italic (Ctrl+I)" aria-label="Italic"><i>I</i></button>
-          <button type="button" data-cmd="underline" title="Underline (Ctrl+U)" aria-label="Underline"><u>U</u></button>
+        <div class="compose-toolbar" id="compose-toolbar" role="toolbar" aria-label="${t('formatting_toolbar')}">
+          <button type="button" data-cmd="bold" title="${t('bold_shortcut')}" aria-label="${t('bold')}"><b>B</b></button>
+          <button type="button" data-cmd="italic" title="${t('italic_shortcut')}" aria-label="${t('italic')}"><i>I</i></button>
+          <button type="button" data-cmd="underline" title="${t('underline_shortcut')}" aria-label="${t('underline')}"><u>U</u></button>
           <span class="toolbar-sep" aria-hidden="true"></span>
-          <button type="button" data-cmd="insertUnorderedList" title="Bullet list" aria-label="Bullet list">\u2022</button>
-          <button type="button" data-cmd="insertOrderedList" title="Numbered list" aria-label="Numbered list">1.</button>
+          <button type="button" data-cmd="insertUnorderedList" title="${t('bullet_list')}" aria-label="${t('bullet_list')}">\u2022</button>
+          <button type="button" data-cmd="insertOrderedList" title="${t('numbered_list')}" aria-label="${t('numbered_list')}">1.</button>
           <span class="toolbar-sep" aria-hidden="true"></span>
-          <select data-cmd="fontSize" title="Font size" class="toolbar-select" aria-label="Font size">
-            <option value="">Size</option>
-            <option value="1">Small</option>
-            <option value="3">Normal</option>
-            <option value="5">Large</option>
+          <select data-cmd="fontSize" title="${t('font_size')}" class="toolbar-select" aria-label="${t('font_size')}">
+            <option value="">${t('size')}</option>
+            <option value="1">${t('size_small')}</option>
+            <option value="3">${t('size_normal')}</option>
+            <option value="5">${t('size_large')}</option>
           </select>
-          <input type="color" data-cmd="foreColor" title="Text color" class="toolbar-color" value="#000000" aria-label="Text color" />
+          <input type="color" data-cmd="foreColor" title="${t('text_color')}" class="toolbar-color" value="#000000" aria-label="${t('text_color')}" />
           <span class="toolbar-sep" aria-hidden="true"></span>
-          <button type="button" data-cmd="justifyLeft" title="Align left" aria-label="Align left">\u2261</button>
-          <button type="button" data-cmd="justifyCenter" title="Align center" aria-label="Align center">\u2550</button>
-          <button type="button" data-cmd="justifyRight" title="Align right" aria-label="Align right">\u2262</button>
+          <button type="button" data-cmd="justifyLeft" title="${t('align_left')}" aria-label="${t('align_left')}">\u2261</button>
+          <button type="button" data-cmd="justifyCenter" title="${t('align_center')}" aria-label="${t('align_center')}">\u2550</button>
+          <button type="button" data-cmd="justifyRight" title="${t('align_right')}" aria-label="${t('align_right')}">\u2262</button>
           <span class="toolbar-sep" aria-hidden="true"></span>
-          <button type="button" data-cmd="createLink" title="Insert link" aria-label="Insert link">\uD83D\uDD17</button>
-          <button type="button" data-cmd="insertHorizontalRule" title="Horizontal line" aria-label="Insert horizontal line">\u2014</button>
-          <button type="button" data-cmd="removeFormat" title="Clear formatting" aria-label="Clear formatting">\u2715</button>
+          <button type="button" data-cmd="createLink" title="${t('insert_link')}" aria-label="${t('insert_link')}">\uD83D\uDD17</button>
+          <button type="button" data-cmd="insertHorizontalRule" title="${t('horizontal_line')}" aria-label="${t('insert_horizontal_line')}">\u2014</button>
+          <button type="button" data-cmd="removeFormat" title="${t('clear_formatting')}" aria-label="${t('clear_formatting')}">\u2715</button>
           <span class="toolbar-sep" aria-hidden="true"></span>
           <div class="toolbar-dropdown-wrapper">
             <button type="button" id="compose-templates-btn" title="${t('templates')}" aria-label="${t('templates')}" aria-expanded="false">\uD83D\uDCCB ${t('templates')}</button>
             <div id="compose-templates-dropdown" hidden class="compose-templates-dropdown"></div>
           </div>
           <span class="toolbar-sep"></span>
-          <button type="button" id="compose-md-toggle" title="Toggle Rich Text / Markdown" class="text-xs font-bolder">MD</button>
+          <button type="button" id="compose-md-toggle" title="${t('toggle_markdown')}" class="text-xs font-bolder">MD</button>
         </div>
         <div id="compose-body" contenteditable="true" spellcheck="true" lang="auto" class="compose-editor">${buildInitialContent(prefill)}</div>
-        <textarea id="compose-body-md" class="compose-editor-md" hidden placeholder="Write in Markdown...\n\n**bold**, *italic*, \`code\`, [link](url), # headings, - lists"></textarea>
+        <textarea id="compose-body-md" class="compose-editor-md" hidden placeholder="${esc(t('markdown_placeholder'))}"></textarea>
       </div>
       <div id="compose-attachments" class="compose-attachments" hidden>
-        <div class="compose-attachments-label">Attachments:</div>
+        <div class="compose-attachments-label">${t('attachments_colon')}</div>
         <div id="compose-attachments-list" class="compose-attachments-list"></div>
       </div>
       <div id="compose-version-panel" hidden class="compose-version-panel">
-        <div class="compose-version-panel-title">Version History</div>
-        <div id="compose-version-list" class="text-dim">No versions saved yet.</div>
+        <div class="compose-version-panel-title">${t('version_history')}</div>
+        <div id="compose-version-list" class="text-dim">${t('no_versions')}</div>
       </div>
       <div class="compose-status-bar" id="compose-status-bar">
-        <span id="compose-word-count">0 words</span>
-        <span id="compose-char-count">0 characters</span>
+        <span id="compose-word-count">${tn('word_count', 0)}</span>
+        <span id="compose-char-count">${tn('char_count', 0)}</span>
       </div>
       <div class="compose-footer">
         <button class="btn btn-ghost" id="compose-discard">${t('discard')}</button>
-        <button class="btn btn-ghost text-xs" id="compose-versions-btn" title="Version history">\uD83D\uDD53 Versions</button>
+        <button class="btn btn-ghost text-xs" id="compose-versions-btn" title="${t('version_history')}">\uD83D\uDD53 ${t('versions')}</button>
         <div class="compose-send-group">
           <button class="btn btn-primary" id="compose-send">\u2709 ${t('send')}</button>
           <div class="compose-field-relative">
-            <button class="btn btn-ghost" id="compose-schedule-btn" title="Schedule send">\u23F0</button>
+            <button class="btn btn-ghost" id="compose-schedule-btn" title="${t('schedule_send')}">\u23F0</button>
             <div class="compose-schedule-dropdown" id="compose-schedule-dropdown" hidden>
-              <label>Schedule send:</label>
+              <label>${t('schedule_send_colon')}</label>
               <input type="datetime-local" id="compose-schedule-time" />
-              <button class="btn btn-primary btn-sm w-full mt-6" id="compose-schedule-confirm">Schedule</button>
+              <button class="btn btn-primary btn-sm w-full mt-6" id="compose-schedule-confirm">${t('schedule')}</button>
             </div>
           </div>
         </div>
@@ -166,8 +166,8 @@ export async function openCompose(prefill = {}, onSent = null) {
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const wordEl = overlay.querySelector('#compose-word-count');
     const charEl = overlay.querySelector('#compose-char-count');
-    if (wordEl) wordEl.textContent = `${words} word${words !== 1 ? 's' : ''}`;
-    if (charEl) charEl.textContent = `${chars} character${chars !== 1 ? 's' : ''}`;
+    if (wordEl) wordEl.textContent = tn('word_count', words);
+    if (charEl) charEl.textContent = tn('char_count', chars);
   }
   // Debounce word/char count updates with requestAnimationFrame
   let _wcRAF = null;
@@ -255,12 +255,12 @@ export async function openCompose(prefill = {}, onSent = null) {
     schedConfirm.addEventListener('click', async () => {
       const timeInput = overlay.querySelector('#compose-schedule-time');
       if (!timeInput || !timeInput.value) {
-        showToast('Please select a date and time.', 'error');
+        showToast(t('pick_date_time_first'), 'error');
         return;
       }
       const to = overlay.querySelector('#compose-to').value.trim();
       if (!to) {
-        showToast('Please enter a recipient.', 'error');
+        showToast(t('enter_recipient'), 'error');
         return;
       }
       const bodyHtml = overlay.querySelector('#compose-body').innerHTML;
@@ -278,10 +278,10 @@ export async function openCompose(prefill = {}, onSent = null) {
       const scheduledTime = new Date(timeInput.value).toISOString();
       try {
         await api.scheduleSend(draft, scheduledTime);
-        showToast(`Email scheduled for ${timeInput.value}`, 'success');
+        showToast(t('email_scheduled', { time: timeInput.value }), 'success');
         close();
       } catch (err) {
-        showToast(`Failed to schedule: ${err}`, 'error');
+        showToast(t('error_schedule', { error: err }), 'error');
       }
     });
   }
@@ -351,18 +351,18 @@ export async function openCompose(prefill = {}, onSent = null) {
       versionPanel.hidden = false;
       const versionList = overlay.querySelector('#compose-version-list');
       if (!currentDraftId()) {
-        versionList.innerHTML = '<div class="text-dim">No versions saved yet.</div>';
+        versionList.innerHTML = `<div class="text-dim">${t('no_versions')}</div>`;
         return;
       }
       try {
         const versions = await api.loadDraftVersions(currentDraftId());
         if (!versions || versions.length === 0) {
-          versionList.innerHTML = '<div class="text-dim">No versions saved yet.</div>';
+          versionList.innerHTML = `<div class="text-dim">${t('no_versions')}</div>`;
           return;
         }
         versionList.innerHTML = versions.map((v) => {
           const ts = new Date(v.timestamp).toLocaleString();
-          const preview = (v.subject || '').slice(0, 40) || '(no subject)';
+          const preview = (v.subject || '').slice(0, 40) || t('version_no_subject');
           return `
             <div class="compose-version-item" data-version="${v.version}">
               <div class="compose-version-title">v${v.version} - ${esc(ts)}</div>
@@ -391,7 +391,7 @@ export async function openCompose(prefill = {}, onSent = null) {
           });
         });
       } catch {
-        versionList.innerHTML = '<div class="text-danger">Failed to load versions.</div>';
+        versionList.innerHTML = `<div class="text-danger">${t('error_load_versions')}</div>`;
       }
     });
   }
@@ -427,14 +427,14 @@ export async function openCompose(prefill = {}, onSent = null) {
     }
 
     if (!to) {
-      showToast('Please enter a recipient.', 'error');
+      showToast(t('enter_recipient'), 'error');
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(to)) {
-      showToast('Invalid email address.', 'error');
+      showToast(t('invalid_email'), 'error');
       return;
     }
 
@@ -456,13 +456,13 @@ export async function openCompose(prefill = {}, onSent = null) {
     close();
 
     // Show undo toast for 5 seconds
-    const toastEl = showToast('Email sent. Click to undo.', 'info', 5500, () => {
+    const toastEl = showToast(t('sent_undo'), 'info', 5500, () => {
       // Undo callback — cancel the pending send
       if (_sendTimeout) {
         clearTimeout(_sendTimeout);
         _sendTimeout = null;
       }
-      showToast('Send cancelled.', 'info');
+      showToast(t('send_cancelled'), 'info');
       // Reopen compose with the draft content
       openCompose({
         accountId: draft.account_id,
@@ -481,10 +481,10 @@ export async function openCompose(prefill = {}, onSent = null) {
       try {
         await api.sendMail(draft);
         if (toastEl && toastEl._dismiss) toastEl._dismiss();
-        showToast('Email delivered!', 'success');
+        showToast(t('email_delivered'), 'success');
         if (onSent) onSent();
       } catch (e) {
-        showToast(`Send failed: ${e}`, 'error');
+        showToast(t('error_send', { error: e }), 'error');
       }
     }, 5000);
   });

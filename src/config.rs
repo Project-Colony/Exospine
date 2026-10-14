@@ -41,8 +41,9 @@ pub fn default_reading_pane() -> String {
 pub fn default_density() -> String {
     "normal".to_string()
 }
+/// "auto" follows the system language; "en" and "fr" pick one.
 pub fn default_language() -> String {
-    "en".to_string()
+    "auto".to_string()
 }
 
 impl Default for Config {
@@ -56,7 +57,7 @@ impl Default for Config {
             show_notifications: true,
             reading_pane: "right".to_string(),
             density: "normal".to_string(),
-            language: "en".to_string(),
+            language: default_language(),
             google_client_id: String::new(),
             google_client_secret: String::new(),
             microsoft_client_id: String::new(),
@@ -206,14 +207,27 @@ static ACCOUNTS_READ_ONLY: AtomicBool = AtomicBool::new(false);
 
 /// Refuse to add or remove an account while accounts.json cannot be saved:
 /// the change would be lost at the next start, and a removed account would
-/// come back without its keyring entries.
+/// come back without its keyring entries. The error is the key of the
+/// message the UI shows in the user's language.
 pub fn ensure_accounts_writable() -> Result<(), String> {
     if ACCOUNTS_READ_ONLY.load(Ordering::Relaxed) {
-        return Err("Your account list cannot be saved this session (see the warning shown at \
-                    startup), so accounts cannot be added or removed."
-            .to_string());
+        return Err("accounts_read_only".to_string());
     }
     Ok(())
+}
+
+/// What went wrong with accounts.json at startup. The UI words it in the
+/// user's language from `kind` (accounts_problem_<kind>) and the fields.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AccountsProblem {
+    /// Refresh tokens could not move to the keyring: the file at `path` is
+    /// left as it is and account changes are not saved this session.
+    KeyringUnreachable { path: String },
+    /// The file could not be read (`reason`) and was renamed to `kept`.
+    SetAside { reason: String, kept: String },
+    /// The file at `path` could not be read (`reason`) nor renamed.
+    Unreadable { reason: String, path: String },
 }
 
 /// The account list read at startup.
@@ -222,7 +236,7 @@ pub struct LoadedAccounts {
     /// Whether saving may replace accounts.json.
     writable: bool,
     /// A problem the user has to hear about, shown once by the UI.
-    pub problem: Option<String>,
+    pub problem: Option<AccountsProblem>,
 }
 
 /// Read accounts.json, migrating the formats of older versions.
@@ -288,12 +302,9 @@ fn load_accounts_in(
         return LoadedAccounts {
             accounts,
             writable: false,
-            problem: Some(format!(
-                "Some sign-in tokens could not be moved to the system keyring. {} was left \
-                 as it is and changes to your accounts will not be saved until Exospine \
-                 can reach the keyring.",
-                path.display()
-            )),
+            problem: Some(AccountsProblem::KeyringUnreachable {
+                path: path.display().to_string(),
+            }),
         };
     }
 
@@ -323,23 +334,20 @@ fn set_aside(path: &Path, reason: &str) -> LoadedAccounts {
         Ok(()) => LoadedAccounts {
             accounts: Vec::new(),
             writable: true,
-            problem: Some(format!(
-                "Exospine could not read your account list ({reason}). It was kept as {} \
-                 and Exospine started without accounts.",
-                kept.display()
-            )),
+            problem: Some(AccountsProblem::SetAside {
+                reason: reason.to_owned(),
+                kept: kept.display().to_string(),
+            }),
         },
         Err(e) => {
             tracing::error!("Failed to rename {}: {}", path.display(), e);
             LoadedAccounts {
                 accounts: Vec::new(),
                 writable: false,
-                problem: Some(format!(
-                    "Exospine could not read your account list at {} ({reason}). It was \
-                     left untouched, and changes to your accounts will not be saved until \
-                     it is moved away.",
-                    path.display()
-                )),
+                problem: Some(AccountsProblem::Unreadable {
+                    reason: reason.to_owned(),
+                    path: path.display().to_string(),
+                }),
             }
         }
     }
@@ -553,7 +561,7 @@ mod tests {
         let (loaded, stored) = load(&dir, true);
         assert!(loaded.accounts.is_empty() && stored.is_empty());
         assert!(loaded.writable);
-        assert!(loaded.problem.is_some());
+        assert!(matches!(loaded.problem, Some(AccountsProblem::SetAside { .. })));
         assert!(!dir.join(ACCOUNTS_FILE).exists());
 
         let kept: Vec<_> = std::fs::read_dir(&dir)
@@ -587,9 +595,19 @@ mod tests {
         let (loaded, stored) = load(&dir, false);
         assert_eq!(stored, moved_token());
         assert_eq!(loaded.accounts.len(), 1);
-        assert!(!loaded.writable && loaded.problem.is_some());
+        assert!(!loaded.writable);
+        assert!(matches!(loaded.problem, Some(AccountsProblem::KeyringUnreachable { .. })));
         assert_eq!(std::fs::read_to_string(&path).unwrap(), LEGACY_JSON);
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn problems_reach_the_ui_with_their_kind() {
+        let problem = AccountsProblem::SetAside { reason: "bad".into(), kept: "x".into() };
+        assert_eq!(
+            serde_json::to_value(problem).unwrap(),
+            serde_json::json!({"kind": "set_aside", "reason": "bad", "kept": "x"})
+        );
     }
 
     #[test]
@@ -619,7 +637,7 @@ mod tests {
         assert_eq!(config.check_interval_secs, 300);
         assert!(config.show_notifications);
         assert_eq!(config.reading_pane, "right");
-        assert_eq!(config.language, "en");
+        assert_eq!(config.language, "auto");
     }
 
     #[test]

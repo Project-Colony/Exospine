@@ -1,30 +1,31 @@
 // Exospine: the built-in and saved mail templates of the compose view.
 
 import { showToast } from '../../components/toast.js';
-import { t } from '../../i18n.js';
+import { t } from '../../i18n/index.js';
 import { esc } from '../../html.js';
 import { overlay } from './editor.js';
 
+// The built-in templates: their name, subject and body are i18n keys.
 const PREDEFINED_TEMPLATES = [
   {
     name: 'template_meeting',
-    subject: 'Meeting Request',
-    body: '<p>Hello,</p><p>I would like to schedule a meeting to discuss the following topics:</p><ul><li></li></ul><p>Please let me know your availability.</p><p>Best regards</p>',
+    subject: 'template_meeting_subject',
+    body: 'template_meeting_body',
   },
   {
     name: 'template_followup',
-    subject: 'Follow-up',
-    body: '<p>Hello,</p><p>I wanted to follow up on our previous conversation regarding:</p><p></p><p>Please let me know if you have any updates.</p><p>Best regards</p>',
+    subject: 'template_followup_subject',
+    body: 'template_followup_body',
   },
   {
     name: 'template_thankyou',
-    subject: 'Thank You',
-    body: '<p>Hello,</p><p>Thank you very much for your time and assistance with this matter.</p><p>I really appreciate your help.</p><p>Best regards</p>',
+    subject: 'template_thankyou_subject',
+    body: 'template_thankyou_body',
   },
   {
     name: 'template_ooo',
-    subject: 'Out of Office',
-    body: '<p>Hello,</p><p>Thank you for your email. I am currently out of the office and will return on [date].</p><p>For urgent matters, please contact [alternative contact].</p><p>Best regards</p>',
+    subject: 'template_ooo_subject',
+    body: 'template_ooo_body',
   },
 ];
 
@@ -49,7 +50,7 @@ export function setupTemplatesDropdown(prefill) {
   function renderDropdown() {
     const customTemplates = loadCustomTemplates();
     const allTemplates = [
-      ...PREDEFINED_TEMPLATES.map((tpl) => ({ ...tpl, displayName: t(tpl.name) })),
+      ...PREDEFINED_TEMPLATES.map((tpl) => ({ subject: t(tpl.subject), body: t(tpl.body), displayName: t(tpl.name) })),
       ...customTemplates.map((tpl) => ({ ...tpl, displayName: tpl.name, custom: true })),
     ];
 
@@ -97,14 +98,14 @@ export function setupTemplatesDropdown(prefill) {
     const saveBtn = dropdown.querySelector('.compose-template-save');
     if (saveBtn) {
       saveBtn.addEventListener('click', () => {
-        const name = prompt('Template name:');
+        const name = prompt(t('template_name_prompt'));
         if (!name) return;
         const subject = overlay.querySelector('#compose-subject')?.value || '';
         const body = overlay.querySelector('#compose-body')?.innerHTML || '';
         const customs = loadCustomTemplates();
         customs.push({ name, subject, body });
         saveCustomTemplates(customs);
-        showToast(t('draft_saved'), 'success');
+        showToast(t('template_saved'), 'success');
         dropdown.hidden = true;
       });
     }

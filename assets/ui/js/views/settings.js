@@ -3,7 +3,7 @@
 import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { showDialog } from '../components/dialog.js';
-import { t } from '../i18n.js';
+import { t } from '../i18n/index.js';
 import { esc } from '../html.js';
 
 const overlay = document.getElementById('settings-overlay');

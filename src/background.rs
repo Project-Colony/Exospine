@@ -29,10 +29,11 @@ async fn update_title(app: tauri::AppHandle, mut shutdown_rx: tokio::sync::broad
             db_guard.as_ref().map_or(0, |db| db.count_unread().unwrap_or(0))
         };
         if let Some(window) = app.get_webview_window("main") {
-            let title = if count > 0 {
-                format!("Exospine ({} unread)", count)
-            } else {
-                "Exospine".to_string()
+            let title = match count {
+                0 => "Exospine".to_string(),
+                1 => crate::i18n::tr("Exospine (1 unread)", "Exospine (1 non lu)").to_string(),
+                n => crate::i18n::tr("Exospine ({count} unread)", "Exospine ({count} non lus)")
+                    .replace("{count}", &n.to_string()),
             };
             let _ = window.set_title(&title);
         }

@@ -40,6 +40,15 @@ jobs:
       - run: cargo test
       - run: cargo clippy --all-targets -- -D warnings
 
+  # The interface ships in English and French: both locales must have the
+  # same keys, and every key the UI uses must exist. Node is preinstalled on
+  # the runner, so no setup action is needed.
+  i18n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: node scripts/check-i18n.mjs
+
   # Builds on the declared floor, so rust-version in Cargo.toml is tested
   # rather than guessed. The floor is 1.90 because Tauri 2.12 and muda 0.20
   # require it. Keep the toolchain and the cache key below in sync with it.

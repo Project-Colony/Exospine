@@ -1,4 +1,6 @@
-// Exospine — Shared date formatting utilities
+// Exospine: dates, written in the interface language.
+
+import { getLanguage, t } from './i18n/index.js';
 
 /**
  * Format a date for display in the mail list.
@@ -14,21 +16,21 @@ export function formatDate(dateStr) {
     const isToday = d.toDateString() === now.toDateString();
 
     if (isToday) {
-      return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleTimeString(getLanguage(), { hour: '2-digit', minute: '2-digit' });
     }
 
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     if (d.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
+      return t('yesterday');
     }
 
     // Same year
     if (d.getFullYear() === now.getFullYear()) {
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return d.toLocaleDateString(getLanguage(), { month: 'short', day: 'numeric' });
     }
 
-    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    return d.toLocaleDateString(getLanguage(), { year: 'numeric', month: 'short', day: 'numeric' });
   } catch {
     return dateStr;
   }
@@ -42,7 +44,7 @@ export function formatFullDate(dateStr) {
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr; // Invalid date, fallback to raw string
-    return d.toLocaleString(undefined, {
+    return d.toLocaleString(getLanguage(), {
       weekday: 'long',
       year: 'numeric',
       month: 'long',

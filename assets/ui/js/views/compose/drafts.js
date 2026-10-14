@@ -1,6 +1,7 @@
 // Exospine: saving the draft being composed every 30 seconds, with a version history.
 
 import * as api from '../../api.js';
+import { t } from '../../i18n/index.js';
 import { overlay } from './editor.js';
 
 let _autoSaveInterval = null;
@@ -46,7 +47,7 @@ export function startAutoSave(getDraft) {
         await api.saveDraftVersion(_currentDraftId, draft.subject, draft.body, bodyHtml);
         const indicator = overlay.querySelector('#compose-autosave-indicator');
         if (indicator) {
-          indicator.textContent = 'Draft saved';
+          indicator.textContent = t('draft_saved');
           indicator.hidden = false;
           setTimeout(() => { if (indicator) indicator.hidden = true; }, 2000);
         }
@@ -54,7 +55,7 @@ export function startAutoSave(getDraft) {
         console.warn('Auto-save failed:', e);
         const indicator = overlay.querySelector('#compose-autosave-indicator');
         if (indicator) {
-          indicator.textContent = 'Save failed';
+          indicator.textContent = t('save_failed');
           indicator.hidden = false;
         }
       }

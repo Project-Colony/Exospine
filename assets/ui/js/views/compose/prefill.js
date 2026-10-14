@@ -1,6 +1,7 @@
 // Exospine: what a reply or a forward starts with.
 
 import { esc } from '../../html.js';
+import { t } from '../../i18n/index.js';
 import { parseInert } from './editor.js';
 
 /**
@@ -20,14 +21,14 @@ export function makeReplyPrefill(mail, body, replyAll = false) {
   if (body) {
     const originalContent = body.html || esc(body.text || '').replace(/\n/g, '<br>');
     bodyHtml = `<br><br><div class="compose-quoted">
-      <div class="compose-quoted-header">--- Original message ---<br>From: ${safeFrom}<br>Date: ${safeDate}</div>
+      <div class="compose-quoted-header">${t('quoted_original')}<br>${t('quoted_from', { value: safeFrom })}<br>${t('quoted_date', { value: safeDate })}</div>
       <blockquote>${originalContent}</blockquote>
     </div>`;
   }
 
   // Also keep plain text body for fallback
   const quotedBody = body
-    ? `\n\n--- Original message ---\nFrom: ${safeFrom}\nDate: ${safeDate}\n\n${body.text || stripHtml(body.html || '')}`
+    ? `\n\n${t('quoted_original')}\n${t('quoted_from', { value: safeFrom })}\n${t('quoted_date', { value: safeDate })}\n\n${body.text || stripHtml(body.html || '')}`
     : '';
 
   const prefill = {
@@ -61,13 +62,13 @@ export function makeForwardPrefill(mail, body) {
   if (body) {
     const originalContent = body.html || esc(body.text || '').replace(/\n/g, '<br>');
     bodyHtml = `<br><br><div class="compose-quoted">
-      <div class="compose-quoted-header">--- Forwarded message ---<br>From: ${fwdFrom}<br>To: ${fwdTo}<br>Date: ${fwdDate}<br>Subject: ${fwdSubj}</div>
+      <div class="compose-quoted-header">${t('quoted_forwarded')}<br>${t('quoted_from', { value: fwdFrom })}<br>${t('quoted_to', { value: fwdTo })}<br>${t('quoted_date', { value: fwdDate })}<br>${t('quoted_subject', { value: fwdSubj })}</div>
       <blockquote>${originalContent}</blockquote>
     </div>`;
   }
 
   const forwardBody = body
-    ? `\n\n--- Forwarded message ---\nFrom: ${fwdFrom}\nTo: ${fwdTo}\nDate: ${fwdDate}\nSubject: ${fwdSubj}\n\n${body.text || stripHtml(body.html || '')}`
+    ? `\n\n${t('quoted_forwarded')}\n${t('quoted_from', { value: fwdFrom })}\n${t('quoted_to', { value: fwdTo })}\n${t('quoted_date', { value: fwdDate })}\n${t('quoted_subject', { value: fwdSubj })}\n\n${body.text || stripHtml(body.html || '')}`
     : '';
 
   return {

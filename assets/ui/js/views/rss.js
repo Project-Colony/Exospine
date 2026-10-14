@@ -1,6 +1,6 @@
-// Exospine RSS Reader
+// Exospine: the RSS reader.
 import { showToast } from '../components/toast.js';
-import { t } from '../i18n.js';
+import { t } from '../i18n/index.js';
 import { esc } from '../html.js';
 
 const LS_KEY = 'exospine_rss_feeds';
@@ -23,28 +23,28 @@ export function openRss() {
     overlay.innerHTML = `
       <div class="settings-panel rss-panel">
         <div class="settings-header">
-          <h2>RSS Reader</h2>
-          <button class="settings-close" id="rss-close" aria-label="Close">&times;</button>
+          <h2>${t('rss_reader')}</h2>
+          <button class="settings-close" id="rss-close" aria-label="${t('close')}">&times;</button>
         </div>
         <div class="rss-layout">
           <div class="rss-sidebar">
-            <h3 class="rss-sidebar h3">Feeds</h3>
+            <h3 class="rss-sidebar h3">${t('feeds')}</h3>
             <div id="rss-feed-list" class="rss-feed-list">
-              ${feeds.length === 0 ? '<div class="text-dim text-sm">No feeds added</div>' : ''}
+              ${feeds.length === 0 ? `<div class="text-dim text-sm">${t('no_feeds')}</div>` : ''}
               ${feeds.map((f, i) => `
                 <div class="rss-feed-item ${selectedFeed === i ? 'active' : ''}" data-idx="${i}">
                   <span class="rss-feed-item-title">${esc(f.title || f.url)}</span>
-                  <button data-del="${i}" class="rss-feed-del" title="Remove">&times;</button>
+                  <button data-del="${i}" class="rss-feed-del" title="${t('remove')}">&times;</button>
                 </div>
               `).join('')}
             </div>
             <div class="rss-add-row">
-              <input id="rss-url" placeholder="Feed URL..." class="rss-url-input">
-              <button id="rss-add" class="rss-add-btn">Add</button>
+              <input id="rss-url" placeholder="${t('feed_url')}" class="rss-url-input">
+              <button id="rss-add" class="rss-add-btn">${t('add')}</button>
             </div>
           </div>
           <div class="rss-content" id="rss-items">
-            ${items.length === 0 ? '<div class="mail-view-status-text">Select a feed to view items</div>' : ''}
+            ${items.length === 0 ? `<div class="mail-view-status-text">${t('select_feed')}</div>` : ''}
             ${items.map(item => `
               <div class="rss-item">
                 ${item.link
@@ -91,7 +91,7 @@ export function openRss() {
       items = parsed.items;
       render();
     } catch (e) {
-      showToast(`Failed to load feed: ${e}`, 'error');
+      showToast(t('error_load_feed', { error: e.message || e }), 'error');
     }
   }
 
@@ -106,7 +106,7 @@ export function openRss() {
       items = parsed.items;
       render();
     } catch (e) {
-      showToast(`Failed to load feed: ${e}`, 'error');
+      showToast(t('error_load_feed', { error: e.message || e }), 'error');
     }
   }
 
@@ -154,7 +154,7 @@ async function fetchFeed(url) {
     return { title, items };
   }
 
-  throw new Error('Unknown feed format');
+  throw new Error(t('unknown_feed_format'));
 }
 
 /** Feed links are untrusted: keep only http(s) URLs, resolved against the feed URL. */

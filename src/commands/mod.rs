@@ -124,6 +124,8 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static 
         receipts::send_read_receipt,
         // Mailto handler
         crate::url_handlers::get_pending_mailto,
+        // Interface language for backend strings
+        crate::i18n::set_ui_language,
         // Secure wipe
         settings::secure_wipe,
     ]

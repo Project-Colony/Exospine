@@ -1,9 +1,10 @@
-// Exospine — Contacts Management View
+// Exospine: the contacts gathered from mail.
 
 import * as api from '../api.js';
 import { showToast } from '../components/toast.js';
 import { showDialog } from '../components/dialog.js';
 import { esc } from '../html.js';
+import { t } from '../i18n/index.js';
 
 const overlay = document.getElementById('settings-overlay');
 
@@ -78,9 +79,9 @@ export async function openContacts() {
     }
 
     if (filtered.length === 0 && searchQuery) {
-      listHtml = '<div class="contacts-empty">No contacts matching your search.</div>';
+      listHtml = `<div class="contacts-empty">${t('no_matching_contacts')}</div>`;
     } else if (filtered.length === 0) {
-      listHtml = '<div class="contacts-empty">No contacts yet. Contacts are automatically extracted from emails.</div>';
+      listHtml = `<div class="contacts-empty">${t('no_contacts')}</div>`;
     }
 
     // Detail panel
@@ -90,30 +91,30 @@ export async function openContacts() {
       if (editMode) {
         detailHtml = `
           <div class="contacts-detail-edit">
-            <div class="settings-section-title">Edit Contact</div>
+            <div class="settings-section-title">${t('edit_contact')}</div>
             <div class="settings-row">
-              <label>Name</label>
+              <label>${t('name')}</label>
               <input type="text" id="contact-edit-name" value="${esc(c.name)}" class="calendar-input" />
             </div>
             <div class="settings-row">
-              <label>Email</label>
+              <label>${t('email')}</label>
               <input type="email" id="contact-edit-email" value="${esc(c.email)}" class="calendar-input contact-edit-email-disabled" disabled />
             </div>
             <div class="settings-row">
-              <label>Phone</label>
+              <label>${t('phone')}</label>
               <input type="tel" id="contact-edit-phone" value="${esc(c.phone || '')}" class="calendar-input" />
             </div>
             <div class="settings-row">
-              <label>Company</label>
+              <label>${t('company')}</label>
               <input type="text" id="contact-edit-company" value="${esc(c.company || '')}" class="calendar-input" />
             </div>
             <div class="settings-row">
-              <label>Notes</label>
+              <label>${t('notes')}</label>
               <textarea id="contact-edit-notes" rows="4" class="calendar-input">${esc(c.notes || '')}</textarea>
             </div>
             <div class="contacts-actions mt-12">
-              <button class="btn btn-primary btn-sm" id="contact-save-btn">Save</button>
-              <button class="btn btn-ghost btn-sm" id="contact-cancel-edit-btn">Cancel</button>
+              <button class="btn btn-primary btn-sm" id="contact-save-btn">${t('save')}</button>
+              <button class="btn btn-ghost btn-sm" id="contact-cancel-edit-btn">${t('cancel')}</button>
             </div>
           </div>
         `;
@@ -124,37 +125,37 @@ export async function openContacts() {
             <div class="contacts-detail-header">
               <div class="contacts-detail-avatar">${initial}</div>
               <div>
-                <div class="contacts-detail-name">${esc(c.name || 'No name')}</div>
+                <div class="contacts-detail-name">${esc(c.name || t('no_name'))}</div>
                 <div class="contacts-detail-email">${esc(c.email)}</div>
               </div>
             </div>
             <div class="contacts-detail-fields">
-              ${c.phone ? `<div class="contacts-detail-field"><span class="contacts-field-label">Phone</span><span>${esc(c.phone)}</span></div>` : ''}
-              ${c.company ? `<div class="contacts-detail-field"><span class="contacts-field-label">Company</span><span>${esc(c.company)}</span></div>` : ''}
-              ${c.notes ? `<div class="contacts-detail-field"><span class="contacts-field-label">Notes</span><span class="whitespace-prewrap">${esc(c.notes)}</span></div>` : ''}
-              <div class="contacts-detail-field"><span class="contacts-field-label">Emails exchanged</span><span>${c.frequency || 0}</span></div>
+              ${c.phone ? `<div class="contacts-detail-field"><span class="contacts-field-label">${t('phone')}</span><span>${esc(c.phone)}</span></div>` : ''}
+              ${c.company ? `<div class="contacts-detail-field"><span class="contacts-field-label">${t('company')}</span><span>${esc(c.company)}</span></div>` : ''}
+              ${c.notes ? `<div class="contacts-detail-field"><span class="contacts-field-label">${t('notes')}</span><span class="whitespace-prewrap">${esc(c.notes)}</span></div>` : ''}
+              <div class="contacts-detail-field"><span class="contacts-field-label">${t('emails_exchanged')}</span><span>${c.frequency || 0}</span></div>
             </div>
             <div class="contacts-actions mt-16">
-              <button class="btn btn-ghost btn-sm" id="contact-edit-btn">Edit</button>
-              <button class="btn btn-danger btn-sm" id="contact-delete-btn">Delete</button>
+              <button class="btn btn-ghost btn-sm" id="contact-edit-btn">${t('edit')}</button>
+              <button class="btn btn-danger btn-sm" id="contact-delete-btn">${t('delete')}</button>
             </div>
           </div>
         `;
       }
     } else {
-      detailHtml = '<div class="contacts-empty">Select a contact to view details.</div>';
+      detailHtml = `<div class="contacts-empty">${t('select_contact')}</div>`;
     }
 
     overlay.innerHTML = `
       <div class="overlay-panel settings-panel contacts-panel">
         <div class="settings-header">
-          <span class="settings-title">Contacts (${total})</span>
-          <button class="compose-close" id="contacts-close" title="Close">\u00D7</button>
+          <span class="settings-title">${t('contacts_count', { count: total })}</span>
+          <button class="compose-close" id="contacts-close" title="${t('close')}">\u00D7</button>
         </div>
         <div class="contacts-body">
           <div class="contacts-list-pane">
             <div class="contacts-search">
-              <input type="text" id="contacts-search-input" placeholder="Search contacts..." value="${esc(searchQuery)}" class="calendar-input" />
+              <input type="text" id="contacts-search-input" placeholder="${t('search_contacts')}" value="${esc(searchQuery)}" class="calendar-input" />
             </div>
             <div class="contacts-list-scroll">
               ${listHtml}
@@ -165,7 +166,7 @@ export async function openContacts() {
           </div>
         </div>
         <div class="settings-footer">
-          <button class="btn btn-ghost" id="contacts-done">Close</button>
+          <button class="btn btn-ghost" id="contacts-done">${t('close')}</button>
         </div>
       </div>
     `;
@@ -253,10 +254,10 @@ export async function openContacts() {
             selectedContact = contacts[idx];
           }
           editMode = false;
-          showToast('Contact updated.', 'success');
+          showToast(t('contact_updated'), 'success');
           render();
         } catch (err) {
-          showToast(`Failed to save: ${err}`, 'error');
+          showToast(t('error_save', { error: err }), 'error');
         }
       });
     }
@@ -266,9 +267,9 @@ export async function openContacts() {
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
         const confirmed = await showDialog({
-          title: 'Delete Contact',
-          message: `Delete ${selectedContact.name || selectedContact.email}?`,
-          confirmLabel: 'Delete',
+          title: t('delete_contact'),
+          message: t('delete_contact_confirm', { name: selectedContact.name || selectedContact.email }),
+          confirmLabel: t('delete'),
           danger: true,
         });
         if (!confirmed) return;
@@ -278,10 +279,10 @@ export async function openContacts() {
           contacts = contacts.filter(c => c.email !== selectedContact.email);
           selectedContact = null;
           editMode = false;
-          showToast('Contact deleted.', 'info');
+          showToast(t('contact_deleted'), 'info');
           render();
         } catch (err) {
-          showToast(`Failed to delete: ${err}`, 'error');
+          showToast(t('error_delete_followup', { error: err }), 'error');
         }
       });
     }

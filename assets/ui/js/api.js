@@ -67,6 +67,9 @@ export const startOauth = (provider) => invoke('start_oauth', { provider });
 /** Problem met while reading the account list at startup, or null. Reported once. */
 export const takeAccountsProblem = () => invoke('take_accounts_problem');
 
+/** Tell the backend which language its own strings (notifications, window title) use. */
+export const setUiLanguage = (language) => invoke('set_ui_language', { language });
+
 export const addBasicAccount = (params) => invoke('add_account', { params });
 
 export const detectProvider = (email) => invoke('detect_provider', { email });

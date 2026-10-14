@@ -4,12 +4,20 @@ import { formatFullDate } from '../../date_format.js';
 import * as api from '../../api.js';
 import { showToast } from '../../components/toast.js';
 import { esc } from '../../html.js';
+import { getLanguage, t, tn } from '../../i18n/index.js';
 import { handleDownloadAttachment, openAttachmentPreview } from './attachments.js';
 import { mailDocument, openLinksExternally, showRemoteImages } from './render.js';
 import {
   dismissedReceipts, expandedQuoteIds, getMutedThreads, getZoom, reminderTimers,
   saveZoomDebounced, setMutedThreads, setZoom,
 } from './state.js';
+
+/** A comment's author for display: the stored 'You' and 'Migrated note' are markers. */
+function commentAuthor(author) {
+  if (!author || author === 'You') return t('comment_you');
+  if (author === 'Migrated note') return t('comment_migrated_note');
+  return author;
+}
 
 /** Wire the controls of the reading pane once `mailViewHtml` is in `el`. */
 export function wireMailView(el, mail, body, state, actions) {
@@ -24,9 +32,9 @@ export function wireMailView(el, mail, body, state, actions) {
       const emailMatch = fromRaw.match(/<([^>]+)>/);
       const email = emailMatch ? emailMatch[1] : fromRaw.trim();
       navigator.clipboard.writeText(email).then(() => {
-        showToast('Email copied.', 'info');
+        showToast(t('email_copied'), 'info');
       }).catch(() => {
-        showToast('Failed to copy email.', 'error');
+        showToast(t('error_copy_email'), 'error');
       });
     });
   });
@@ -41,7 +49,7 @@ export function wireMailView(el, mail, body, state, actions) {
       const isHidden = quotedBlock.hidden;
       quotedBlock.hidden = !isHidden;
       toggle.setAttribute('aria-expanded', String(!isHidden));
-      toggle.textContent = isHidden ? '\u22EF Hide quoted text' : '\u22EF Show quoted text';
+      toggle.textContent = `\u22EF ${t(isHidden ? 'hide_quoted' : 'show_quoted')}`;
       // Persist expanded state for re-renders
       if (qid) {
         if (!isHidden) {
@@ -87,12 +95,12 @@ export function wireMailView(el, mail, body, state, actions) {
     sendReceiptBtn.addEventListener('click', async () => {
       try {
         await api.sendReadReceipt(mail.id, mail.account_id, mail.read_receipt_to, mail.subject, mail.from);
-        showToast('Read receipt sent.', 'success');
+        showToast(t('receipt_sent'), 'success');
         dismissedReceipts.add(mail.id);
         const banner = el.querySelector('#receipt-banner');
         if (banner) banner.remove();
       } catch (err) {
-        showToast(`Failed to send receipt: ${err}`, 'error');
+        showToast(t('error_send_receipt', { error: err }), 'error');
       }
     });
   }
@@ -122,7 +130,7 @@ export function wireMailView(el, mail, body, state, actions) {
           } else {
             window.open(url);
           }
-          showToast('Unsubscribe email client opened.', 'info');
+          showToast(t('unsubscribe_mail_opened'), 'info');
         } catch {
           window.open(url);
         }
@@ -135,7 +143,7 @@ export function wireMailView(el, mail, body, state, actions) {
           } else {
             window.open(url, '_blank');
           }
-          showToast('Unsubscribe page opened in browser.', 'info');
+          showToast(t('unsubscribe_page_opened'), 'info');
         } catch {
           window.open(url, '_blank');
         }
@@ -164,7 +172,7 @@ export function wireMailView(el, mail, body, state, actions) {
     if (commentsIndicator) commentsIndicator.hidden = comments.length === 0;
     if (!commentsTimeline) return;
     if (comments.length === 0) {
-      commentsTimeline.innerHTML = '<div class="comments-empty">No comments yet.</div>';
+      commentsTimeline.innerHTML = `<div class="comments-empty">${t('no_comments')}</div>`;
       return;
     }
     let html = '';
@@ -174,9 +182,9 @@ export function wireMailView(el, mail, body, state, actions) {
       html += `
         <div class="comment-bubble" data-comment-ts="${c.timestamp}">
           <div class="comment-meta">
-            <span class="comment-author">${esc(c.author || 'You')}</span>
+            <span class="comment-author">${esc(commentAuthor(c.author))}</span>
             <span class="comment-time">${esc(timeStr)}</span>
-            <button class="comment-delete-btn" data-delete-ts="${c.timestamp}" title="Delete comment" aria-label="Delete comment">\u00D7</button>
+            <button class="comment-delete-btn" data-delete-ts="${c.timestamp}" title="${t('delete_comment')}" aria-label="${t('delete_comment')}">\u00D7</button>
           </div>
           <div class="comment-text">${esc(c.text)}</div>
         </div>
@@ -264,9 +272,9 @@ export function wireMailView(el, mail, body, state, actions) {
     'reply': actions.onReply,
     'reply-all': actions.onReplyAll,
     'forward': actions.onForward,
-    'archive': () => { if (actions.onArchive) { actions.onArchive(mail); showToast('Email archived.', 'success'); } },
-    'delete': () => { if (actions.onDelete) { actions.onDelete(mail); showToast('Email deleted.', 'success'); } },
-    'mark-unread': () => { if (actions.onMarkUnread) { actions.onMarkUnread(mail); showToast('Email marked as unread.', 'success'); } },
+    'archive': () => { if (actions.onArchive) { actions.onArchive(mail); showToast(t('email_archived'), 'success'); } },
+    'delete': () => { if (actions.onDelete) { actions.onDelete(mail); showToast(t('email_deleted'), 'success'); } },
+    'mark-unread': () => { if (actions.onMarkUnread) { actions.onMarkUnread(mail); showToast(t('email_marked_unread'), 'success'); } },
     'print': () => printEmail(mail, body, remoteImagesShown),
     'export': () => exportEmail(mail),
     'view-headers': () => viewHeaders(mail),
@@ -276,39 +284,40 @@ export function wireMailView(el, mail, body, state, actions) {
     'track-reply': async () => {
       // Extract sender email from the "from" field
       const fromEmail = (mail.from || '').match(/<([^>]+)>/)?.[1] || (mail.from || '').trim();
-      if (!fromEmail) { showToast('No sender to track.', 'error'); return; }
+      if (!fromEmail) { showToast(t('no_sender_to_track'), 'error'); return; }
       // Default due date: 3 days from now
       const due = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
       try {
         await api.addFollowup(mail.id, fromEmail, due);
-        showToast('Tracking reply from ' + fromEmail, 'success');
+        showToast(t('tracking_reply', { sender: fromEmail }), 'success');
       } catch (err) {
-        showToast('Failed to track: ' + err, 'error');
+        showToast(t('error_track', { error: err }), 'error');
       }
     },
     'create-task': async () => {
-      const title = mail.subject || '(No subject)';
+      const title = mail.subject || t('no_subject');
       const description = (mail.preview || '').slice(0, 200);
-      const dueDateInput = prompt('Due date (YYYY-MM-DD) or leave empty:');
+      const dueDateInput = prompt(t('task_due_prompt'));
       const dueDate = dueDateInput || '';
       try {
         await api.createTask(title, description, mail.id, dueDate);
-        showToast('Task created: ' + title, 'success');
+        showToast(t('task_created', { title }), 'success');
       } catch (err) {
-        showToast('Failed to create task: ' + err, 'error');
+        showToast(t('error_create_task', { error: err }), 'error');
       }
     },
     'open-new-window': () => {
       const query = new URLSearchParams({
         id: mail.id,
-        subject: mail.subject || '(No subject)',
-        from: mail.from || 'Unknown',
+        subject: mail.subject || t('no_subject'),
+        from: mail.from || t('unknown_sender'),
         to: String(mail.to || ''),
         date: formatFullDate(mail.date),
         images: remoteImagesShown ? '1' : '',
+        lang: getLanguage(),
       });
-      api.openMailWindow(mail.subject || '(No subject)', query.toString())
-        .catch((err) => showToast(`Failed to open window: ${err}`, 'error'));
+      api.openMailWindow(mail.subject || t('no_subject'), query.toString())
+        .catch((err) => showToast(t('error_open_window', { error: err }), 'error'));
     },
   };
 
@@ -353,7 +362,7 @@ export function wireMailView(el, mail, body, state, actions) {
       } else if (type === 'custom') {
         const timeInput = el.querySelector('#snooze-custom-time');
         if (!timeInput || !timeInput.value) {
-          showToast('Please select a date and time.', 'error');
+          showToast(t('pick_date_time_first'), 'error');
           return;
         }
         until = new Date(timeInput.value).toISOString();
@@ -363,12 +372,12 @@ export function wireMailView(el, mail, body, state, actions) {
 
       try {
         await api.snoozeMail(mail.id, until);
-        showToast('Email snoozed.', 'success');
+        showToast(t('email_snoozed'), 'success');
         if (actions.onSnooze) actions.onSnooze(mail);
         const dropdown = el.querySelector('#snooze-dropdown');
         if (dropdown) dropdown.hidden = true;
       } catch (err) {
-        showToast(`Failed to snooze: ${err}`, 'error');
+        showToast(t('error_snooze', { error: err }), 'error');
       }
     });
   });
@@ -430,13 +439,13 @@ export function wireMailView(el, mail, body, state, actions) {
       const muted = getMutedThreads();
       if (muted.has(tid)) {
         muted.delete(tid);
-        showToast('Thread unmuted.', 'info');
+        showToast(t('thread_unmuted'), 'info');
       } else {
         muted.add(tid);
-        showToast('Thread muted. No notifications for this thread.', 'info');
+        showToast(t('thread_muted'), 'info');
       }
       setMutedThreads(muted);
-      muteBtn.textContent = muted.has(tid) ? '\u{1F507} Unmute' : '\u{1F515} Mute';
+      muteBtn.textContent = muted.has(tid) ? `\u{1F507} ${t('unmute')}` : `\u{1F515} ${t('mute')}`;
     });
   }
 
@@ -464,7 +473,7 @@ export function wireMailView(el, mail, body, state, actions) {
       } else {
         delayMs = parseInt(val, 10) * 60 * 1000;
       }
-      const mailSubject = mail.subject || '(No subject)';
+      const mailSubject = mail.subject || t('no_subject');
       const mailId = mail.id;
       // Clear previous reminder for same mail
       if (reminderTimers.has(mailId)) clearTimeout(reminderTimers.get(mailId));
@@ -472,17 +481,17 @@ export function wireMailView(el, mail, body, state, actions) {
         reminderTimers.delete(mailId);
         try {
           if (Notification.permission === 'granted') {
-            new Notification('Email Reminder', { body: mailSubject });
+            new Notification(t('email_reminder'), { body: mailSubject });
           } else if (Notification.permission !== 'denied') {
             Notification.requestPermission().then(p => {
-              if (p === 'granted') new Notification('Email Reminder', { body: mailSubject });
+              if (p === 'granted') new Notification(t('email_reminder'), { body: mailSubject });
             });
           }
         } catch {}
-        showToast('Reminder: ' + mailSubject, 'info');
+        showToast(t('reminder', { subject: mailSubject }), 'info');
       }, delayMs);
       reminderTimers.set(mailId, timer);
-      showToast('Reminder set!', 'success');
+      showToast(t('reminder_set'), 'success');
       const dropdown = el.querySelector('#remind-dropdown');
       if (dropdown) dropdown.hidden = true;
     });
@@ -514,9 +523,9 @@ export function wireMailView(el, mail, body, state, actions) {
           in_reply_to: mail.id,
         };
         await api.sendMail(draft);
-        showToast('Reply sent: ' + text, 'success');
+        showToast(t('reply_sent', { text }), 'success');
       } catch (err) {
-        showToast('Failed to send reply: ' + err, 'error');
+        showToast(t('error_send_reply', { error: err }), 'error');
       }
       pill.disabled = false;
     });
@@ -554,9 +563,9 @@ export function wireMailView(el, mail, body, state, actions) {
         <div class="sender-card-info">
           <div class="sender-card-name">${esc(name)}</div>
           <div class="sender-card-email">${esc(email)}</div>
-          ${emailCount > 0 ? `<div class="sender-card-stats">${emailCount} email${emailCount !== 1 ? 's' : ''} in view</div>` : ''}
+          ${emailCount > 0 ? `<div class="sender-card-stats">${tn('emails_in_view', emailCount)}</div>` : ''}
         </div>
-        <button class="sender-card-copy" data-copy-sender="${esc(email)}" title="Copy email">\u{1F4CB}</button>
+        <button class="sender-card-copy" data-copy-sender="${esc(email)}" title="${t('copy_email')}">\u{1F4CB}</button>
       `;
       profileCard.hidden = false;
 
@@ -571,7 +580,7 @@ export function wireMailView(el, mail, body, state, actions) {
       if (copyBtn) {
         copyBtn.onclick = () => {
           navigator.clipboard.writeText(copyBtn.dataset.copySender).then(() => {
-            showToast('Email copied.', 'info');
+            showToast(t('email_copied'), 'info');
           }).catch(() => {});
         };
       }
@@ -606,7 +615,7 @@ function printEmail(mail, body, remoteImagesShown) {
     : `<pre style="white-space:pre-wrap;font-family:sans-serif;">${esc(body.text || '')}</pre>`;
   const frame = document.createElement('iframe');
   frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
-  frame.title = 'Print preview';
+  frame.title = t('print_preview');
   frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
   frame.addEventListener('load', () => {
     const win = frame.contentWindow;
@@ -624,21 +633,21 @@ function printEmail(mail, body, remoteImagesShown) {
  */
 async function exportEmail(mail) {
   try {
-    showToast('Exporting email...', 'info');
+    showToast(t('exporting_email'), 'info');
     const filePath = await api.exportMail(
       mail.account_id,
       mail.folder,
       mail.uid,
     );
-    showToast(`Exported to ${filePath}`, 'success');
+    showToast(t('exported_to', { path: filePath }), 'success');
   } catch (err) {
-    showToast(`Export failed: ${err}`, 'error');
+    showToast(t('error_export', { error: err }), 'error');
   }
 }
 
 async function viewHeaders(mail) {
   try {
-    showToast('Fetching headers...', 'info');
+    showToast(t('fetching_headers'), 'info');
     const raw = await api.getMailHeaders(mail.account_id, mail.folder, mail.uid);
 
     const importantHeaders = [
@@ -661,12 +670,12 @@ async function viewHeaders(mail) {
     overlay.className = 'headers-modal-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-label', 'Email headers');
+    overlay.setAttribute('aria-label', t('email_headers'));
     overlay.innerHTML = `
       <div class="headers-modal">
         <div class="headers-modal-header">
-          <span class="headers-modal-title">Email Headers</span>
-          <button class="headers-modal-close" aria-label="Close headers">\u00D7</button>
+          <span class="headers-modal-title">${t('email_headers')}</span>
+          <button class="headers-modal-close" aria-label="${t('close_headers')}">\u00D7</button>
         </div>
         <div class="headers-modal-body">
           <pre class="headers-modal-content">${highlighted}</pre>
@@ -693,6 +702,6 @@ async function viewHeaders(mail) {
       overlay.querySelector('.headers-modal-close').focus();
     });
   } catch (err) {
-    showToast(`Failed to fetch headers: ${err}`, 'error');
+    showToast(t('error_fetch_headers', { error: err }), 'error');
   }
 }

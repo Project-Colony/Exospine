@@ -1,10 +1,10 @@
-// Exospine — Batch operations (multi-select)
+// Exospine: actions on several selected emails at once.
 
 import * as api from './api.js';
 import { showToast } from './components/toast.js';
 import { showDialog } from './components/dialog.js';
 import { state, activeAccountId, findMail } from './state.js';
-import { toastError } from './components/toast_helpers.js';
+import { t, tn } from './i18n/index.js';
 
 // These callbacks are injected by app.js at init time
 let _renderList = () => {};
@@ -31,7 +31,7 @@ async function batchOperation(ids, operationFn, actionName) {
       console.warn(`Batch ${actionName} failed for ${id}:`, e);
     }
   }
-  if (failed > 0) showToast(`${failed} ${actionName} operations failed`, 'error');
+  if (failed > 0) showToast(tn('batch_failed', failed), 'error');
   return count;
 }
 
@@ -42,14 +42,14 @@ export async function handleBatchArchive(mailIds) {
     await api.archiveMail(accountId, folder, id);
     _removeMail(id);
   }, 'archive');
-  showToast(`${count} email(s) archived.`, 'success');
+  showToast(tn('batch_archived', count), 'success');
 }
 
 export async function handleBatchDelete(mailIds) {
   const confirmed = await showDialog({
-    title: 'Delete Emails',
-    message: `Move ${mailIds.size || mailIds.length} email(s) to Trash?`,
-    confirmLabel: 'Delete',
+    title: t('delete_emails_title'),
+    message: tn('delete_emails_confirm', mailIds.size || mailIds.length),
+    confirmLabel: t('delete'),
     danger: true,
   });
   if (!confirmed) return;
@@ -60,7 +60,7 @@ export async function handleBatchDelete(mailIds) {
     await api.deleteMail(accountId, folder, id);
     _removeMail(id);
   }, 'delete');
-  showToast(`${count} email(s) deleted.`, 'success');
+  showToast(tn('batch_deleted', count), 'success');
 }
 
 export async function handleBatchMarkRead(mailIds) {
@@ -72,7 +72,7 @@ export async function handleBatchMarkRead(mailIds) {
     if (mail) mail.is_read = true;
   }, 'mark-read');
   _renderList();
-  showToast(`${mailIds.size || mailIds.length} email(s) marked as read.`, 'info');
+  showToast(tn('batch_marked_read', mailIds.size || mailIds.length), 'info');
 }
 
 export async function handleBatchMove(mailIds, targetFolder) {
@@ -82,5 +82,5 @@ export async function handleBatchMove(mailIds, targetFolder) {
     await api.moveMail(accountId, folder, id, targetFolder);
     _removeMail(id);
   }, 'move');
-  showToast(`${count} email(s) moved to ${targetFolder}.`, 'success');
+  showToast(tn('batch_moved', count, { folder: targetFolder }), 'success');
 }

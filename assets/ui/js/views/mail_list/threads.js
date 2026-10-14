@@ -1,5 +1,7 @@
 // Exospine: grouping the mail list by conversation.
 
+import { t } from '../../i18n/index.js';
+
 let _cachedThreadKey = null; // content-based cache key: "length:firstId:lastId"
 let _cachedThreads = null;
 
@@ -36,13 +38,13 @@ export function groupByThread(mails) {
     const participantSet = new Set();
     let unreadCount = 0;
     for (const m of messages) {
-      const fromName = m.from_name || m.from || 'Unknown';
+      const fromName = m.from_name || m.from || t('unknown_sender');
       participantSet.add(fromName.split('<')[0].trim());
       if (!(m.is_read || m.read)) unreadCount++;
     }
     threads.push({
       thread_id,
-      subject: lastMsg.subject || '(No subject)',
+      subject: lastMsg.subject || t('no_subject'),
       messages,
       last_date: lastMsg.date,
       participants: [...participantSet],
