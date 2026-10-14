@@ -1,6 +1,6 @@
 [package]
 name = "exospine"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 rust-version = "1.90"
 description = "Portable email client built with Rust + Tauri v2"
