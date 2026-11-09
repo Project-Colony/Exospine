@@ -390,6 +390,8 @@ mod tests {
         assert!(text.contains("Hello"));
         assert!(text.contains("World"));
         assert!(text.contains("Second paragraph"));
+        // Previews and body search use this text, so bold must stay unmarked.
+        assert!(!text.contains('*'));
     }
 
     #[test]
