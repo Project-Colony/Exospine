@@ -2,7 +2,7 @@
 name = "exospine"
 version = "0.2.1"
 edition = "2021"
-rust-version = "1.90"
+rust-version = "1.99"
 description = "Portable email client built with Rust + Tauri v2"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/Project-Colony/Exospine"
@@ -17,63 +17,63 @@ custom-protocol = ["tauri/custom-protocol"]
 devtools = ["tauri/devtools"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
 # Tauri
-tauri = "2.11.6"
-tauri-plugin-shell = "2"
+tauri = "2.12.5"
+tauri-plugin-shell = "2.6.0"
 
 # Async runtime
-tokio = { version = "1", features = ["sync", "time", "rt", "rt-multi-thread", "macros", "net", "fs", "io-util", "process"] }
-futures = "0.3"
+tokio = { version = "1.54.1", features = ["sync", "time", "rt", "rt-multi-thread", "macros", "net", "fs", "io-util", "process"] }
+futures = "0.3.34"
 
 # Mail protocols
-async-imap = { version = "0.12", default-features = false, features = ["runtime-tokio"] }
+async-imap = { version = "0.12.0", default-features = false, features = ["runtime-tokio"] }
 lettre = { version = "0.11.23", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
-mail-parser = "0.9"
+mail-parser = "0.11.9"
 
 # HTML handling
-html2text = "0.13"
-ammonia = "4.2.1"
+html2text = "0.17.4"
+ammonia = "4.2.4"
 
 # Storage
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.41.1", features = ["bundled", "fallible_uint"] }
 
 # HTTP client (for OAuth2 token exchange)
-reqwest = { version = "0.12", default-features = false, features = ["native-tls", "json"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["native-tls-no-alpn", "json"] }
 
 # Security
-keyring = { version = "3", features = ["sync-secret-service", "vendored", "windows-native", "apple-native"] }
-rustls = { version = "0.23.45", features = ["ring"] }
-tokio-rustls = "0.26"
-webpki-roots = "0.26"
-rustls-native-certs = "0.8"
+keyring = { version = "3.6.3", features = ["sync-secret-service", "vendored", "windows-native", "apple-native"] }
+rustls = { version = "0.23.46", features = ["ring"] }
+tokio-rustls = "0.26.6"
+webpki-roots = "1.0.11"
+rustls-native-certs = "0.8.5"
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-base64 = "0.22"
-toml = "0.8"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+base64 = "0.23.1"
+toml = "1.2.1"
 
 # Text cleanup
-regex = "1"
+regex = "1.13.1"
 
 # Security — zeroize secrets in memory
-zeroize = "1"
+zeroize = "1.9.1"
 
 # Reads accounts.json files that older versions encrypted
-aes-gcm = "0.10"
-sha2 = "0.10"
+aes-gcm = "0.11.1"
+sha2 = "0.11.1"
 
 # Utilities
-chrono = { version = "0.4", features = ["serde"] }
-dirs = "6"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-anyhow = "1"
-uuid = { version = "1", features = ["v4"] }
-notify-rust = "4"
+chrono = { version = "0.4.45", features = ["serde"] }
+dirs = "7.0.0"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+anyhow = "1.0.104"
+uuid = { version = "1.29.2", features = ["v4"] }
+notify-rust = "4.19.0"
 
 [profile.release]
 lto = "thin"

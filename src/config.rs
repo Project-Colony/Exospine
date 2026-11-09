@@ -424,14 +424,14 @@ fn legacy_key(salt: &[u8]) -> [u8; 32] {
 /// Decrypt an accounts.json written by an older version: AES-256-GCM,
 /// 12-byte nonce followed by the ciphertext.
 fn legacy_decrypt(data: &[u8], salt_path: &Path) -> Option<Vec<u8>> {
-    use aes_gcm::aead::generic_array::GenericArray;
     use aes_gcm::aead::{Aead, KeyInit};
     use aes_gcm::{Aes256Gcm, Nonce};
 
     let salt = std::fs::read(salt_path).ok().filter(|salt| salt.len() == 32)?;
     let (nonce, ciphertext) = data.split_at_checked(12)?;
-    Aes256Gcm::new(GenericArray::from_slice(&legacy_key(&salt)))
-        .decrypt(Nonce::from_slice(nonce), ciphertext)
+    let nonce = Nonce::try_from(nonce).ok()?;
+    Aes256Gcm::new(&legacy_key(&salt).into())
+        .decrypt(&nonce, ciphertext)
         .ok()
 }
 
@@ -540,7 +540,6 @@ mod tests {
 
     #[test]
     fn legacy_encrypted_file_migrates() {
-        use aes_gcm::aead::generic_array::GenericArray;
         use aes_gcm::aead::{Aead, KeyInit};
         use aes_gcm::{Aes256Gcm, Nonce};
 
@@ -550,8 +549,8 @@ mod tests {
         let nonce = [3u8; 12];
         let mut encrypted = nonce.to_vec();
         encrypted.extend(
-            Aes256Gcm::new(GenericArray::from_slice(&legacy_key(&salt)))
-                .encrypt(Nonce::from_slice(&nonce), LEGACY_JSON.as_bytes())
+            Aes256Gcm::new(&legacy_key(&salt).into())
+                .encrypt(&Nonce::from(nonce), LEGACY_JSON.as_bytes())
                 .unwrap(),
         );
         std::fs::write(dir.join(ACCOUNTS_FILE), &encrypted).unwrap();

@@ -90,7 +90,7 @@ cd Exospine
 cargo build --release
 ```
 
-Requires Rust 1.90 or newer and the
+Requires Rust 1.99 or newer and the
 [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your
 platform (WebKitGTK 4.1 on Linux, WebView2 on Windows). The binary is
 `target/release/exospine` (`exospine.exe` on Windows). `cargo run` starts a debug
