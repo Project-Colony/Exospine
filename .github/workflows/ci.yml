@@ -41,8 +41,8 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
 
   # Builds on the declared floor, so rust-version in Cargo.toml is tested
-  # rather than guessed. The floor is 1.90 because Tauri 2.12 and muda 0.20
-  # require it. Keep the toolchain and the cache key below in sync with it.
+  # rather than guessed. The floor is 1.99, the Rust release the organisation
+  # builds with. Keep the toolchain and the cache key below in sync with it.
   build:
     runs-on: windows-latest
     needs: test
@@ -51,8 +51,8 @@ jobs:
       - name: Install Rust
         shell: bash
         run: |
-          rustup toolchain install 1.90 --profile minimal --no-self-update
-          rustup default 1.90
+          rustup toolchain install 1.99 --profile minimal --no-self-update
+          rustup default 1.99
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -61,9 +61,9 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-build-1.90-${{ hashFiles('Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-1.99-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-build-1.90-
+            ${{ runner.os }}-cargo-build-1.99-
       - run: cargo build --release
       # The release workflow smoke-tests every artifact this way. A Windows
       # release build is a GUI-subsystem program, the case most likely to print
