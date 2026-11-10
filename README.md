@@ -18,7 +18,7 @@ cleaned it.
 
 > **Status:** early development. CI builds and tests every change on Linux,
 > Windows and macOS. Releases are built, signed and published by release-please
-> and the Colony signing workflow; the first signed release has not been cut yet.
+> and the Colony signing workflow.
 > Sign-in, sync and the keyring have not yet been re-tested against real Gmail,
 > Outlook and IMAP accounts since the 2026-10 security and layout changes, and the
 > interface does not yet follow the Colony design system.
