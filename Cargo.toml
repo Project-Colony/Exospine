@@ -31,7 +31,7 @@ futures = "0.3.34"
 # Mail protocols
 async-imap = { version = "0.12.0", default-features = false, features = ["runtime-tokio"] }
 lettre = { version = "0.11.23", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
-mail-parser = "0.9.4"
+mail-parser = "1.0.1"
 
 # HTML handling
 html2text = "0.13.6"
