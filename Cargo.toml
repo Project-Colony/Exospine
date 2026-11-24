@@ -2,7 +2,7 @@
 name = "exospine"
 version = "0.2.2"
 edition = "2021"
-rust-version = "1.99"
+rust-version = "1.100"
 description = "Portable email client built with Rust + Tauri v2"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/Project-Colony/Exospine"
@@ -17,11 +17,11 @@ custom-protocol = ["tauri/custom-protocol"]
 devtools = ["tauri/devtools"]
 
 [build-dependencies]
-tauri-build = { version = "2.7.4", features = [] }
+tauri-build = { version = "2.7.6", features = [] }
 
 [dependencies]
 # Tauri
-tauri = "2.12.5"
+tauri = "2.12.7"
 tauri-plugin-shell = "2.6.0"
 
 # Async runtime
@@ -30,15 +30,15 @@ futures = "0.3.34"
 
 # Mail protocols
 async-imap = { version = "0.12.0", default-features = false, features = ["runtime-tokio"] }
-lettre = { version = "0.11.23", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+lettre = { version = "0.11.24", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
 mail-parser = "0.9.4"
 
 # HTML handling
 html2text = "0.13.6"
-ammonia = "4.2.4"
+ammonia = "4.2.5"
 
 # Storage
-rusqlite = { version = "0.41.1", features = ["bundled", "fallible_uint"] }
+rusqlite = { version = "0.43.0", features = ["bundled", "fallible_uint"] }
 
 # HTTP client (for OAuth2 token exchange)
 reqwest = { version = "0.13.5", default-features = false, features = ["native-tls-no-alpn", "json"] }
@@ -47,20 +47,20 @@ reqwest = { version = "0.13.5", default-features = false, features = ["native-tl
 keyring = { version = "3.6.3", features = ["sync-secret-service", "vendored", "windows-native", "apple-native"] }
 rustls = { version = "0.23.46", features = ["ring"] }
 tokio-rustls = "0.26.6"
-webpki-roots = "1.0.11"
+webpki-roots = "1.0.12"
 rustls-native-certs = "0.8.5"
 
 # Serialization
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 base64 = "0.23.1"
-toml = "1.2.1"
+toml = "1.2.2"
 
 # Text cleanup
-regex = "1.13.1"
+regex = "1.13.2"
 
 # Security — zeroize secrets in memory
-zeroize = "1.9.1"
+zeroize = "1.9.2"
 
 # Reads accounts.json files that older versions encrypted
 aes-gcm = "0.11.1"
@@ -71,8 +71,8 @@ chrono = { version = "0.4.45", features = ["serde"] }
 dirs = "7.0.0"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-anyhow = "1.0.104"
-uuid = { version = "1.29.2", features = ["v4"] }
+anyhow = "1.0.105"
+uuid = { version = "1.29.3", features = ["v4"] }
 notify-rust = "4.19.0"
 
 [profile.release]
