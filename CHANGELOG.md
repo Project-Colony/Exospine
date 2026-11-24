@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/Project-Colony/Exospine/compare/v0.2.2...v0.2.3) (2026-11-24)
+
+
+### Fixes
+
+* **deps:** update dependencies and Rust to 1.100 ([#37](https://github.com/Project-Colony/Exospine/issues/37)) ([87b0caf](https://github.com/Project-Colony/Exospine/commit/87b0cafbc933788fbc6b6d84ba1dffc3fc3b10cb))
+
 ## [0.2.2](https://github.com/Project-Colony/Exospine/compare/v0.2.1...v0.2.2) (2026-11-09)
 
 
